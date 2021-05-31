@@ -1,0 +1,34 @@
+package cmd
+
+import (
+	"fmt"
+	"github.com/spf13/cobra"
+	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/run"
+)
+
+var runPath string
+var environment string
+var stage string
+var buildID int
+
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "A brief description of your command",
+	Long: `A longer description that spans multiple lines and likely contains examples
+`,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		fmt.Println("run called")
+		vars := map[wharfyml.BuiltinVar]string{}
+		return run.NewRunner(Kubeconfig, "").Run(runPath, environment, Namespace, stage, buildID, vars)
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(runCmd)
+
+	runCmd.Flags().StringVarP(&runPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
+	runCmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment")
+	runCmd.Flags().StringVarP(&stage, "stage", "s", "", "Stage to run")
+	runCmd.Flags().IntVarP(&buildID, "build-id", "b", -1, "Build ID")
+}
