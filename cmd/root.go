@@ -1,10 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -20,41 +23,31 @@ var rootCmd = &cobra.Command{
 	Short: "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:  ``,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		log.SetFormatter(&log.TextFormatter{
-			FullTimestamp:             true,
-			TimestampFormat:           "15:04:05",
-			ForceColors:               true,
-			DisableColors:             false,
-			EnvironmentOverrideColors: false,
-			DisableTimestamp:          false,
-			DisableSorting:            false,
-			SortingFunc:               nil,
-			DisableLevelTruncation:    false,
-			QuoteEmptyFields:          false,
-			FieldMap:                  nil,
-			CallerPrettyfier:          nil,
-		})
 
-		parsedLogLevel, err := log.ParseLevel(loglevel)
+		parsedLogLevel, err := parseLevel(loglevel)
 		if err != nil {
-			log.WithField("loglevel", loglevel).Warnln("Unable to parse loglevel")
+			parsedLogLevel = logger.LevelInfo
+		}
+		logger.AddOutput(parsedLogLevel, consolepretty.Default)
+
+		if err != nil {
+			log.Warn().WithString("loglevel", parsedLogLevel.String()).Message("Unable to parse loglevel.")
 		} else {
-			log.SetLevel(parsedLogLevel)
-			log.WithField("loglevel", parsedLogLevel).Traceln("setting log-level")
+			log.Debug().WithString("loglevel", parsedLogLevel.String()).Message("Setting log-level.")
 		}
 
 		Kubeconfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
 		if err != nil {
-			log.WithError(err).Infoln("failed to load kube-config")
+			log.Warn().WithError(err).Message("Failed to load kube-config")
 		} else {
-			log.WithField("host", Kubeconfig.Host).Traceln("loaded kube-config")
+			log.Debug().WithString("host", Kubeconfig.Host).Message("Loaded kube-config")
 		}
 	},
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatal(err)
+		log.Panic().WithError(err).Message("Execution failed.")
 	}
 }
 
@@ -70,4 +63,23 @@ func homeDir() string {
 		return h
 	}
 	return os.Getenv("USERPROFILE") // windows
+}
+
+// parseLevel is added in https://github.com/iver-wharf/wharf-core/pull/14 but
+// that PR has not yet merged at the time or writing.
+func parseLevel(lvl string) (logger.Level, error) {
+	switch strings.ToLower(lvl) {
+	case "debug":
+		return logger.LevelDebug, nil
+	case "info":
+		return logger.LevelInfo, nil
+	case "warn":
+		return logger.LevelWarn, nil
+	case "error":
+		return logger.LevelError, nil
+	case "panic":
+		return logger.LevelPanic, nil
+	default:
+		return logger.LevelDebug, fmt.Errorf("invalid logging level: %q", lvl)
+	}
 }

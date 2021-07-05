@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -16,7 +15,10 @@ var initCmd = &cobra.Command{
 	Short: "",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.WithFields(log.Fields{"path": initPath, "context": context}).Debugln("init called")
+		log.Debug().
+			WithString("path", initPath).
+			WithString("context", context).
+			Message("init called")
 
 		err := filepath.Walk(initPath, func(path string, f os.FileInfo, err error) error {
 			if err != nil {
@@ -24,13 +26,13 @@ var initCmd = &cobra.Command{
 			}
 
 			if f.IsDir() == false && f.Name() == "Dockerfile" {
-				log.WithField("path", path).Debugln("Found dockerfile")
+				log.Debug().WithString("path", path).Message("Found Dockerfile.")
 			}
 			return nil
 		})
 
 		if err != nil {
-			log.Errorln(err)
+			log.Error().WithError(err).Message("")
 		}
 	},
 }

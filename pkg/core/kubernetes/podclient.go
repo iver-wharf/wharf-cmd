@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/utils"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	kubecore "k8s.io/api/core/v1"
@@ -31,7 +30,7 @@ type podClient struct {
 func NewPodClient(namespace string, kubeconfig *rest.Config) (PodClient, error) {
 	clientset, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
-		log.WithError(err).Fatalln("Error loading config")
+		log.Panic().WithError(err).Message("Failed loading kube-config.")
 		return nil, fmt.Errorf("load kubeconfig: %w", err)
 	}
 
@@ -47,13 +46,13 @@ func NewPodClient(namespace string, kubeconfig *rest.Config) (PodClient, error) 
 func (c *podClient) CreatePod(step wharfyml.Step, stage wharfyml.Stage, buildID int) (*kubecore.Pod, error) {
 	pod, err := c.getPodDefinition(step, stage, buildID)
 	if err != nil {
-		log.WithError(err).Errorln("Failed to get pod definition")
+		log.Error().WithError(err).Message("Failed to get pod definition.")
 		return nil, fmt.Errorf("run definition: create pod definition: %w", err)
 	}
 
 	created, err := c.podInterface.Create(&pod)
 	if err != nil {
-		log.WithError(err).Fatalln("failed to create pod")
+		log.Panic().WithError(err).Message("Failed to create pod.")
 		return nil, fmt.Errorf("run definition: create pod: %w", err)
 	}
 
@@ -63,7 +62,7 @@ func (c *podClient) CreatePod(step wharfyml.Step, stage wharfyml.Stage, buildID 
 func (c *podClient) DeletePod(podName string) error {
 	err := c.podInterface.Delete(podName, nil)
 	if err != nil {
-		log.WithError(err).WithField("name", podName).Errorln("Unable to delete pod")
+		log.Error().WithError(err).WithString("pod", podName).Message("Failed to delete pod.")
 		return err
 	}
 
@@ -71,16 +70,16 @@ func (c *podClient) DeletePod(podName string) error {
 }
 
 func (c *podClient) getPodDefinition(step wharfyml.Step, stage wharfyml.Stage, buildID int) (kubecore.Pod, error) {
-	log.WithFields(log.Fields{
-		"namespace": c.namespace,
-		"step":      step,
-		"stage":     stage,
-		"buildID":   buildID,
-	}).Traceln()
+	log.Debug().
+		WithString("namespace", c.namespace).
+		WithString("step", step.Name).
+		WithString("stage", stage.Name).
+		WithInt("build", buildID).
+		Message("")
 
 	spec, err := getPodSpec(step)
 	if err != nil {
-		log.WithError(err).Errorln("Could not get pod spec")
+		log.Error().WithError(err).Message("Failed to get pod spec.")
 		return kubecore.Pod{}, err
 	}
 
@@ -102,13 +101,13 @@ func (c *podClient) getPodDefinition(step wharfyml.Step, stage wharfyml.Stage, b
 func getPodSpec(step wharfyml.Step) (kubecore.PodSpec, error) {
 	image, err := step.GetImage()
 	if err != nil {
-		log.WithError(err).Errorln("Could not get image")
+		log.Error().WithError(err).Message("Failed to get image.")
 		return kubecore.PodSpec{}, err
 	}
 
 	command, err := step.GetCommand()
 	if err != nil {
-		log.WithError(err).Errorln("Could not get command")
+		log.Error().WithError(err).Message("Failed to get command.")
 		return kubecore.PodSpec{}, err
 	}
 
@@ -126,7 +125,7 @@ func getPodSpec(step wharfyml.Step) (kubecore.PodSpec, error) {
 
 func (c *podClient) ReadLogsFromPod(podLogsChannel chan<- string, podName string) error {
 	if podLogsChannel == nil {
-		log.Errorln("Uninitialized channel")
+		log.Error().Message("Uninitialized channel.")
 		return fmt.Errorf("uninitialized channel")
 	}
 
@@ -134,7 +133,7 @@ func (c *podClient) ReadLogsFromPod(podLogsChannel chan<- string, podName string
 
 	crw, err := NewContainerReadyWaiter(c.podInterface, podName)
 	if err != nil {
-		log.WithError(err).Errorln("Unable to create container ready waiter.")
+		log.Error().WithError(err).Message("Failed to create container ready waiter.")
 		return err
 	}
 
@@ -144,7 +143,7 @@ func (c *podClient) ReadLogsFromPod(podLogsChannel chan<- string, podName string
 	for crw.AnyRemaining() {
 		container, err := crw.WaitNext()
 		if err != nil {
-			log.WithError(err).Errorln("Unable to get next container.")
+			log.Error().WithError(err).Message("Failed to get next container.")
 			return err
 		}
 
@@ -189,19 +188,22 @@ func (c *podClient) ReadLogsFromPod(podLogsChannel chan<- string, podName string
 func (c *podClient) WaitUntilPodFinished(podName string) (bool, error) {
 	cdw, err := NewContainerDoneWaiter(c.podInterface, podName)
 	if err != nil {
-		log.WithError(err).Errorln("Unable to create container ready waiter.")
+		log.Error().WithError(err).Message("Failed to create container ready waiter.")
 		return false, err
 	}
 
 	for cdw.AnyRemaining() {
 		container, err := cdw.WaitNext()
 		if err != nil {
-			log.WithError(err).Errorln("Unable to get next done container.")
+			log.Error().WithError(err).Message("Failed to get next done container.")
 			return false, err
 		}
 
-		log.WithField("container", container).
-			Traceln(fmt.Sprintf("Container %q in pod %q has reached done state.", container.Name, container.PodName))
+		log.Debug().
+			WithString("namespace", container.Namespace).
+			WithString("pod", container.PodName).
+			WithString("container", container.Name).
+			Message("Container has reached done state.")
 	}
 
 	return true, nil

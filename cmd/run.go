@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"fmt"
-	"github.com/spf13/cobra"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/run"
+	"github.com/spf13/cobra"
 )
 
 var runPath string
@@ -18,7 +17,6 @@ var runCmd = &cobra.Command{
 	Long: `A longer description that spans multiple lines and likely contains examples
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("run called")
 		vars := map[wharfyml.BuiltinVar]string{}
 		return run.NewRunner(Kubeconfig, "").Run(runPath, environment, Namespace, stage, buildID, vars)
 	},

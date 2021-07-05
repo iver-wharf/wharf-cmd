@@ -3,11 +3,10 @@ package utils
 import (
 	"bufio"
 	"bytes"
-	"github.com/pborman/ansi"
-	log "github.com/sirupsen/logrus"
 	"io"
-)
 
+	"github.com/pborman/ansi"
+)
 
 type StreamScanner interface {
 	Scan() bool
@@ -25,7 +24,7 @@ func NewStreamScanner(stream io.ReadCloser, f SanitizationFlags) StreamScanner {
 
 	s := streamScanner{
 		sanitizationMethods: f,
-		scanner: scanner,
+		scanner:             scanner,
 	}
 
 	scanner.Split(s.sanitizeLogLine)
@@ -69,10 +68,9 @@ func fromLastCR(data []byte) []byte {
 func removeANSIcodes(data []byte) []byte {
 	stripped, err := ansi.Strip(data)
 	if err != nil {
-		log.WithError(err).Errorln("Unable to strip logs")
+		log.Error().WithError(err).Message("Failed to strip logs from ANSI codes.")
 		return data
 	}
 
 	return stripped
 }
-
