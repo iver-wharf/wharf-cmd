@@ -30,14 +30,15 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Fixed cloning type error regression introduced when we updated
   `gopkg.in/src-d/go-git.v4`. (!3)
-  
+
 - Changed libs versions in mod file. (!10)
 
 - Added new open sourced Wharf API client
   [github.com/iver-wharf/wharf-api-client-go](https://github.com/iver-wharf/wharf-api-client-go)
   v1.2.0. (!11, !14)
 
-- Added `buildclient.Client` with posting logs and build statuses functionality. (!11)
+- Added `buildclient.Client` with posting logs and build statuses
+  functionality. (!11)
 
 - Added `ContainerReadyWaiter` interface with implementation. (!12)
 
@@ -49,17 +50,21 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed `StepType`. New parsing delivered. String method implemented. (!15)
 
-- Added `ContainerStateWatcher` interface with implementation for done container and ready container. (!16)
+- Added `ContainerStateWatcher` interface with implementation for done
+  container and ready container. (!16)
 
-- Changed `ContainerReadyWaiter` to use `ContainerStateWatcher` and renamed to `ContainerWaiter`. (!16)
+- Changed `ContainerReadyWaiter` to use `ContainerStateWatcher` and renamed to
+  `ContainerWaiter`. (!16)
 
 - Added delete pod functionality. (!16)
 
-- Added reading variables from `Environment` section in wharf-ci.yml file. (!17)
+- Added reading variables from `Environment` section in wharf-ci.yml file.
+  (!17)
 
 - Added replacement variables functionality for the step. (!17)
 
-- Added `BuiltinVarType` type. Grabbed variables from URL and git repository. (!18)
+- Added `BuiltinVarType` type. Grabbed variables from URL and git repository.
+  (!18)
 
 - Added `Input` array parsing from `wharf-ci.yml` file. (!19)
 
@@ -88,17 +93,20 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   - `wharf setup`
 
-  - `wharf wharf-ci` *Ci application to generate .wharf-ci.yml files and execute
-    them against a kubernetes cluster*
+  - `wharf wharf-ci`
+    *Ci application to generate .wharf-ci.yml files and execute them against a
+    kubernetes cluster*
 
-  - `wharf run` *Run the specified .wharf-ci.yml file against kubernetes*
+  - `wharf run`
+    *Run the specified .wharf-ci.yml file against kubernetes*
 
 - Added global arguments: (07abc2a4, 021c02ce)
 
-  - `wharf --loglevel info` *Show debug information*
+  - `wharf --loglevel info`
+    *Show debug information*
 
-  - `wharf --kubeconfig ~/.kube/config` *Path to kubeconfig file*
+  - `wharf --kubeconfig ~/.kube/config`
+    *Path to kubeconfig file*
 
 - Added CLI arguments parsing via
   [github.com/spf13/cobra](https://github.com/spf13/cobra). (07abc2a4)
-
