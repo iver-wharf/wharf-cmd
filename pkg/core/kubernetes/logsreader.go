@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	log "github.com/sirupsen/logrus"
 	kubecore "k8s.io/api/core/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -35,7 +34,7 @@ func (r *containerLogsReader) StreamContainerLogs(podName string, containerName 
 
 	stream, err := request.Stream()
 	if err != nil {
-		log.WithError(err).Errorln("unable to stream logs")
+		log.Error().WithError(err).Message("Failed to stream logs.")
 		return nil, err
 	}
 

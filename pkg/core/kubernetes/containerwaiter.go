@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -115,13 +114,11 @@ func (cws *containerWaiter) fetchNextContainer() (AwaitedContainer, error) {
 func (cws *containerWaiter) fetchPod() (*v1.Pod, error) {
 	pod, err := cws.podInterface.Get(cws.podInfo.name, metav1.GetOptions{})
 	if err != nil {
-		log.WithError(err).
-			WithFields(log.Fields{
-				"name":      cws.podInfo.name,
-				"namespace": cws.podInfo.namespace,
-				"UID":       cws.podInfo.podUID,
-			}).
-			Errorln("Unable to get pod")
+		log.Error().
+			WithString("pod", cws.podInfo.name).
+			WithString("namespace", cws.podInfo.namespace).
+			WithString("uid", cws.podInfo.podUID).
+			Message("Failed to get pod.")
 		return nil, err
 	}
 	return pod, nil

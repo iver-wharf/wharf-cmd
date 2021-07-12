@@ -3,9 +3,8 @@ package cmd
 import (
 	"strings"
 
-	log "github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	pkgns "github.com/iver-wharf/wharf-cmd/pkg/namespace"
+	"github.com/spf13/cobra"
 )
 
 var namespaces []string
@@ -15,7 +14,7 @@ var setupCmd = &cobra.Command{
 	Short: "A brief description of your command",
 	Long:  ``,
 	Run: func(cmd *cobra.Command, args []string) {
-		log.WithField("namespaces", strings.Join(namespaces, ",")).Traceln("setup called")
+		log.Debug().WithString("namespaces", strings.Join(namespaces, ",")).Message("setup called")
 
 		pkgns.Namespaces{Kubeconfig: Kubeconfig}.SetupNamespaces(namespaces)
 	},

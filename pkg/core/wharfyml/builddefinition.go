@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/utils"
 	"sigs.k8s.io/yaml"
 )
@@ -35,7 +34,7 @@ func (b BuildDefinition) GetStageWithReplacement(stageName string, environmentNa
 
 	envs, ok := b.Environments[environmentName]
 	if ok == false {
-		log.WithField("environment", environmentName).Warnln("Environment not found in definition")
+		log.Warn().WithString("environment", environmentName).Message("Environment not found in build definition.")
 		return stage, nil
 	}
 
