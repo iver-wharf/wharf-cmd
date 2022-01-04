@@ -46,12 +46,12 @@ func (r Runner) Run(
 			WithString("stage", stageName).
 			WithInt("buildID", buildID)
 	}
-	withRunMeta(log.Debug()).
+	log.Debug().WithFunc(withRunMeta).
 		Message("Run called.")
 
 	def, err := wharfyml.Parse(path, builtinVars)
 	if err != nil {
-		withRunMeta(log.Error()).
+		log.Error().WithFunc(withRunMeta).
 			WithError(err).
 			Message("Failed to parse wharf-ci file.")
 		return fmt.Errorf("run: parse definition: %w", err)
@@ -76,7 +76,7 @@ func (r Runner) RunDefinition(
 	}
 	stage, err := definition.GetStageWithReplacement(stageName, environment)
 	if err != nil {
-		withRunMeta(log.Error()).
+		log.Error().WithFunc(withRunMeta).
 			WithError(err).
 			Message("Stage not found.")
 		return fmt.Errorf("stage %q not found in definition", stageName)
@@ -84,14 +84,14 @@ func (r Runner) RunDefinition(
 
 	err = r.buildClient.PostLogWithStatus(uint(buildID), "run definition", wharfapi.BuildScheduling)
 	if err != nil {
-		withRunMeta(log.Error()).
+		log.Error().WithFunc(withRunMeta).
 			WithError(err).
 			Message("Unable to update build status.")
 	}
 
 	podClient, err := kubernetes.NewPodClient(namespace, r.Kubeconfig, gitParams, builtinVars)
 	if err != nil {
-		withRunMeta(log.Error()).
+		log.Error().WithFunc(withRunMeta).
 			WithError(err).
 			Message("Error getting new pod client.")
 		return fmt.Errorf("run definition: get new pod client: %w", err)
@@ -101,13 +101,13 @@ func (r Runner) RunDefinition(
 	for _, step := range stage.Steps {
 		pod, err := podClient.CreatePod(step, stage, buildID)
 		if err != nil {
-			withRunMeta(log.Error()).
+			log.Error().WithFunc(withRunMeta).
 				WithError(err).
 				Message("Failed to create pod.")
 
 			err = r.buildClient.PostLogWithStatus(uint(buildID), "Unable to create pod.", wharfapi.BuildFailed)
 			if err != nil {
-				withRunMeta(log.Error()).
+				log.Error().WithFunc(withRunMeta).
 					WithError(err).
 					Message("Unable to update build status.")
 			}
@@ -116,7 +116,7 @@ func (r Runner) RunDefinition(
 
 		err = r.buildClient.PostLogWithStatus(uint(buildID), fmt.Sprintf("Pod %s created.", pod.Name), wharfapi.BuildRunning)
 		if err != nil {
-			withRunMeta(log.Error()).
+			log.Error().WithFunc(withRunMeta).
 				WithError(err).
 				Message("Unable to update build status.")
 		}
@@ -131,7 +131,7 @@ func (r Runner) RunDefinition(
 			for message := range logChannel {
 				err := r.buildClient.PostLog(uint(buildID), message)
 				if err != nil {
-					withRunMeta(log.Error()).
+					log.Error().WithFunc(withRunMeta).
 						WithError(err).
 						Message("Unable to post log.")
 				}
@@ -144,7 +144,7 @@ func (r Runner) RunDefinition(
 
 			err = podClient.DeletePod(pod.Name)
 			if err != nil {
-				withRunMeta(log.Error()).
+				log.Error().WithFunc(withRunMeta).
 					WithError(err).
 					WithString("pod", pod.Name).
 					Message("Failed to delete pod.")
@@ -152,9 +152,8 @@ func (r Runner) RunDefinition(
 
 			err = r.buildClient.PostLog(uint(buildID), fmt.Sprintf("Pod %s is deleted.", pod.Name))
 			if err != nil {
-				log.Error().
+				log.Error().WithFunc(withRunMeta).
 					WithError(err).
-					WithInt("build", buildID).
 					Message("Failed to post log.")
 			}
 		}()
@@ -163,9 +162,8 @@ func (r Runner) RunDefinition(
 	wg.Wait()
 	err = r.buildClient.PostLogWithStatus(uint(buildID), "Build completed", wharfapi.BuildCompleted)
 	if err != nil {
-		log.Error().
+		log.Error().WithFunc(withRunMeta).
 			WithError(err).
-			WithInt("build", buildID).
 			WithString("newStatus", wharfapi.BuildCompleted.String()).
 			Message("Failed to update build status.")
 	}
