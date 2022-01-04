@@ -1,8 +1,8 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/iver-wharf/wharf-cmd/pkg/serve"
+	"github.com/spf13/cobra"
 )
 
 var listen string

@@ -5,6 +5,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/utils"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	kubecore "k8s.io/api/core/v1"
@@ -25,9 +28,11 @@ type podClient struct {
 	namespace    string
 	podInterface corev1.PodInterface
 	logsReader   ContainerLogsReader
+	gitParams    map[git.EnvVar]string
+	builtinVars  map[containercreator.BuiltinVar]string
 }
 
-func NewPodClient(namespace string, kubeconfig *rest.Config) (PodClient, error) {
+func NewPodClient(namespace string, kubeconfig *rest.Config, gitParams map[git.EnvVar]string, builtinVars map[containercreator.BuiltinVar]string) (PodClient, error) {
 	clientset, err := kubernetes.NewForConfig(kubeconfig)
 	if err != nil {
 		log.Panic().WithError(err).Message("Failed loading kube-config.")
@@ -40,6 +45,8 @@ func NewPodClient(namespace string, kubeconfig *rest.Config) (PodClient, error) 
 		namespace:    namespace,
 		podInterface: podInterface,
 		logsReader:   NewContainerLogsReader(podInterface),
+		gitParams:    gitParams,
+		builtinVars:  builtinVars,
 	}, nil
 }
 
@@ -77,7 +84,7 @@ func (c *podClient) getPodDefinition(step wharfyml.Step, stage wharfyml.Stage, b
 		WithInt("build", buildID).
 		Message("")
 
-	spec, err := getPodSpec(step)
+	spec, err := step.GetPodSpec(c.gitParams, c.builtinVars)
 	if err != nil {
 		log.Error().WithError(err).Message("Failed to get pod spec.")
 		return kubecore.Pod{}, err
@@ -95,31 +102,6 @@ func (c *podClient) getPodDefinition(step wharfyml.Step, stage wharfyml.Stage, b
 			},
 		},
 		Spec: spec,
-	}, nil
-}
-
-func getPodSpec(step wharfyml.Step) (kubecore.PodSpec, error) {
-	image, err := step.GetImage()
-	if err != nil {
-		log.Error().WithError(err).Message("Failed to get image.")
-		return kubecore.PodSpec{}, err
-	}
-
-	command, err := step.GetCommand()
-	if err != nil {
-		log.Error().WithError(err).Message("Failed to get command.")
-		return kubecore.PodSpec{}, err
-	}
-
-	return kubecore.PodSpec{
-		Containers: []kubecore.Container{
-			{
-				Name:            "wharf",
-				Image:           image,
-				ImagePullPolicy: kubecore.PullIfNotPresent,
-				Command:         command,
-			},
-		},
 	}, nil
 }
 

@@ -1,4 +1,4 @@
-package wharfyml
+package containercreator
 
 import (
 	"testing"

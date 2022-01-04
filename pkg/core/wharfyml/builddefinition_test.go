@@ -54,7 +54,7 @@ deploy:
       namespace: ${namespace}
       cluster: ${cluster}`
 
-	sut, err := parseContent(buildDef)
+	sut, err := parseContent([]byte(buildDef))
 	require.Nil(suite.T(), err)
 
 	suite.sut = sut

@@ -16,6 +16,8 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	auth "github.com/go-git/go-git/v5/plumbing/transport/http"
+	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
+	gitenv "github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/run"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -55,51 +57,52 @@ func (s Server) build(c *gin.Context) {
 
 	buildInVars, err := getBuiltinVarsFromQueryParams(c)
 	if err != nil {
-		log.WithError(err).Errorln("Error query params")
 		log.Error().WithError(err).Message("Missing GIT_FULLURL query parameter.")
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	buildInVars[wharfyml.BuiltinVarWharfInstance] = os.Getenv(wharfyml.BuiltinVarWharfInstance.String())
+	buildInVars[containercreator.BuiltinVarWharfInstance] = os.Getenv(containercreator.BuiltinVarWharfInstance.String())
 
-	buildID, err := strconv.Atoi(buildInVars[wharfyml.BuiltinVarBuildRef])
+	buildID, err := strconv.Atoi(buildInVars[containercreator.BuiltinVarBuildRef])
 	if err != nil {
-		log.WithError(err).Errorln(fmt.Sprintf("invalid %s number: %s", wharfyml.BuiltinVarBuildRef, buildInVars[wharfyml.BuiltinVarBuildRef]))
+		log.Error().WithError(err).
+			WithString("number", buildInVars[containercreator.BuiltinVarBuildRef]).
+			Messagef("Failed parsing %s.", containercreator.BuiltinVarBuildRef)
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	log.WithFields(log.Fields{
-		"env":        env,
-		"branch":     buildInVars[wharfyml.BuiltinVarGitBranch],
-		"repo":       buildInVars[wharfyml.BuiltinVarRepoName],
-		"group":      buildInVars[wharfyml.BuiltinVarRepoGroup],
-		"registry":   buildInVars[wharfyml.BuiltinVarRegURL],
-		"gitFullUrl": gitFullUrl,
-		"fixedUrl":   fixedUrl}).
-		Infoln("Starting build!")
+	log.Info().
+		WithString("env", env).
+		WithString("branch", buildInVars[containercreator.BuiltinVarGitBranch]).
+		WithString("repo", buildInVars[containercreator.BuiltinVarRepoName]).
+		WithString("group", buildInVars[containercreator.BuiltinVarRepoGroup]).
+		WithString("registry", buildInVars[containercreator.BuiltinVarRegURL]).
+		WithString("gitFullUrl", gitFullUrl).
+		WithString("fixedUrl", fixedUrl).
+		Message("Started build.")
 
 	tempDir, err := ioutil.TempDir(os.TempDir(), "wharf")
 	if err != nil {
-		log.WithError(err).Errorln("Error creating temp-dir.")
+		log.Error().WithError(err).Message("Error creating temp-dir.")
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
 	defer os.RemoveAll(tempDir)
 
-	log.WithField("dir", tempDir).Infoln("Created temp-dir")
+	log.Info().WithString("dir", tempDir).Message("Created temp-dir.")
 
-	repo, err := gitClone(tempDir, fixedUrl, buildInVars[wharfyml.BuiltinVarGitBranch], gitToken)
+	repo, err := gitClone(tempDir, fixedUrl, buildInVars[containercreator.BuiltinVarGitBranch], gitToken)
 	if err != nil {
-		log.WithError(err).Errorln("Error cloning repo.")
+		log.Error().WithError(err).Message("Error cloning repo.")
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
 
 	repoParams, err := getBuiltinVarsFromCommit(repo)
 	if err != nil {
-		log.WithError(err).Errorln("Error getting built-in params from repo.")
+		log.Error().WithError(err).Message("Error getting built-in params from repo.")
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
@@ -110,17 +113,18 @@ func (s Server) build(c *gin.Context) {
 
 	def, err := wharfyml.Parse(filepath.Join(tempDir, wharfyml.WharfCIFileName), buildInVars)
 	if err != nil {
-		log.WithError(err).Errorln("Error parsing build-definition.")
+		log.Error().WithError(err).Message("Error parsing build-definition.")
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
 
-	log.Infoln("Parsed build definition")
+	log.Info().Message("Parsed build definition.")
 
+	gitParams := gitenv.NewGitPropertiesMap(fixedUrl, buildInVars[containercreator.BuiltinVarGitBranch], gitToken)
 	runner := run.NewRunner(s.Kubeconfig, c.GetHeader("Authorization"))
-	err = runner.RunDefinition(def, env, s.Namespace, runStage, buildID, buildInVars)
+	err = runner.RunDefinition(def, env, s.Namespace, runStage, buildID, gitParams, buildInVars)
 	if err != nil {
-		log.WithError(err).Errorln("Error running build definition.")
+		log.Error().WithError(err).Message("Error running build definition.")
 		c.JSON(http.StatusBadRequest, err)
 		return
 	}
@@ -135,28 +139,27 @@ func gitToHttpsUrl(gitUrl string) string {
 	return fmt.Sprintf("https://%s", u)
 }
 
-func getBuiltinVarsFromQueryParams(c *gin.Context) (map[wharfyml.BuiltinVar]string, error) {
+func getBuiltinVarsFromQueryParams(c *gin.Context) (map[containercreator.BuiltinVar]string, error) {
 	var err error
-	buildInVars := map[wharfyml.BuiltinVar]string{
-		wharfyml.BuiltinVarBuildRef:       c.Query(wharfyml.BuiltinVarBuildRef.String()),
-		wharfyml.BuiltinVarWharfProjectID: c.Query(wharfyml.BuiltinVarWharfProjectID.String()),
-		wharfyml.BuiltinVarGitBranch:      c.Query(wharfyml.BuiltinVarGitBranch.String()),
-		wharfyml.BuiltinVarRepoBranch:     c.Query(wharfyml.BuiltinVarRepoBranch.String()),
-		wharfyml.BuiltinVarRepoName:       c.Query(wharfyml.BuiltinVarRepoName.String()),
-		wharfyml.BuiltinVarRepoGroup:      c.Query(wharfyml.BuiltinVarRepoGroup.String()),
-		wharfyml.BuiltinVarChartRepo:      c.Query(wharfyml.BuiltinVarChartRepo.String()),
-		wharfyml.BuiltinVarDefaultDomain:  c.Query(wharfyml.BuiltinVarDefaultDomain.String()),
+	buildInVars := map[containercreator.BuiltinVar]string{
+		containercreator.BuiltinVarBuildRef:       c.Query(containercreator.BuiltinVarBuildRef.String()),
+		containercreator.BuiltinVarWharfProjectID: c.Query(containercreator.BuiltinVarWharfProjectID.String()),
+		containercreator.BuiltinVarGitBranch:      c.Query(containercreator.BuiltinVarGitBranch.String()),
+		containercreator.BuiltinVarRepoBranch:     c.Query(containercreator.BuiltinVarRepoBranch.String()),
+		containercreator.BuiltinVarRepoName:       c.Query(containercreator.BuiltinVarRepoName.String()),
+		containercreator.BuiltinVarRepoGroup:      c.Query(containercreator.BuiltinVarRepoGroup.String()),
+		containercreator.BuiltinVarChartRepo:      c.Query(containercreator.BuiltinVarChartRepo.String()),
+		containercreator.BuiltinVarDefaultDomain:  c.Query(containercreator.BuiltinVarDefaultDomain.String()),
 	}
+	buildInVars[containercreator.BuiltinVarGitSafeBranch] = containercreator.ToSafeBranchName(buildInVars[containercreator.BuiltinVarGitBranch])
 
-	buildInVars[wharfyml.BuiltinVarGitSafeBranch] = wharfyml.ToSafeBranchName(buildInVars[wharfyml.BuiltinVarGitBranch])
-
-	buildInVars[wharfyml.BuiltinVarRegURL], err = url.QueryUnescape(c.Query(wharfyml.BuiltinVarRegURL.String()))
+	buildInVars[containercreator.BuiltinVarRegURL], err = url.QueryUnescape(c.Query(containercreator.BuiltinVarRegURL.String()))
 	if err != nil {
 		log.Error().WithError(err).
-			WithString("param", wharfyml.BuiltinVarRegURL.String()).
+			WithString("param", containercreator.BuiltinVarRegURL.String()).
 			Message("Failed unescaping query parameter.")
 		c.JSON(http.StatusBadRequest, err)
-		return buildInVars, fmt.Errorf("error query %s: %w", wharfyml.BuiltinVarRegURL, err)
+		return buildInVars, fmt.Errorf("error query %s: %w", containercreator.BuiltinVarRegURL, err)
 	}
 
 	return buildInVars, nil
@@ -183,13 +186,12 @@ func gitClone(tempDir string, gitUrl string, branch string, token string) (*git.
 	wharfcifilePath := filepath.Join(tempDir, wharfyml.WharfCIFileName)
 	_, err = os.Stat(wharfcifilePath)
 	if err != nil {
-		return nil, fmt.Errorf("repository is missing %s file: %w", wharfyml.WharfCIFileName, err)
 	}
 
 	return repo, nil
 }
 
-func getBuiltinVarsFromCommit(repo *git.Repository) (map[wharfyml.BuiltinVar]string, error) {
+func getBuiltinVarsFromCommit(repo *git.Repository) (map[containercreator.BuiltinVar]string, error) {
 	commitIter, err := repo.Log(&git.LogOptions{
 		From:     plumbing.Hash{},
 		Order:    0,
@@ -197,20 +199,19 @@ func getBuiltinVarsFromCommit(repo *git.Repository) (map[wharfyml.BuiltinVar]str
 		All:      false,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error getting log: %w", err)
 	}
 
 	defer commitIter.Close()
 	commit, err := commitIter.Next()
 	if err != nil {
-		return nil, fmt.Errorf("error getting latest commit: %w", err)
+		return nil, fmt.Errorf("error getting log: %w", err)
 	}
 
-	buildInVars := map[wharfyml.BuiltinVar]string{
-		wharfyml.BuiltinVarGitCommit:              commit.Hash.String(),
-		wharfyml.BuiltinVarGitCommitSubject:       commit.Message,
-		wharfyml.BuiltinVarGitCommitAuthorDate:    commit.Author.When.Format(time.RFC3339),
-		wharfyml.BuiltinVarGitCommitCommitterDate: commit.Committer.When.Format(time.RFC3339),
+	buildInVars := map[containercreator.BuiltinVar]string{
+		containercreator.BuiltinVarGitCommit:              commit.Hash.String(),
+		containercreator.BuiltinVarGitCommitSubject:       commit.Message,
+		containercreator.BuiltinVarGitCommitAuthorDate:    commit.Author.When.Format(time.RFC3339),
+		containercreator.BuiltinVarGitCommitCommitterDate: commit.Committer.When.Format(time.RFC3339),
 	}
 
 	tagName, err := getLatestTagNameFromCommit(repo, commit)
@@ -218,7 +219,7 @@ func getBuiltinVarsFromCommit(repo *git.Repository) (map[wharfyml.BuiltinVar]str
 		log.Warn().WithError(err).Message("Failed getting some built-in params from Git commit.")
 	}
 
-	buildInVars[wharfyml.BuiltinVarGitTag] = tagName
+	buildInVars[containercreator.BuiltinVarGitTag] = tagName
 
 	return buildInVars, nil
 }

@@ -3,8 +3,8 @@ package cmd
 import (
 	"strings"
 
-	pkgns "github.com/iver-wharf/wharf-cmd/pkg/namespace"
 	"github.com/spf13/cobra"
+	pkgns "github.com/iver-wharf/wharf-cmd/pkg/namespace"
 )
 
 var namespaces []string

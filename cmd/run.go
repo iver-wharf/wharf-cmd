@@ -1,9 +1,10 @@
 package cmd
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
-	"github.com/iver-wharf/wharf-cmd/pkg/run"
 	"github.com/spf13/cobra"
+	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
+	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
+	"github.com/iver-wharf/wharf-cmd/pkg/run"
 )
 
 var runPath string
@@ -17,8 +18,9 @@ var runCmd = &cobra.Command{
 	Long: `A longer description that spans multiple lines and likely contains examples
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		vars := map[wharfyml.BuiltinVar]string{}
-		return run.NewRunner(Kubeconfig, "").Run(runPath, environment, Namespace, stage, buildID, vars)
+		vars := map[containercreator.BuiltinVar]string{}
+		return run.NewRunner(Kubeconfig, "").Run(runPath, environment, Namespace, stage, buildID,
+			git.NewGitPropertiesMap("", "", ""), vars)
 	},
 }
 
