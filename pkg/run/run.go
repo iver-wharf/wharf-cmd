@@ -164,7 +164,7 @@ func (r Runner) RunDefinition(
 	if err != nil {
 		log.Error().WithFunc(withRunMeta).
 			WithError(err).
-			WithString("newStatus", wharfapi.BuildCompleted.String()).
+			WithStringer("newStatus", wharfapi.BuildCompleted).
 			Message("Failed to update build status.")
 	}
 

@@ -28,7 +28,7 @@ func (v Variables) getBoolParam(t VariableType, stageName string, secret string,
 	value, err := strconv.ParseBool(strValue)
 	if err != nil {
 		log.Error().WithError(err).
-			WithString("type", t.String()).
+			WithStringer("type", t).
 			WithString("value", strValue).
 			WithString("stage", stageName).
 			Message("Unable to parse bool param.")
