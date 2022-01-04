@@ -77,6 +77,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Removed dependency on `github.com/sirupsen/logrus`. (#2)
 
+- Removed commands `init`, `setup`, and `serve`. (#8)
+
 ## v0.6.0 (2020-02-04)
 
 - Added initial proof of concept to build in Kubernetes, based on a
