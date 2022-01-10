@@ -136,7 +136,7 @@ func (v Variables) getBoolParam(t VariableType) bool {
 	value, err := strconv.ParseBool(strValue)
 	if err != nil {
 		log.Error().WithError(err).
-			WithString("type", t.String()).
+			WithStringer("type", t).
 			WithString("value", strValue).
 			Message("Unable to parse bool param.")
 		value = false

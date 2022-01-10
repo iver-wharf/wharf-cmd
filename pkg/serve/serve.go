@@ -156,7 +156,7 @@ func getBuiltinVarsFromQueryParams(c *gin.Context) (map[containercreator.Builtin
 	buildInVars[containercreator.BuiltinVarRegURL], err = url.QueryUnescape(c.Query(containercreator.BuiltinVarRegURL.String()))
 	if err != nil {
 		log.Error().WithError(err).
-			WithString("param", containercreator.BuiltinVarRegURL.String()).
+			WithStringer("param", containercreator.BuiltinVarRegURL).
 			Message("Failed unescaping query parameter.")
 		c.JSON(http.StatusBadRequest, err)
 		return buildInVars, fmt.Errorf("error query %s: %w", containercreator.BuiltinVarRegURL, err)
