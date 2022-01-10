@@ -31,9 +31,9 @@ var rootCmd = &cobra.Command{
 		logger.AddOutput(parsedLogLevel, consolepretty.Default)
 
 		if err != nil {
-			log.Warn().WithString("loglevel", parsedLogLevel.String()).Message("Unable to parse loglevel.")
+			log.Warn().WithStringer("loglevel", parsedLogLevel).Message("Unable to parse loglevel.")
 		} else {
-			log.Debug().WithString("loglevel", parsedLogLevel.String()).Message("Setting log-level.")
+			log.Debug().WithStringer("loglevel", parsedLogLevel).Message("Setting log-level.")
 		}
 
 		Kubeconfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)

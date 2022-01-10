@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.7.1
 	github.com/go-git/go-git/v5 v5.3.0
 	github.com/iver-wharf/wharf-api-client-go v1.2.0
-	github.com/iver-wharf/wharf-core v0.0.0-20210702112246-1601d2a7dd23
+	github.com/iver-wharf/wharf-core v1.3.0
 	github.com/pborman/ansi v1.0.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0

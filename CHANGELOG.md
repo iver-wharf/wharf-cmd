@@ -70,10 +70,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed `go-git` package version from v4.13.1 to v5.3.0. (!20)
 
-- Added dependency on `github.com/iver-wharf/wharf-core`. (#2)
+- Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
 
 - Changed from `github.com/sirupsen/logrus` to
-  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2)
+  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
 - Removed dependency on `github.com/sirupsen/logrus`. (#2)
 
