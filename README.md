@@ -26,43 +26,33 @@ A command-line interface to run tasks specified in a `.wharf-ci.yml` file.
 2. Start hacking with your favorite tool. For example VS Code, GoLand,
    Vim, Emacs, or whatnot.
 
-## Linting Golang
+3. Install formatter and linters:
 
-- Requires Node.js (npm) to be installed: <https://nodejs.org/en/download/>
-- Requires Revive to be installed: <https://revive.run/>
-
-```sh
-go get -u github.com/mgechev/revive
-```
-
-```sh
-npm run lint-go
-```
-
-## Linting markdown
-
-- Requires Node.js (npm) to be installed: <https://nodejs.org/en/download/>
-
-```sh
-npm install
-
-npm run lint-md
-
-# Some errors can be fixed automatically. Keep in mind that this updates the
-# files in place.
-npm run lint-md-fix
-```
+   ```sh
+   go install github.com/mgechev/revive@latest
+   go install golang.org/x/tools/cmd/goimports@latest
+   npm install
+   ```
 
 ## Linting
 
 You can lint all of the above at the same time by running:
 
 ```sh
-npm run lint
+make lint
 
-# Some errors can be fixed automatically. Keep in mind that this updates the
-# files in place.
-npm run lint-fix
+make lint-go # only lint Go code
+make lint-md # only lint Markdown files
+```
+
+Some errors can be fixed automatically. Keep in mind that this updates the
+files in place.
+
+```sh
+make lint-fix
+
+#make lint-fix-go # Go linter does not support fixes
+make lint-fix-md # only lint and fix Markdown files
 ```
 
 ---
