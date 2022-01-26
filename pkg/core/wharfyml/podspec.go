@@ -113,7 +113,7 @@ func getContainers(flags containercreator.PodContainersFlags,
 		containers = append(containers, dockerKaniko)
 	}
 
-	if flags.HasContainer(containercreator.Helm){
+	if flags.HasContainer(containercreator.Helm) {
 	}
 
 	if flags.HasContainer(containercreator.KubeApply) {

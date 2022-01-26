@@ -163,14 +163,14 @@ func TestSanitizeLogs(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			rc := ioutil.NopCloser(strings.NewReader(tc.data))
-			sut := NewStreamScanner(rc, RemoveAnsiCodes | FromLastCR)
+			sut := NewStreamScanner(rc, RemoveAnsiCodes|FromLastCR)
 
 			for sut.Scan() {
 				text := sut.Text()
 				assert.Equal(t, tc.expectedStr, text)
 			}
 			rc.Close()
-			
+
 			err := sut.Err()
 			assert.Nil(t, err)
 		})
