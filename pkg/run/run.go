@@ -82,12 +82,13 @@ func (r Runner) RunDefinition(
 		return fmt.Errorf("stage %q not found in definition", stageName)
 	}
 
-	err = r.buildClient.PostLogWithStatus(uint(buildID), "run definition", wharfapi.BuildScheduling)
-	if err != nil {
-		log.Error().WithFunc(withRunMeta).
-			WithError(err).
-			Message("Unable to update build status.")
-	}
+	// TODO: Remove
+	//err = r.buildClient.PostLogWithStatus(uint(buildID), "run definition", wharfapi.BuildScheduling)
+	//if err != nil {
+	//	log.Error().WithFunc(withRunMeta).
+	//		WithError(err).
+	//		Message("Unable to update build status.")
+	//}
 
 	podClient, err := kubernetes.NewPodClient(namespace, r.Kubeconfig, gitParams, builtinVars)
 	if err != nil {
