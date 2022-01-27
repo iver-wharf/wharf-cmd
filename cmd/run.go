@@ -12,11 +12,6 @@ import (
 )
 
 var flagRunPath string
-var flagEnvironment string
-var flagStage string
-var flagStep string
-var buildID int
-var runDryRun bool
 
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -52,11 +47,4 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.Flags().StringVarP(&flagRunPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
-	runCmd.Flags().StringVarP(&flagEnvironment, "environment", "e", "", "Environment")
-	runCmd.Flags().StringVar(&flagStage, "stage", "", "Stage to run")
-	runCmd.Flags().StringVar(&flagStep, "step", "", "Step to run")
-	runCmd.Flags().IntVarP(&buildID, "build-id", "b", -1, "Build ID")
-	runCmd.Flags().BoolVar(&runDryRun, "dry-run", false, `Only log what's planned, don't actually start any pods`)
-
-	runCmd.MarkFlagRequired("stage")
 }
