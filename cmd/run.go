@@ -11,6 +11,7 @@ var runPath string
 var environment string
 var stage string
 var buildID int
+var runDryRun bool
 
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -19,7 +20,9 @@ var runCmd = &cobra.Command{
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		vars := map[containercreator.BuiltinVar]string{}
-		return run.NewRunner(Kubeconfig, "").Run(runPath, environment, Namespace, stage, buildID,
+		runner := run.NewRunner(Kubeconfig, "")
+		runner.DryRun = runDryRun
+		return runner.Run(runPath, environment, Namespace, stage, buildID,
 			git.NewGitPropertiesMap("", "", ""), vars)
 	},
 }
@@ -31,4 +34,5 @@ func init() {
 	runCmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment")
 	runCmd.Flags().StringVarP(&stage, "stage", "s", "", "Stage to run")
 	runCmd.Flags().IntVarP(&buildID, "build-id", "b", -1, "Build ID")
+	runCmd.Flags().BoolVar(&runDryRun, "dry-run", false, `Only log what's planned, don't actually start any pods`)
 }

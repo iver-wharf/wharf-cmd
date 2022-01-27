@@ -31,7 +31,8 @@ var rootCmd = &cobra.Command{
 		logger.AddOutput(parsedLogLevel, consolepretty.Default)
 
 		if err != nil {
-			log.Warn().WithStringer("loglevel", parsedLogLevel).Message("Unable to parse loglevel.")
+			log.Warn().WithStringer("loglevel", parsedLogLevel).Message("Unable to parse loglevel. Defaulting to 'INFO'.")
+			parsedLogLevel = logger.LevelInfo
 		} else {
 			log.Debug().WithStringer("loglevel", parsedLogLevel).Message("Setting log-level.")
 		}
@@ -47,7 +48,8 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Panic().WithError(err).Message("Execution failed.")
+		log.Error().WithError(err).Message("Execution failed.")
+		os.Exit(1)
 	}
 }
 
