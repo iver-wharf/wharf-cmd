@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -10,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func getPodSpec(step wharfyml.Step) (v1.Pod, error) {
+func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	image, err := getPodImage(step)
 	if err != nil {
 		return v1.Pod{}, err
@@ -19,13 +20,20 @@ func getPodSpec(step wharfyml.Step) (v1.Pod, error) {
 	if err != nil {
 		return v1.Pod{}, err
 	}
+	annotations := map[string]string{
+		"wharf.iver.com/step": step.Name,
+	}
+	if stage, ok := contextStageName(ctx); ok {
+		annotations["wharf.iver.com/stage"] = stage
+	}
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("wharf-build-%s-%s-",
 				strings.ToLower(step.Type.String()),
 				strings.ToLower(step.Name)),
-			Annotations: map[string]string{
-				"wharf.iver.com/step": step.Name,
+			Annotations: annotations,
+			Labels: map[string]string{
+				"wharf.iver.com/build": "true",
 			},
 		},
 		Spec: v1.PodSpec{

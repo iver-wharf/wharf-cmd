@@ -14,3 +14,16 @@ test:
       cmds:
       - date
 
+needs-cancel:
+  long-running:
+    container:
+      image: alpine:latest
+      cmds: 
+      - sleep infinity
+
+  fails:
+    container:
+      image: alpine:latest
+      cmds:
+      - sleep 5s
+      - exit 42

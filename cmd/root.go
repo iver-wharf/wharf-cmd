@@ -32,6 +32,7 @@ var rootCmd = &cobra.Command{
 		if parsedLogLevel != logger.LevelDebug {
 			logConfig.DisableCaller = true
 			logConfig.DisableDate = true
+			logConfig.ScopeMinLengthAuto = false
 		}
 		logger.AddOutput(parsedLogLevel, consolepretty.New(logConfig))
 

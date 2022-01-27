@@ -2,7 +2,9 @@ package builder
 
 import (
 	"context"
+	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
@@ -19,34 +21,90 @@ type stageRunner struct {
 
 func (r stageRunner) RunStage(ctx context.Context, stage wharfyml.Stage) (StageResult, error) {
 	ctx = contextWithStageName(ctx, stage.Name)
-	start := time.Now()
-	result := StageResult{
-		Name:    stage.Name,
-		Steps:   make([]StepResult, len(stage.Steps)),
-		Success: true,
+	stageRun := stageRun{
+		stepRun:   r.stepRun,
+		stepCount: len(stage.Steps),
+		stage:     &stage,
+		start:     time.Now(),
 	}
-	var wg sync.WaitGroup
-	for i, step := range stage.Steps {
-		wg.Add(1)
-		go func(i int, step wharfyml.Step) {
-			defer wg.Done()
-			logFunc := func(ev logger.Event) logger.Event {
-				return ev.WithString("stage", stage.Name).
-					WithString("step", step.Name)
-			}
-			log.Info().WithFunc(logFunc).Message("Starting step.")
-			res := r.stepRun.RunStep(ctx, step)
-			result.Steps[i] = res
-			if !res.Success {
-				result.Success = false
-				log.Warn().WithFunc(logFunc).WithError(res.Error).Message("Failed step.")
-				// TODO: cancel all steps in stage via context
-			} else {
-				log.Info().WithFunc(logFunc).Message("Done with step.")
-			}
-		}(i, step)
+	for _, step := range stage.Steps {
+		stageRun.startRunStepGoroutine(ctx, step)
 	}
-	wg.Wait()
-	result.Duration = time.Since(start)
-	return result, nil
+	return stageRun.waitForResult(), nil
+}
+
+type stageRun struct {
+	stage       *wharfyml.Stage
+	stepRun     StepRunner
+	cancelFuncs []func()
+	stepCount   int
+	stepsDone   int32
+
+	success     bool
+	stepResults []StepResult
+	start       time.Time
+
+	wg    sync.WaitGroup
+	mutex sync.Mutex
+}
+
+func (r *stageRun) startRunStepGoroutine(ctx context.Context, step wharfyml.Step) {
+	r.wg.Add(1)
+	stepCtx, cancel := context.WithCancel(ctx)
+	r.cancelFuncs = append(r.cancelFuncs, cancel)
+	go r.runStep(stepCtx, step)
+}
+
+func (r *stageRun) waitForResult() StageResult {
+	r.wg.Wait()
+	return StageResult{
+		Name:     r.stage.Name,
+		Steps:    r.stepResults,
+		Success:  r.success,
+		Duration: time.Since(r.start),
+	}
+}
+
+func (r *stageRun) addStepResult(res StepResult) {
+	r.mutex.Lock()
+	r.stepResults = append(r.stepResults, res)
+	r.mutex.Unlock()
+	atomic.AddInt32(&r.stepsDone, 1)
+}
+
+func (r *stageRun) runStep(ctx context.Context, step wharfyml.Step) {
+	defer r.wg.Done()
+	logFunc := func(ev logger.Event) logger.Event {
+		return ev.
+			WithStringf("done", "%d/%d", r.stepsDone, r.stepCount).
+			WithString("stage", r.stage.Name).
+			WithString("step", step.Name)
+	}
+	log.Info().WithFunc(logFunc).Message("Starting step.")
+	res := r.stepRun.RunStep(ctx, step)
+	r.addStepResult(res)
+	dur := res.Duration.Truncate(time.Second)
+	if !res.Success {
+		r.success = false
+		if errors.Is(res.Error, context.Canceled) {
+			log.Info().
+				WithFunc(logFunc).
+				WithDuration("dur", dur).
+				Message("Cancelled pod.")
+		} else {
+			log.Warn().
+				WithError(res.Error).
+				WithFunc(logFunc).
+				WithDuration("dur", dur).
+				Message("Failed step.")
+			for _, cancel := range r.cancelFuncs {
+				cancel()
+			}
+		}
+	} else {
+		log.Info().
+			WithFunc(logFunc).
+			WithDuration("dur", dur).
+			Message("Done with step.")
+	}
 }

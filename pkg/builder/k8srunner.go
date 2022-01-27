@@ -61,7 +61,7 @@ func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResu
 }
 
 func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) error {
-	pod, err := getPodSpec(step)
+	pod, err := getPodSpec(ctx, step)
 	if err != nil {
 		return err
 	}
@@ -79,7 +79,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) err
 			WithString("pod", newPod.Name)
 	}
 	log.Debug().WithFunc(logFunc).Message("Created pod.")
-	defer r.stopPodNow(ctx, step.Name, newPod.Name)
+	defer r.stopPodNow(context.Background(), step.Name, newPod.Name)
 	log.Debug().WithFunc(logFunc).Message("Waiting for init container to start.")
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
@@ -96,10 +96,12 @@ func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) err
 	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for app container: %w", err)
 	}
+	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
 	if err := r.streamLogsUntilCompleted(ctx, newPod.Name); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
-	return nil
+	log.Debug().WithFunc(logFunc).Message("Logs ended. Waiting for termination.")
+	return r.waitForAppContainerDone(ctx, newPod.ObjectMeta)
 }
 
 func (r k8sStepRunner) waitForInitContainerRunning(ctx context.Context, podMeta metav1.ObjectMeta) error {
@@ -123,6 +125,20 @@ func (r k8sStepRunner) waitForAppContainerRunningOrDone(ctx context.Context, pod
 				return true, nil
 			}
 			if c.State.Running != nil {
+				return true, nil
+			}
+		}
+		return false, nil
+	})
+}
+
+func (r k8sStepRunner) waitForAppContainerDone(ctx context.Context, podMeta metav1.ObjectMeta) error {
+	return r.waitForPodModifiedFunc(ctx, podMeta, func(pod *v1.Pod) (bool, error) {
+		for _, c := range pod.Status.ContainerStatuses {
+			if c.State.Terminated != nil {
+				if c.State.Terminated.ExitCode != 0 {
+					return false, fmt.Errorf("non-zero exit code: %d", c.State.Terminated.ExitCode)
+				}
 				return true, nil
 			}
 		}
@@ -177,6 +193,7 @@ func (r k8sStepRunner) stopPodNow(ctx context.Context, stepName, podName string)
 	})
 	if err != nil {
 		log.Warn().
+			WithError(err).
 			WithString("step", stepName).
 			WithString("pod", podName).
 			Message("Failed to delete pod.")
