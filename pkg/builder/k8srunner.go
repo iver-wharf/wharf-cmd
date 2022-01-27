@@ -3,11 +3,9 @@ package builder
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
@@ -198,124 +196,6 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 		Stdout: nopWriter{},
 	})
 	return nil
-}
-
-func getPodSpec(step wharfyml.Step) (v1.Pod, error) {
-	image, err := getPodImage(step)
-	if err != nil {
-		return v1.Pod{}, err
-	}
-	cmds, args, err := getPodCommandArgs(step)
-	if err != nil {
-		return v1.Pod{}, err
-	}
-	return v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("wharf-build-%s-%s-",
-				strings.ToLower(step.Type.String()),
-				strings.ToLower(step.Name)),
-			Annotations: map[string]string{
-				"wharf.iver.com/step": step.Name,
-			},
-		},
-		Spec: v1.PodSpec{
-			RestartPolicy: v1.RestartPolicyNever,
-			InitContainers: []v1.Container{
-				{
-					Name:            "init",
-					Image:           "alpine:3",
-					ImagePullPolicy: v1.PullAlways,
-					Command:         podInitWaitArgs,
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "repo",
-							MountPath: "/mnt/repo",
-						},
-					},
-				},
-			},
-			Containers: []v1.Container{
-				{
-					Name:            "step",
-					Image:           image,
-					ImagePullPolicy: v1.PullAlways,
-					Command:         cmds,
-					Args:            args,
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "repo",
-							MountPath: "/mnt/repo",
-						},
-					},
-				},
-			},
-			Volumes: []v1.Volume{
-				{
-					Name: "repo",
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-			},
-		},
-	}, nil
-}
-
-func getPodImage(step wharfyml.Step) (string, error) {
-	switch step.Type {
-	case wharfyml.Container:
-		image, ok := step.Variables["image"]
-		if !ok {
-			return "", errors.New("missing required field: image")
-		}
-		imageStr, ok := image.(string)
-		if !ok {
-			return "", fmt.Errorf("invalid field type: image: want string, got: %T", image)
-		}
-		return imageStr, nil
-	default:
-		return "", fmt.Errorf("unsupported step type: %q", step.Type)
-	}
-}
-
-func getPodCommandArgs(step wharfyml.Step) (cmds, args []string, err error) {
-	switch step.Type {
-	case wharfyml.Container:
-		cmdsAny, ok := step.Variables["cmds"]
-		if !ok {
-			return nil, nil, errors.New("missing required field: cmds")
-		}
-		cmds, err := convStepFieldToStrings("cmds", cmdsAny)
-		if err != nil {
-			return nil, nil, err
-		}
-		shell := "/bin/sh"
-		if shellAny, ok := step.Variables["shell"]; ok {
-			shell, ok = shellAny.(string)
-			if !ok {
-				return nil, nil, fmt.Errorf("invalid field type: shell: want string, got %T", shellAny)
-			}
-		}
-		return []string{shell, "-c"}, cmds, nil
-	default:
-		return nil, nil, fmt.Errorf("unsupported step type: %q", step.Type)
-	}
-}
-
-func convStepFieldToStrings(fieldName string, value interface{}) ([]string, error) {
-	anyArr, ok := value.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid field type: %s: want string array, got: %T", fieldName, value)
-	}
-	strs := make([]string, 0, len(anyArr))
-	for i, v := range anyArr {
-		str, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid field type: %s: index %d: want string, got: %T", fieldName, i, value)
-		}
-		strs = append(strs, str)
-	}
-	return strs, nil
 }
 
 func (r k8sStepRunner) copyDirToPod(srcPath, destPath, namespace, podName, containerName string) error {

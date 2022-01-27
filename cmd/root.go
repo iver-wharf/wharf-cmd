@@ -28,7 +28,12 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			parsedLogLevel = logger.LevelInfo
 		}
-		logger.AddOutput(parsedLogLevel, consolepretty.Default)
+		logConfig := consolepretty.DefaultConfig
+		if parsedLogLevel != logger.LevelDebug {
+			logConfig.DisableCaller = true
+			logConfig.DisableDate = true
+		}
+		logger.AddOutput(parsedLogLevel, consolepretty.New(logConfig))
 
 		if err != nil {
 			log.Warn().WithStringer("loglevel", parsedLogLevel).Message("Unable to parse loglevel. Defaulting to 'INFO'.")

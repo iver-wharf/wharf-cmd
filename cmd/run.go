@@ -1,15 +1,18 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/iver-wharf/wharf-cmd/pkg/builder"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	"github.com/spf13/cobra"
 )
 
-var runPath string
-var environment string
-var stage string
+var flagRunPath string
+var flagEnvironment string
+var flagStage string
+var flagStep string
 var buildID int
 var runDryRun bool
 
@@ -23,11 +26,25 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		def, err := wharfyml.Parse(".wharf-ci.yml", make(map[containercreator.BuiltinVar]string))
+		def, err := wharfyml.Parse(flagRunPath, make(map[containercreator.BuiltinVar]string))
 		if err != nil {
 			return err
 		}
-		return stepRun.RunStep(def.Stages["test"].Steps[0]).Error
+		stage, ok := def.Stages[flagStage]
+		if !ok {
+			return fmt.Errorf("stage not found in .wharf-ci.yml: %q", flagStage)
+		}
+		var step *wharfyml.Step
+		for _, s := range stage.Steps {
+			if s.Name == flagStep {
+				step = &s
+				break
+			}
+		}
+		if step == nil {
+			return fmt.Errorf("step in stage %q not found in .wharf-ci.yml: %q", flagStage, flagStep)
+		}
+		return stepRun.RunStep(*step).Error
 		//vars := map[containercreator.BuiltinVar]string{}
 		//runner := run.NewRunner(Kubeconfig, "")
 		//runner.DryRun = runDryRun
@@ -39,9 +56,13 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().StringVarP(&runPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
-	runCmd.Flags().StringVarP(&environment, "environment", "e", "", "Environment")
-	runCmd.Flags().StringVarP(&stage, "stage", "s", "", "Stage to run")
+	runCmd.Flags().StringVarP(&flagRunPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
+	runCmd.Flags().StringVarP(&flagEnvironment, "environment", "e", "", "Environment")
+	runCmd.Flags().StringVar(&flagStage, "stage", "", "Stage to run")
+	runCmd.Flags().StringVar(&flagStep, "step", "", "Step to run")
 	runCmd.Flags().IntVarP(&buildID, "build-id", "b", -1, "Build ID")
 	runCmd.Flags().BoolVar(&runDryRun, "dry-run", false, `Only log what's planned, don't actually start any pods`)
+
+	runCmd.MarkFlagRequired("stage")
+	runCmd.MarkFlagRequired("step")
 }
