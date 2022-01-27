@@ -2,6 +2,7 @@ package builder
 
 import (
 	"errors"
+	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -34,9 +35,11 @@ type StageResult struct {
 }
 
 type StepResult struct {
-	Name  string
-	Type  string
-	Error error
+	Name     string
+	Type     string
+	Success  bool
+	Error    error
+	Duration time.Duration
 }
 
 type builder struct {

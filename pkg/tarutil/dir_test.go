@@ -23,6 +23,9 @@ func TestDir(t *testing.T) {
 			break
 		}
 		require.NoError(t, err)
+		bytes, err := io.ReadAll(tr)
+		require.NoError(t, err)
+		assert.Equal(t, head.Size, int64(len(bytes)), head.Name)
 		gotFilenames = append(gotFilenames, head.Name)
 	}
 	wantFilenames := []string{

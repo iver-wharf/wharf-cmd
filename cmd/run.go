@@ -1,9 +1,9 @@
 package cmd
 
 import (
+	"github.com/iver-wharf/wharf-cmd/pkg/builder"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
-	"github.com/iver-wharf/wharf-cmd/pkg/run"
+	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
 	"github.com/spf13/cobra"
 )
 
@@ -19,11 +19,20 @@ var runCmd = &cobra.Command{
 	Long: `A longer description that spans multiple lines and likely contains examples
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		vars := map[containercreator.BuiltinVar]string{}
-		runner := run.NewRunner(Kubeconfig, "")
-		runner.DryRun = runDryRun
-		return runner.Run(runPath, environment, Namespace, stage, buildID,
-			git.NewGitPropertiesMap("", "", ""), vars)
+		stepRun, err := builder.NewK8sStepRunner("build", Kubeconfig)
+		if err != nil {
+			return err
+		}
+		def, err := wharfyml.Parse(".wharf-ci.yml", make(map[containercreator.BuiltinVar]string))
+		if err != nil {
+			return err
+		}
+		return stepRun.RunStep(def.Stages["test"].Steps[0]).Error
+		//vars := map[containercreator.BuiltinVar]string{}
+		//runner := run.NewRunner(Kubeconfig, "")
+		//runner.DryRun = runDryRun
+		//return runner.Run(runPath, environment, Namespace, stage, buildID,
+		//	git.NewGitPropertiesMap("", "", ""), vars)
 	},
 }
 
