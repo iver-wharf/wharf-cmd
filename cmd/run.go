@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/builder"
@@ -27,6 +28,7 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		stageRun := builder.NewStageRunner(stepRun)
 		def, err := wharfyml.Parse(flagRunPath, make(map[containercreator.BuiltinVar]string))
 		if err != nil {
 			return err
@@ -35,17 +37,14 @@ var runCmd = &cobra.Command{
 		if !ok {
 			return fmt.Errorf("stage not found in .wharf-ci.yml: %q", flagStage)
 		}
-		var step *wharfyml.Step
-		for _, s := range stage.Steps {
-			if s.Name == flagStep {
-				step = &s
-				break
-			}
+		res, err := stageRun.RunStage(context.Background(), stage)
+		if err != nil {
+			return err
 		}
-		if step == nil {
-			return fmt.Errorf("step in stage %q not found in .wharf-ci.yml: %q", flagStage, flagStep)
+		if !res.Success {
+			return errors.New("some step failed")
 		}
-		return stepRun.RunStep(context.Background(), *step).Error
+		return nil
 		//vars := map[containercreator.BuiltinVar]string{}
 		//runner := run.NewRunner(Kubeconfig, "")
 		//runner.DryRun = runDryRun
@@ -65,5 +64,4 @@ func init() {
 	runCmd.Flags().BoolVar(&runDryRun, "dry-run", false, `Only log what's planned, don't actually start any pods`)
 
 	runCmd.MarkFlagRequired("stage")
-	runCmd.MarkFlagRequired("step")
 }

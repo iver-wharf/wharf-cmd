@@ -48,6 +48,7 @@ func NewK8sStepRunner(namespace string, restConfig *rest.Config) (StepRunner, er
 }
 
 func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResult {
+	ctx = contextWithStepName(ctx, step.Name)
 	start := time.Now()
 	err := r.runStepError(ctx, step)
 	return StepResult{
@@ -60,7 +61,6 @@ func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResu
 }
 
 func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) error {
-	ctx = contextWithStepName(ctx, step.Name)
 	pod, err := getPodSpec(step)
 	if err != nil {
 		return err

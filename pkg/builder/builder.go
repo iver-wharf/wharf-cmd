@@ -30,9 +30,10 @@ type Result struct {
 }
 
 type StageResult struct {
-	Name    string
-	Success bool
-	Steps   []StepResult
+	Name     string
+	Success  bool
+	Steps    []StepResult
+	Duration time.Duration
 }
 
 type StepResult struct {

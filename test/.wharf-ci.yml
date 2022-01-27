@@ -12,5 +12,5 @@ test:
     container:
       image: busybox:latest
       cmds:
-      - sleep 3600
+      - date
 
