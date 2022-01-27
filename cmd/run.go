@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/builder"
@@ -44,7 +45,7 @@ var runCmd = &cobra.Command{
 		if step == nil {
 			return fmt.Errorf("step in stage %q not found in .wharf-ci.yml: %q", flagStage, flagStep)
 		}
-		return stepRun.RunStep(*step).Error
+		return stepRun.RunStep(context.Background(), *step).Error
 		//vars := map[containercreator.BuiltinVar]string{}
 		//runner := run.NewRunner(Kubeconfig, "")
 		//runner.DryRun = runDryRun

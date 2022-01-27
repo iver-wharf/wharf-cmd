@@ -1,6 +1,7 @@
 package builder
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -11,15 +12,15 @@ import (
 var log = logger.New()
 
 type Builder interface {
-	Build(def wharfyml.BuildDefinition) (Result, error)
+	Build(ctx context.Context, def wharfyml.BuildDefinition) (Result, error)
 }
 
 type StageRunner interface {
-	RunStage(def wharfyml.Stage) (StageResult, error)
+	RunStage(ctx context.Context, def wharfyml.Stage) (StageResult, error)
 }
 
 type StepRunner interface {
-	RunStep(def wharfyml.Step) StepResult
+	RunStep(ctx context.Context, def wharfyml.Step) StepResult
 }
 
 type Result struct {
@@ -52,16 +53,7 @@ func New(stepRun StepRunner) Builder {
 	}
 }
 
-func (b builder) Build(def wharfyml.BuildDefinition) (Result, error) {
+func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition) (Result, error) {
 	// TODO: Run all stages in def in series
 	return Result{}, errors.New("not implemented")
-}
-
-type stageRunner struct {
-	stepRun StepRunner
-}
-
-func (r stageRunner) RunStage(stage wharfyml.Stage) (StageResult, error) {
-	// TODO: Run all steps in stage in parallell
-	return StageResult{}, errors.New("not implemented")
 }

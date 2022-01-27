@@ -3,9 +3,9 @@ package builder
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
-	"os"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
@@ -47,9 +47,9 @@ func NewK8sStepRunner(namespace string, restConfig *rest.Config) (StepRunner, er
 	}, nil
 }
 
-func (r k8sStepRunner) RunStep(step wharfyml.Step) StepResult {
+func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResult {
 	start := time.Now()
-	err := r.runStepError(step)
+	err := r.runStepError(ctx, step)
 	return StepResult{
 		Name:     step.Name,
 		Type:     step.Type.String(),
@@ -59,7 +59,8 @@ func (r k8sStepRunner) RunStep(step wharfyml.Step) StepResult {
 	}
 }
 
-func (r k8sStepRunner) runStepError(step wharfyml.Step) error {
+func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) error {
+	ctx = contextWithStepName(ctx, step.Name)
 	pod, err := getPodSpec(step)
 	if err != nil {
 		return err
@@ -68,7 +69,7 @@ func (r k8sStepRunner) runStepError(step wharfyml.Step) error {
 		WithString("step", step.Name).
 		WithString("pod", pod.GenerateName).
 		Message("Creating pod.")
-	newPod, err := r.pods.Create(context.TODO(), &pod, metav1.CreateOptions{})
+	newPod, err := r.pods.Create(ctx, &pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("create pod: %w", err)
 	}
@@ -78,31 +79,31 @@ func (r k8sStepRunner) runStepError(step wharfyml.Step) error {
 			WithString("pod", newPod.Name)
 	}
 	log.Debug().WithFunc(logFunc).Message("Created pod.")
-	defer r.stopPodNow(step.Name, newPod.Name)
+	defer r.stopPodNow(ctx, step.Name, newPod.Name)
 	log.Debug().WithFunc(logFunc).Message("Waiting for init container to start.")
-	if err := r.waitForInitContainerRunning(newPod.ObjectMeta); err != nil {
+	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(".", "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
-	if err := r.continueInitContainer(newPod.Name); err != nil {
+	if err := r.continueInitContainer(ctx, newPod.Name); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
-	if err := r.waitForAppContainerRunningOrDone(newPod.ObjectMeta); err != nil {
+	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for app container: %w", err)
 	}
-	if err := r.streamLogsUntilCompleted(step.Name, newPod.Name); err != nil {
+	if err := r.streamLogsUntilCompleted(ctx, newPod.Name); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
 	return nil
 }
 
-func (r k8sStepRunner) waitForInitContainerRunning(podMeta metav1.ObjectMeta) error {
-	return r.waitForPodModifiedFunc(podMeta, func(pod *v1.Pod) (bool, error) {
+func (r k8sStepRunner) waitForInitContainerRunning(ctx context.Context, podMeta metav1.ObjectMeta) error {
+	return r.waitForPodModifiedFunc(ctx, podMeta, func(pod *v1.Pod) (bool, error) {
 		for _, c := range pod.Status.InitContainerStatuses {
 			if c.State.Running != nil {
 				return true, nil
@@ -112,8 +113,8 @@ func (r k8sStepRunner) waitForInitContainerRunning(podMeta metav1.ObjectMeta) er
 	})
 }
 
-func (r k8sStepRunner) waitForAppContainerRunningOrDone(podMeta metav1.ObjectMeta) error {
-	return r.waitForPodModifiedFunc(podMeta, func(pod *v1.Pod) (bool, error) {
+func (r k8sStepRunner) waitForAppContainerRunningOrDone(ctx context.Context, podMeta metav1.ObjectMeta) error {
+	return r.waitForPodModifiedFunc(ctx, podMeta, func(pod *v1.Pod) (bool, error) {
 		for _, c := range pod.Status.ContainerStatuses {
 			if c.State.Terminated != nil {
 				if c.State.Terminated.ExitCode != 0 {
@@ -129,8 +130,8 @@ func (r k8sStepRunner) waitForAppContainerRunningOrDone(podMeta metav1.ObjectMet
 	})
 }
 
-func (r k8sStepRunner) waitForPodModifiedFunc(podMeta metav1.ObjectMeta, f func(pod *v1.Pod) (bool, error)) error {
-	w, err := r.pods.Watch(context.TODO(), metav1.SingleObject(podMeta))
+func (r k8sStepRunner) waitForPodModifiedFunc(ctx context.Context, podMeta metav1.ObjectMeta, f func(pod *v1.Pod) (bool, error)) error {
+	w, err := r.pods.Watch(ctx, metav1.SingleObject(podMeta))
 	if err != nil {
 		return err
 	}
@@ -152,16 +153,16 @@ func (r k8sStepRunner) waitForPodModifiedFunc(podMeta metav1.ObjectMeta, f func(
 	return fmt.Errorf("got no more events when watching pod: %v", podMeta.Name)
 }
 
-func (r k8sStepRunner) streamLogsUntilCompleted(logScope, podName string) error {
+func (r k8sStepRunner) streamLogsUntilCompleted(ctx context.Context, podName string) error {
 	req := r.pods.GetLogs(podName, &v1.PodLogOptions{
 		Follow: true,
 	})
-	readCloser, err := req.Stream(context.TODO())
+	readCloser, err := req.Stream(ctx)
 	if err != nil {
 		return err
 	}
 	defer readCloser.Close()
-	podLog := logger.NewScoped(logScope)
+	podLog := logger.NewScoped(contextStageStepName(ctx))
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		podLog.Info().Message(scanner.Text())
@@ -169,9 +170,9 @@ func (r k8sStepRunner) streamLogsUntilCompleted(logScope, podName string) error 
 	return scanner.Err()
 }
 
-func (r k8sStepRunner) stopPodNow(stepName, podName string) {
+func (r k8sStepRunner) stopPodNow(ctx context.Context, stepName, podName string) {
 	var gracePeriod int64 = 0 // 0=immediately
-	err := r.pods.Delete(context.TODO(), podName, metav1.DeleteOptions{
+	err := r.pods.Delete(ctx, podName, metav1.DeleteOptions{
 		GracePeriodSeconds: &gracePeriod,
 	})
 	if err != nil {
@@ -187,7 +188,7 @@ func (r k8sStepRunner) stopPodNow(stepName, podName string) {
 	}
 }
 
-func (r k8sStepRunner) continueInitContainer(podName string) error {
+func (r k8sStepRunner) continueInitContainer(ctx context.Context, podName string) error {
 	exec, err := execInPodPipeStdout(r.restConfig, r.namespace, podName, "init", podInitContinueArgs)
 	if err != nil {
 		return err
@@ -198,7 +199,7 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 	return nil
 }
 
-func (r k8sStepRunner) copyDirToPod(srcPath, destPath, namespace, podName, containerName string) error {
+func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, namespace, podName, containerName string) error {
 	// Based on: https://stackoverflow.com/a/57952887
 	reader, writer := io.Pipe()
 	defer reader.Close()
@@ -214,14 +215,17 @@ func (r k8sStepRunner) copyDirToPod(srcPath, destPath, namespace, podName, conta
 		writer.Close()
 	}(writer, tarErrCh)
 	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin:  reader,
-		Stdout: os.Stdout,
-		Stderr: os.Stderr,
+		Stdin: reader,
 	})
 	if err != nil {
 		return err
 	}
-	return <-tarErrCh
+	select {
+	case <-ctx.Done():
+		return errors.New("aborted")
+	case err := <-tarErrCh:
+		return err
+	}
 }
 
 func execInPodPipedStdin(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {
@@ -229,9 +233,6 @@ func execInPodPipedStdin(c *rest.Config, namespace, podName, containerName strin
 		Container: containerName,
 		Command:   args,
 		Stdin:     true,
-		Stdout:    true,
-		Stderr:    true,
-		TTY:       false,
 	})
 }
 
@@ -239,10 +240,7 @@ func execInPodPipeStdout(c *rest.Config, namespace, podName, containerName strin
 	return execInPod(c, namespace, podName, &v1.PodExecOptions{
 		Container: containerName,
 		Command:   args,
-		Stdin:     false,
 		Stdout:    true,
-		Stderr:    false,
-		TTY:       false,
 	})
 }
 
