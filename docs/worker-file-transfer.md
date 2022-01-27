@@ -11,11 +11,9 @@ Per Wharf build stage:
      - volume mounts: `repo` at `/mnt/repo`
 
    - app container: whatever the build step needs
-
      - volume mounts: `repo` at `/mnt/repo`
-   
+
    - volume:
-   
      - `repo` as an `emptyDir: {}`
 
 2. Transfer repo over to alpine init container, running the equivalence of:
