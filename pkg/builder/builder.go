@@ -15,7 +15,7 @@ type StageRunner interface {
 }
 
 type StepRunner interface {
-	RunStep(def wharfyml.Step) (StepResult, error)
+	RunStep(def wharfyml.Step) StepResult
 }
 
 type Result struct {
@@ -31,9 +31,9 @@ type StageResult struct {
 }
 
 type StepResult struct {
-	Name    string
-	Type    string
-	Success bool
+	Name  string
+	Type  string
+	Error error
 }
 
 type builder struct {
