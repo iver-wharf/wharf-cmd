@@ -1,43 +1,95 @@
 package builder
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"math/rand"
+	"io"
 	"strings"
+	"sync"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
+	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/remotecommand"
 )
 
+var podInitWaitArgs = []string{"/bin/sh", "-c", "sleep infinite || true"}
+var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
+
 type k8sStepRunner struct {
-	clientset *kubernetes.Clientset
-	pods      corev1.PodInterface
+	namespace  string
+	restConfig *rest.Config
+	clientset  *kubernetes.Clientset
+	pods       corev1.PodInterface
 }
 
-func NewK8sStepRunner(namespace string, clientset *kubernetes.Clientset) StepRunner {
+func NewK8sStepRunner(namespace string, restConfig *rest.Config, clientset *kubernetes.Clientset) StepRunner {
 	return k8sStepRunner{
-		clientset: clientset,
-		pods:      clientset.CoreV1().Pods(namespace),
+		namespace:  namespace,
+		restConfig: restConfig,
+		clientset:  clientset,
+		pods:       clientset.CoreV1().Pods(namespace),
 	}
 }
 
 func (r k8sStepRunner) RunStep(step wharfyml.Step) StepResult {
-	podSpec, err := getPodSpec(step)
+	pod, err := getPodSpec(step)
 	if err != nil {
 		return StepResult{Error: err}
 	}
-	_, err = r.pods.Create(&podSpec)
+	newPod, err := r.pods.Create(context.TODO(), &pod, metav1.CreateOptions{})
 	if err != nil {
-		return StepResult{Error: err}
+		return StepResult{Error: fmt.Errorf("create pod: %w", err)}
 	}
-	// TODO: Transfer repo
-	// TODO: Execute killall -s SIGINT sleep
+	log.Debug().
+		WithString("step", step.Name).
+		WithString("pod", newPod.Name).
+		Message("Created pod.")
+	defer func() {
+		err := r.pods.Delete(context.TODO(), newPod.Name, metav1.DeleteOptions{})
+		if err != nil {
+			log.Warn().
+				WithString("step", step.Name).
+				WithString("pod", newPod.Name).
+				Message("Failed to delete pod.")
+		} else {
+			log.Debug().
+				WithString("step", step.Name).
+				WithString("pod", newPod.Name).
+				Message("Deleted pod.")
+		}
+	}()
+	if err := r.copyDirToPod(".", "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
+		return StepResult{Error: fmt.Errorf("transfer repo: %w", err)}
+	}
+	log.Debug().
+		WithString("step", step.Name).
+		WithString("pod", newPod.Name).
+		Message("Transferred repo to init container.")
+	if err := r.continueInitContainer(newPod.Name); err != nil {
+		return StepResult{Error: fmt.Errorf("continue init container: %w", err)}
+	}
+	log.Debug().
+		WithString("step", step.Name).
+		WithString("pod", newPod.Name).
+		Message("Stopped sleep in init container.")
 	// TODO: Wait for pod to complete run
 	return StepResult{Error: errors.New("not implemented")}
+}
+
+func (r k8sStepRunner) continueInitContainer(podName string) error {
+	exec, err := execInPodNoPipe(r.restConfig, r.namespace, podName, "init", podInitContinueArgs)
+	if err != nil {
+		return err
+	}
+	exec.Stream(remotecommand.StreamOptions{})
+	return nil
 }
 
 func getPodSpec(step wharfyml.Step) (v1.Pod, error) {
@@ -51,7 +103,9 @@ func getPodSpec(step wharfyml.Step) (v1.Pod, error) {
 	}
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: getPodName(step),
+			GenerateName: fmt.Sprintf("wharf-build-%s-%s-",
+				strings.ToLower(step.Type.String()),
+				strings.ToLower(step.Name)),
 			Annotations: map[string]string{
 				"wharf.iver.com/step": step.Name,
 			},
@@ -63,11 +117,7 @@ func getPodSpec(step wharfyml.Step) (v1.Pod, error) {
 					Name:            "init",
 					Image:           "alpine:3",
 					ImagePullPolicy: v1.PullAlways,
-					Command: []string{
-						"/bin/sh",
-						"-c",
-						"sleep infinite || true",
-					},
+					Command:         podInitWaitArgs,
 					VolumeMounts: []v1.VolumeMount{
 						{
 							Name:      "repo",
@@ -160,16 +210,71 @@ func convStepFieldToStrings(fieldName string, value interface{}) ([]string, erro
 	return strs, nil
 }
 
-func getPodName(step wharfyml.Step) string {
-	const randomCharset = "abcdefghijklmnopqrstuvwxyz0123456789"
-	const randomBytesLen = 8
-	typeName := strings.ToLower(step.Type.String())
-	if typeName == "" {
-		typeName = "unknown"
+func (r k8sStepRunner) copyDirToPod(srcPath, destPath, namespace, podName, containerName string) error {
+	// Based on: https://stackoverflow.com/a/57952887
+	reader, writer := io.Pipe()
+	args := []string{"tar", "-xf", "-", "-C", destPath}
+	exec, err := execInPodPipedStdin(r.restConfig, namespace, podName, containerName, args)
+	if err != nil {
+		return err
 	}
-	randomBytes := make([]byte, randomBytesLen)
-	for i := 0; i < randomBytesLen; i++ {
-		randomBytes[i] = randomCharset[rand.Intn(len(randomCharset))]
+	var tarErr error
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func(writer io.WriteCloser, wg *sync.WaitGroup) {
+		defer wg.Done()
+		defer writer.Close()
+		defer func() {
+			if p := recover(); p != nil {
+				tarErr = fmt.Errorf("panic: %v", wg)
+			}
+		}()
+		tarErr = tarutil.Dir(writer, srcPath)
+	}(writer, &wg)
+	err = exec.Stream(remotecommand.StreamOptions{
+		Stdin: reader,
+		Tty:   false,
+	})
+	if err != nil {
+		return err
 	}
-	return fmt.Sprintf("wharf-build-%s-%s", typeName, randomBytes)
+	wg.Wait()
+	return tarErr
+}
+
+func execInPodPipedStdin(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {
+	return execInPod(c, namespace, podName, &v1.PodExecOptions{
+		Container: containerName,
+		Command:   args,
+		Stdin:     true,
+		Stdout:    false,
+		Stderr:    false,
+		TTY:       false,
+	})
+}
+
+func execInPodNoPipe(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {
+	return execInPod(c, namespace, podName, &v1.PodExecOptions{
+		Container: containerName,
+		Command:   args,
+		Stdin:     false,
+		Stdout:    false,
+		Stderr:    false,
+		TTY:       false,
+	})
+}
+
+func execInPod(c *rest.Config, namespace, podName string, execOpts *v1.PodExecOptions) (remotecommand.Executor, error) {
+	coreclient, err := corev1client.NewForConfig(c)
+	if err != nil {
+		return nil, err
+	}
+	req := coreclient.RESTClient().
+		Post().
+		Namespace(namespace).
+		Resource("pods").
+		Name(podName).
+		SubResource("exec").
+		VersionedParams(execOpts, metav1.ParameterCodec)
+	return remotecommand.NewSPDYExecutor(c, "POST", req.URL())
 }

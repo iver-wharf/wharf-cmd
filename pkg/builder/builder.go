@@ -4,7 +4,10 @@ import (
 	"errors"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
+
+var log = logger.New()
 
 type Builder interface {
 	Build(def wharfyml.BuildDefinition) (Result, error)
