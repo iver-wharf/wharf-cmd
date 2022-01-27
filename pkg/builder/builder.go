@@ -9,6 +9,9 @@ import (
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
+// TODO: Change to factory pattern so the steps can get validated before
+// it's their turn
+
 var log = logger.New()
 
 type Builder interface {
