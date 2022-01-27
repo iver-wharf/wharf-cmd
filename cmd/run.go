@@ -45,11 +45,6 @@ var runCmd = &cobra.Command{
 			return errors.New("build failed")
 		}
 		return nil
-		//vars := map[containercreator.BuiltinVar]string{}
-		//runner := run.NewRunner(Kubeconfig, "")
-		//runner.DryRun = runDryRun
-		//return runner.Run(runPath, environment, Namespace, stage, buildID,
-		//	git.NewGitPropertiesMap("", "", ""), vars)
 	},
 }
 
