@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/builder"
@@ -28,26 +28,21 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		stageRun := builder.NewStageRunner(stepRun)
+		b := builder.New(stepRun)
 		def, err := wharfyml.Parse(flagRunPath, make(map[containercreator.BuiltinVar]string))
 		if err != nil {
 			return err
 		}
-		stage, ok := def.Stages[flagStage]
-		if !ok {
-			return fmt.Errorf("stage not found in .wharf-ci.yml: %q", flagStage)
-		}
-		res, err := stageRun.RunStage(context.Background(), stage)
+		res, err := b.Build(context.Background(), def)
 		if err != nil {
 			return err
 		}
 		log.Info().
-			WithString("stage", res.Name).
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
-			WithBool("success", res.Success).
-			Message("Done with stage.")
-		if !res.Success {
-			return fmt.Errorf("stage failed: %s", res.Name)
+			WithStringer("status", res.Status).
+			Message("Done with build.")
+		if res.Status != builder.StatusSuccess {
+			return errors.New("build failed")
 		}
 		return nil
 		//vars := map[containercreator.BuiltinVar]string{}

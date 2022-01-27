@@ -42,7 +42,7 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 				{
 					Name:            "init",
 					Image:           "alpine:3",
-					ImagePullPolicy: v1.PullAlways,
+					ImagePullPolicy: v1.PullIfNotPresent,
 					Command:         podInitWaitArgs,
 					VolumeMounts: []v1.VolumeMount{
 						{

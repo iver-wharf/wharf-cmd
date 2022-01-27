@@ -51,10 +51,16 @@ func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResu
 	ctx = contextWithStepName(ctx, step.Name)
 	start := time.Now()
 	err := r.runStepError(ctx, step)
+	status := StatusSuccess
+	if errors.Is(err, context.Canceled) {
+		status = StatusCancelled
+	} else if err != nil {
+		status = StatusFailed
+	}
 	return StepResult{
 		Name:     step.Name,
+		Status:   status,
 		Type:     step.Type.String(),
-		Success:  err == nil,
 		Error:    err,
 		Duration: time.Since(start),
 	}

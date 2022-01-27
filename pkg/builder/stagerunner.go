@@ -2,7 +2,6 @@ package builder
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,7 +18,7 @@ type stageRunner struct {
 	stepRun StepRunner
 }
 
-func (r stageRunner) RunStage(ctx context.Context, stage wharfyml.Stage) (StageResult, error) {
+func (r stageRunner) RunStage(ctx context.Context, stage wharfyml.Stage) StageResult {
 	ctx = contextWithStageName(ctx, stage.Name)
 	stageRun := stageRun{
 		stepRun:   r.stepRun,
@@ -30,7 +29,7 @@ func (r stageRunner) RunStage(ctx context.Context, stage wharfyml.Stage) (StageR
 	for _, step := range stage.Steps {
 		stageRun.startRunStepGoroutine(ctx, step)
 	}
-	return stageRun.waitForResult(), nil
+	return stageRun.waitForResult()
 }
 
 type stageRun struct {
@@ -57,10 +56,14 @@ func (r *stageRun) startRunStepGoroutine(ctx context.Context, step wharfyml.Step
 
 func (r *stageRun) waitForResult() StageResult {
 	r.wg.Wait()
+	status := StatusSuccess
+	if !r.success {
+		status = StatusFailed
+	}
 	return StageResult{
 		Name:     r.stage.Name,
+		Status:   status,
 		Steps:    r.stepResults,
-		Success:  r.success,
 		Duration: time.Since(r.start),
 	}
 }
@@ -76,7 +79,7 @@ func (r *stageRun) runStep(ctx context.Context, step wharfyml.Step) {
 	defer r.wg.Done()
 	logFunc := func(ev logger.Event) logger.Event {
 		return ev.
-			WithStringf("done", "%d/%d", r.stepsDone, r.stepCount).
+			WithStringf("steps", "%d/%d", r.stepsDone, r.stepCount).
 			WithString("stage", r.stage.Name).
 			WithString("step", step.Name)
 	}
@@ -84,22 +87,20 @@ func (r *stageRun) runStep(ctx context.Context, step wharfyml.Step) {
 	res := r.stepRun.RunStep(ctx, step)
 	r.addStepResult(res)
 	dur := res.Duration.Truncate(time.Second)
-	if !res.Success {
+	if res.Status == StatusCancelled {
+		log.Info().
+			WithFunc(logFunc).
+			WithDuration("dur", dur).
+			Message("Cancelled pod.")
+	} else if res.Status != StatusSuccess {
 		r.success = false
-		if errors.Is(res.Error, context.Canceled) {
-			log.Info().
-				WithFunc(logFunc).
-				WithDuration("dur", dur).
-				Message("Cancelled pod.")
-		} else {
-			log.Warn().
-				WithError(res.Error).
-				WithFunc(logFunc).
-				WithDuration("dur", dur).
-				Message("Failed step. Cancelling other steps in stage.")
-			for _, cancel := range r.cancelFuncs {
-				cancel()
-			}
+		log.Warn().
+			WithError(res.Error).
+			WithFunc(logFunc).
+			WithDuration("dur", dur).
+			Message("Failed step. Cancelling other steps in stage.")
+		for _, cancel := range r.cancelFuncs {
+			cancel()
 		}
 	} else {
 		log.Info().
