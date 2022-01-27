@@ -2,8 +2,8 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/builder"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
@@ -41,8 +41,13 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		log.Info().
+			WithString("stage", res.Name).
+			WithDuration("dur", res.Duration.Truncate(time.Second)).
+			WithBool("success", res.Success).
+			Message("Done with stage.")
 		if !res.Success {
-			return errors.New("some step failed")
+			return fmt.Errorf("stage failed: %s", res.Name)
 		}
 		return nil
 		//vars := map[containercreator.BuiltinVar]string{}

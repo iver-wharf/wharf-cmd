@@ -96,7 +96,7 @@ func (r *stageRun) runStep(ctx context.Context, step wharfyml.Step) {
 				WithError(res.Error).
 				WithFunc(logFunc).
 				WithDuration("dur", dur).
-				Message("Failed step.")
+				Message("Failed step. Cancelling other steps in stage.")
 			for _, cancel := range r.cancelFuncs {
 				cancel()
 			}

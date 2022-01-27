@@ -19,9 +19,11 @@ var kubeconfigPath string
 var Namespace string
 
 var rootCmd = &cobra.Command{
-	Use:   "wharf-ci",
-	Short: "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
-	Long:  ``,
+	SilenceUsage:  true,
+	SilenceErrors: true,
+	Use:           "wharf-ci",
+	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
+	Long:          ``,
 	PersistentPreRun: func(cmd *cobra.Command, args []string) {
 
 		parsedLogLevel, err := parseLevel(loglevel)
