@@ -12,6 +12,8 @@ type builder struct {
 	stageRun StageRunner
 }
 
+// New returns a new Builder implementation that uses the provided StageRunner
+// to run all build stages in series.
 func New(stageRun StageRunner) Builder {
 	return builder{
 		stageRun: stageRun,

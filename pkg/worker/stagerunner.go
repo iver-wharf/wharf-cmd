@@ -10,6 +10,8 @@ import (
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
+// NewStageRunner returns a new StageRunner that uses the provided StepRunner to
+// run the steps in parallel.
 func NewStageRunner(stepRun StepRunner) StageRunner {
 	return stageRunner{stepRun}
 }

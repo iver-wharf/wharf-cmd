@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 )
 
+// Dir will recursively tar the contents of an entire directory. Hidden files,
+// files that start with a dot, are included. The name of the target directory
+// is not included in the tarball, but instead only the children.
 func Dir(w io.Writer, filesFromDir string) error {
 	tw := tar.NewWriter(w)
 	fileSys := os.DirFS(filesFromDir)

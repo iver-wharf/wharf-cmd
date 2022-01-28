@@ -33,6 +33,8 @@ type k8sStepRunner struct {
 	events     corev1.EventInterface
 }
 
+// NewK8sStepRunner returns a new step runner implementation that targets
+// Kubernetes using a specific Kubernetes namespace and REST config.
 func NewK8sStepRunner(namespace string, restConfig *rest.Config) (StepRunner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
