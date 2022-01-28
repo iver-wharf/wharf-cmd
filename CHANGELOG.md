@@ -91,7 +91,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-gonic/gin`
   - `github.com/go-git/go-git`
 
-- Changed Go runtime from v1.13 to v1.16. (#8)
+- Changed Go runtime from v1.13 to v1.17. (#8)
 
 ## v0.6.0 (2020-02-04)
 
