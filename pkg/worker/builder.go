@@ -12,9 +12,9 @@ type builder struct {
 	stageRun StageRunner
 }
 
-func New(stepRun StepRunner) Builder {
+func New(stageRun StageRunner) Builder {
 	return builder{
-		stageRun: NewStageRunner(stepRun),
+		stageRun: stageRun,
 	}
 }
 

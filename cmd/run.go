@@ -24,7 +24,8 @@ var runCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		b := worker.New(stepRun)
+		stageRun := worker.NewStageRunner(stepRun)
+		b := worker.New(stageRun)
 		def, err := wharfyml.Parse(flagRunPath, make(map[containercreator.BuiltinVar]string))
 		if err != nil {
 			return err
