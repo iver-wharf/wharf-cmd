@@ -79,6 +79,18 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Removed commands `init`, `setup`, and `serve`. (#8)
 
+- Changed versions of numerous dependencies: (#8)
+
+  - `k8s.io/api` from v0.0.0 to v0.23.3
+  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3
+  - `k8s.io/client-go` from v0.0.0 to v0.23.3
+  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0
+
+- Removed dependencies: (#8)
+
+  - `github.com/gin-gonic/gin`
+  - `github.com/go-git/go-git`
+
 ## v0.6.0 (2020-02-04)
 
 - Added initial proof of concept to build in Kubernetes, based on a
