@@ -65,6 +65,7 @@ func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition, opt Bu
 				WithString("stage", res.Name).
 				WithDuration("dur", res.Duration.Truncate(time.Second)).
 				Message("Done with stage.")
+			result.Status = StatusSuccess
 		}
 	}
 	result.Duration = time.Since(start)

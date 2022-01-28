@@ -39,7 +39,7 @@ type stageRun struct {
 	stepCount   int
 	stepsDone   int32
 
-	success     bool
+	failed      bool
 	stepResults []StepResult
 	start       time.Time
 
@@ -57,7 +57,7 @@ func (r *stageRun) startRunStepGoroutine(ctx context.Context, step wharfyml.Step
 func (r *stageRun) waitForResult() StageResult {
 	r.wg.Wait()
 	status := StatusSuccess
-	if !r.success {
+	if r.failed {
 		status = StatusFailed
 	}
 	return StageResult{
@@ -93,7 +93,7 @@ func (r *stageRun) runStep(ctx context.Context, step wharfyml.Step) {
 			WithDuration("dur", dur).
 			Message("Cancelled pod.")
 	} else if res.Status != StatusSuccess {
-		r.success = false
+		r.failed = true
 		log.Warn().
 			WithError(res.Error).
 			WithFunc(logFunc).
