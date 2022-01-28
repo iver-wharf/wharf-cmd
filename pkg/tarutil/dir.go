@@ -24,10 +24,13 @@ func Dir(w io.Writer, filesFromDir string) error {
 			return err
 		}
 		name := path
-		size := info.Size()
 		if d.IsDir() {
 			name += "/"
-			size = 0
+		}
+		isFile := info.Mode().Type() == 0
+		var size int64
+		if isFile {
+			size = info.Size()
 		}
 		tw.WriteHeader(&tar.Header{
 			Name:    name,
@@ -35,7 +38,7 @@ func Dir(w io.Writer, filesFromDir string) error {
 			Size:    size,
 			ModTime: info.ModTime(),
 		})
-		if info.Mode().Type() == 0 {
+		if isFile {
 			file, err := os.Open(realPath)
 			if err != nil {
 				return err
@@ -52,5 +55,4 @@ func Dir(w io.Writer, filesFromDir string) error {
 		return err
 	}
 	return tw.Close()
-	//return err
 }
