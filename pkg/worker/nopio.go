@@ -1,4 +1,4 @@
-package builder
+package worker
 
 type nopWriter struct{}
 

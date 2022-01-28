@@ -1,4 +1,4 @@
-package builder
+package worker
 
 import (
 	"context"
@@ -14,8 +14,12 @@ import (
 
 var log = logger.New()
 
+type BuildOptions struct {
+	StageFilter string
+}
+
 type Builder interface {
-	Build(ctx context.Context, def wharfyml.BuildDefinition) (Result, error)
+	Build(ctx context.Context, def wharfyml.BuildDefinition, opt BuildOptions) (Result, error)
 }
 
 type StageRunner interface {
@@ -27,10 +31,10 @@ type StepRunner interface {
 }
 
 type Result struct {
-	Status      Status
-	Environment string
-	Stages      []StageResult
-	Duration    time.Duration
+	Status   Status
+	Options  BuildOptions
+	Stages   []StageResult
+	Duration time.Duration
 }
 
 type StageResult struct {
@@ -58,12 +62,20 @@ func New(stepRun StepRunner) Builder {
 	}
 }
 
-func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition) (Result, error) {
-	var result Result
+func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition, opt BuildOptions) (Result, error) {
+	result := Result{Options: opt}
 	start := time.Now()
-	stagesCount := len(def.Stages)
+	stages := b.filterStages(def.Stages, opt.StageFilter)
+	stagesCount := len(stages)
 	stagesDone := 0
-	for _, stage := range def.Stages {
+	if stagesCount == 0 {
+		log.Warn().
+			WithString("stages", "0/0").
+			Message("No stages to run.")
+		result.Status = StatusNone
+		return result, nil
+	}
+	for _, stage := range stages {
 		log.Info().
 			WithStringf("stages", "%d/%d", stagesDone, stagesCount).
 			WithString("stage", stage.Name).
@@ -100,4 +112,19 @@ func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition) (Resul
 	}
 	result.Duration = time.Since(start)
 	return result, nil
+}
+
+func (b builder) filterStages(stages map[string]wharfyml.Stage, nameFilter string) []wharfyml.Stage {
+	var result []wharfyml.Stage
+	for _, stage := range stages {
+		if nameFilter == "" || stage.Name == nameFilter {
+			result = append(result, stage)
+		} else {
+			log.Debug().
+				WithString("stage", stage.Name).
+				WithString("filter", nameFilter).
+				Message("Skipping stage because of filter.")
+		}
+	}
+	return result
 }
