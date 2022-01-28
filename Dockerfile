@@ -1,4 +1,4 @@
-FROM golang:1.13.4 AS build
+FROM golang:1.17 AS build
 WORKDIR /src
 ENV GO111MODULE=on
 COPY . /src
