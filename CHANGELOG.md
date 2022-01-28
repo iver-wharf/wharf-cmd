@@ -12,7 +12,18 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
-## v0.7.0 (WIP)
+## v0.8.0 (WIP)
+
+- Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
+
+- Changed from `github.com/sirupsen/logrus` to
+  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
+
+- Removed dependency on `github.com/sirupsen/logrus`. (#2)
+
+- Removed commands `init`, `setup`, and `serve`. (#8)
+
+## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)
 
@@ -69,15 +80,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added `Input` array parsing from `wharf-ci.yml` file. (!19)
 
 - Changed `go-git` package version from v4.13.1 to v5.3.0. (!20)
-
-- Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
-
-- Changed from `github.com/sirupsen/logrus` to
-  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
-
-- Removed dependency on `github.com/sirupsen/logrus`. (#2)
-
-- Removed commands `init`, `setup`, and `serve`. (#8)
 
 ## v0.6.0 (2020-02-04)
 
