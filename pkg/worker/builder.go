@@ -61,14 +61,13 @@ func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition, opt Bu
 				Message("Failed stage. Skipping any further stages.")
 			result.Status = res.Status
 			break
-		} else {
-			log.Info().
-				WithStringf("stages", "%d/%d", stagesDone, stagesCount).
-				WithString("stage", res.Name).
-				WithDuration("dur", res.Duration.Truncate(time.Second)).
-				Message("Done with stage.")
-			result.Status = StatusSuccess
 		}
+		log.Info().
+			WithStringf("stages", "%d/%d", stagesDone, stagesCount).
+			WithString("stage", res.Name).
+			WithDuration("dur", res.Duration.Truncate(time.Second)).
+			Message("Done with stage.")
+		result.Status = StatusSuccess
 	}
 	result.Duration = time.Since(start)
 	return result, nil

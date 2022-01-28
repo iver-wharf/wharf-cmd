@@ -14,7 +14,7 @@ type mockStageRunner struct {
 	results *ring.Ring
 }
 
-func (r *mockStageRunner) RunStage(ctx context.Context, def wharfyml.Stage) StageResult {
+func (r *mockStageRunner) RunStage(_ context.Context, def wharfyml.Stage) StageResult {
 	result := r.results.Value.(StageResult)
 	r.results = r.results.Next()
 	result.Name = def.Name

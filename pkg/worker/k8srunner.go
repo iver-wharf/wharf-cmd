@@ -97,7 +97,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) err
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
-	if err := r.continueInitContainer(ctx, newPod.Name); err != nil {
+	if err := r.continueInitContainer(newPod.Name); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
@@ -195,7 +195,7 @@ func (r k8sStepRunner) streamLogsUntilCompleted(ctx context.Context, podName str
 }
 
 func (r k8sStepRunner) stopPodNow(ctx context.Context, stepName, podName string) {
-	var gracePeriod int64 = 0 // 0=immediately
+	gracePeriod := int64(0) // 0=immediately
 	err := r.pods.Delete(ctx, podName, metav1.DeleteOptions{
 		GracePeriodSeconds: &gracePeriod,
 	})
@@ -213,7 +213,7 @@ func (r k8sStepRunner) stopPodNow(ctx context.Context, stepName, podName string)
 	}
 }
 
-func (r k8sStepRunner) continueInitContainer(ctx context.Context, podName string) error {
+func (r k8sStepRunner) continueInitContainer(podName string) error {
 	exec, err := execInPodPipeStdout(r.restConfig, r.namespace, podName, "init", podInitContinueArgs)
 	if err != nil {
 		return err
