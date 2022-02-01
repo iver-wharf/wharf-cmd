@@ -27,11 +27,17 @@ type ArtifactMeta struct {
 }
 
 type Store interface {
-	AddLogLine(stepID uint64, line string) error
+	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
+
 	AddStatusUpdate(stepID uint64, newStatus Status) error
 	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
 
 	ReadAllLogLines(stepID uint64) ([]LogLine, error)
+}
+
+type LogLineWriteCloser interface {
+	io.Closer
+	WriteLogLine(line string) error
 }
 
 func NewStore(fs FS) Store {

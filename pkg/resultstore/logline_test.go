@@ -10,34 +10,24 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStore_AddFirstLogLine(t *testing.T) {
+func TestLogLineWriteCloser(t *testing.T) {
 	var buf bytes.Buffer
-	fs := mockFS{
-		openAppend: func(string) (io.WriteCloser, error) {
-			return nopWriteCloser{&buf}, nil
-		},
-	}
-	s := NewStore(fs)
-	stepID := uint64(1)
-	s.AddLogLine(stepID, "2021-11-24T11:22:08.800Z Foo bar")
+	var w LogLineWriteCloser = logLineWriteCloser{writeCloser: nopWriteCloser{&buf}}
+	err := w.WriteLogLine("2021-11-24T11:22:08.800Z Foo bar")
+	require.NoError(t, err)
 
 	want := "2021-11-24T11:22:08.800Z Foo bar\n"
 	got := buf.String()
 	assert.Equal(t, want, got)
 }
 
-func TestStore_AddSecondLogLine(t *testing.T) {
-	buf := bytes.NewBufferString("hello world\n")
-	fs := mockFS{
-		openAppend: func(string) (io.WriteCloser, error) {
-			return nopWriteCloser{buf}, nil
-		},
-	}
-	s := NewStore(fs)
-	stepID := uint64(1)
-	s.AddLogLine(stepID, "2021-11-24T11:22:08.800Z Foo bar")
+func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
+	var buf bytes.Buffer
+	var w LogLineWriteCloser = logLineWriteCloser{writeCloser: nopWriteCloser{&buf}}
+	err := w.WriteLogLine("2021-11-24T11:22:08.800Z Foo \nbar")
+	require.NoError(t, err)
 
-	want := "hello world\n2021-11-24T11:22:08.800Z Foo bar\n"
+	want := "2021-11-24T11:22:08.800Z Foo \\nbar\n"
 	got := buf.String()
 	assert.Equal(t, want, got)
 }

@@ -2,24 +2,39 @@ package resultstore
 
 import (
 	"bufio"
+	"io"
 	"strings"
 	"time"
 )
 
 var newLineBytes = []byte{'\n'}
 
-func (s *store) AddLogLine(stepID uint64, line string) error {
+type logLineWriteCloser struct {
+	writeCloser io.WriteCloser
+}
+
+func (s *store) OpenLogFile(stepID uint64) (LogLineWriteCloser, error) {
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
+		return nil, err
+	}
+	return logLineWriteCloser{
+		writeCloser: file,
+	}, nil
+}
+
+func (w logLineWriteCloser) WriteLogLine(line string) error {
+	if _, err := w.writeCloser.Write([]byte(sanitizeLogLine(line))); err != nil {
 		return err
 	}
-	if _, err := file.Write([]byte(sanitizeLogLine(line))); err != nil {
-		return err
-	}
-	if _, err := file.Write(newLineBytes); err != nil {
+	if _, err := w.writeCloser.Write(newLineBytes); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (w logLineWriteCloser) Close() error {
+	return w.writeCloser.Close()
 }
 
 func (s *store) ReadAllLogLines(stepID uint64) ([]LogLine, error) {
