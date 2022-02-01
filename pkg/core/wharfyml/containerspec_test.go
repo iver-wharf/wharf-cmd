@@ -3,8 +3,8 @@ package wharfyml
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetGitContainer(t *testing.T) {

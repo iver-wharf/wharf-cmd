@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -57,7 +58,7 @@ func (c *podClient) CreatePod(step wharfyml.Step, stage wharfyml.Stage, buildID 
 		return nil, fmt.Errorf("run definition: create pod definition: %w", err)
 	}
 
-	created, err := c.podInterface.Create(&pod)
+	created, err := c.podInterface.Create(context.TODO(), &pod, metav1.CreateOptions{})
 	if err != nil {
 		log.Panic().WithError(err).Message("Failed to create pod.")
 		return nil, fmt.Errorf("run definition: create pod: %w", err)
@@ -67,7 +68,7 @@ func (c *podClient) CreatePod(step wharfyml.Step, stage wharfyml.Stage, buildID 
 }
 
 func (c *podClient) DeletePod(podName string) error {
-	err := c.podInterface.Delete(podName, nil)
+	err := c.podInterface.Delete(context.TODO(), podName, metav1.DeleteOptions{})
 	if err != nil {
 		log.Error().WithError(err).WithString("pod", podName).Message("Failed to delete pod.")
 		return err

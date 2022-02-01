@@ -90,8 +90,8 @@ func parseInput(inputMap map[string]interface{}) (interface{}, error) {
 		}
 
 		return InputPassword{
-			Name: inputName,
-			Type: inputType,
+			Name:    inputName,
+			Type:    inputType,
 			Default: def,
 		}, nil
 	}

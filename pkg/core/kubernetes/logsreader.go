@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -32,7 +33,7 @@ func (r *containerLogsReader) StreamContainerLogs(podName string, containerName 
 		return nil, fmt.Errorf("get log request is nil")
 	}
 
-	stream, err := request.Stream()
+	stream, err := request.Stream(context.TODO())
 	if err != nil {
 		log.Error().WithError(err).Message("Failed to stream logs.")
 		return nil, err

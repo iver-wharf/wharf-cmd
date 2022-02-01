@@ -64,9 +64,9 @@ func NewContainerCreator(
 				MountPath: VolumePath,
 			},
 		},
-		variables:    variables,
-		stageName:    stageName,
-		repo:         repo,
+		variables: variables,
+		stageName: stageName,
+		repo:      repo,
 	}
 }
 

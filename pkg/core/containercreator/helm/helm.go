@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	ImageName = "wharfse/helm"
+	ImageName      = "wharfse/helm"
 	DefaultVersion = "v2.14.1"
 )
 

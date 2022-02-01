@@ -18,7 +18,7 @@ func TestMapToPodInfo(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
-			UID:      types.UID(uid),
+			UID:       types.UID(uid),
 		},
 	}
 
