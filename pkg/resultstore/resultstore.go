@@ -7,6 +7,8 @@ import (
 	"io"
 	"io/fs"
 	"time"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 )
 
 type LogLine struct {
@@ -29,7 +31,7 @@ type ArtifactMeta struct {
 type Store interface {
 	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
 
-	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus Status) error
+	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
 	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
 
 	ReadAllLogLines(stepID uint64) ([]LogLine, error)
