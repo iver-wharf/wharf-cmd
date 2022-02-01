@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -55,7 +56,7 @@ func (suite *containerReadyWaiterSuite) SetupSuite() {
 		},
 	}
 
-	pod, err := suite.fakeClientset.CoreV1().Pods("test-ns").Create(p)
+	pod, err := suite.fakeClientset.CoreV1().Pods("test-ns").Create(context.TODO(), p, metav1.CreateOptions{})
 	require.Nil(suite.T(), err)
 	require.NotNil(suite.T(), pod)
 

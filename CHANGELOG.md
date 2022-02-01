@@ -79,6 +79,22 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Removed commands `init`, `setup`, and `serve`. (#8)
 
+- Changed versions of numerous dependencies: (#8)
+
+  - `k8s.io/api` from v0.0.0 to v0.23.3
+  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3
+  - `k8s.io/client-go` from v0.0.0 to v0.23.3
+  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0
+
+- Removed dependencies: (#8)
+
+  - `github.com/gin-gonic/gin`
+  - `github.com/go-git/go-git`
+
+- Changed Go runtime from v1.13 to v1.17. (#8)
+
+- Added new implementation for `wharf run`. (#33)
+
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 
 ## v0.6.0 (2020-02-04)

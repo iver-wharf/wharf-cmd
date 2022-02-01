@@ -1,6 +1,7 @@
 package kubernetes
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -112,7 +113,7 @@ func (cws *containerWaiter) fetchNextContainer() (AwaitedContainer, error) {
 }
 
 func (cws *containerWaiter) fetchPod() (*v1.Pod, error) {
-	pod, err := cws.podInterface.Get(cws.podInfo.name, metav1.GetOptions{})
+	pod, err := cws.podInterface.Get(context.TODO(), cws.podInfo.name, metav1.GetOptions{})
 	if err != nil {
 		log.Error().
 			WithString("pod", cws.podInfo.name).

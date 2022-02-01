@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://kubernetesjsonschema.dev/v1.18.1/pod.json
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: wharf-build-step-test
+  name: wharf-build-step-test
+spec:
+  initContainers:
+  - image: alpine:3
+    name: init
+    command: [sh, -c, 'sleep infinite || true']
+    volumeMounts:
+      - name: repo
+        mountPath: /mnt/repo
+  containers:
+  - image: alpine:3
+    name: step
+    command: [ls, -alh, /mnt/repo]
+    volumeMounts:
+      - name: repo
+        mountPath: /mnt/repo
+  restartPolicy: Never
+  volumes:
+    - name: repo
+      emptyDir: {}

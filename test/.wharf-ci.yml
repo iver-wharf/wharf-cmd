@@ -6,9 +6,24 @@ test:
       image: alpine:latest
       cmds:
       - echo 'Hello world!'
+      - echo 'output from somefile.txt:'
+      - cat somefile.txt
   step2:
     container:
       image: busybox:latest
       cmds:
-      - sleep 3600
+      - date
 
+needs-cancel:
+  long-running:
+    container:
+      image: alpine:latest
+      cmds: 
+      - sleep infinity
+
+  fails:
+    container:
+      image: alpine:latest
+      cmds:
+      - sleep 5s
+      - exit 42
