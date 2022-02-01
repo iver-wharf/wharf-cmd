@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-var hasInitLogging bool
+var isLoggingInitialized bool
 var loglevel string
 var Kubeconfig *rest.Config
 var kubeconfigPath string
@@ -38,9 +38,7 @@ var rootCmd = &cobra.Command{
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		if !hasInitLogging {
-			initLogging()
-		}
+		initLoggingIfNeeded()
 		log.Error().Message(err.Error())
 		os.Exit(1)
 	}
@@ -52,6 +50,12 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&loglevel, "loglevel", "info", "Show debug information")
 	rootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", filepath.Join(home, ".kube", "config"), "Path to kubeconfig file")
 	rootCmd.PersistentFlags().StringVar(&Namespace, "namespace", "default", "Namespace to spawn resources in")
+}
+
+func initLoggingIfNeeded() {
+	if !isLoggingInitialized {
+		initLogging()
+	}
 }
 
 func initLogging() {
@@ -72,7 +76,7 @@ func initLogging() {
 	} else {
 		log.Debug().WithStringer("loglevel", parsedLogLevel).Message("Setting log-level.")
 	}
-	hasInitLogging = true
+	isLoggingInitialized = true
 }
 
 func homeDir() string {
