@@ -12,7 +12,36 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
-## v0.7.0 (WIP)
+## v0.8.0 (WIP)
+
+- Added new implementation for `wharf run`. (#33)
+
+- Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
+
+- Changed from `github.com/sirupsen/logrus` to
+  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
+
+- Removed dependency on `github.com/sirupsen/logrus`. (#2)
+
+- Removed commands `init`, `setup`, and `serve`. (#8)
+
+- Changed versions of numerous dependencies: (#8)
+
+  - `k8s.io/api` from v0.0.0 to v0.23.3
+  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3
+  - `k8s.io/client-go` from v0.0.0 to v0.23.3
+  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0
+
+- Removed dependencies: (#8)
+
+  - `github.com/gin-gonic/gin`
+  - `github.com/go-git/go-git`
+
+- Changed Go runtime from v1.13 to v1.17. (#8)
+
+- Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
+
+## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)
 
@@ -69,33 +98,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added `Input` array parsing from `wharf-ci.yml` file. (!19)
 
 - Changed `go-git` package version from v4.13.1 to v5.3.0. (!20)
-
-- Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
-
-- Changed from `github.com/sirupsen/logrus` to
-  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
-
-- Removed dependency on `github.com/sirupsen/logrus`. (#2)
-
-- Removed commands `init`, `setup`, and `serve`. (#8)
-
-- Changed versions of numerous dependencies: (#8)
-
-  - `k8s.io/api` from v0.0.0 to v0.23.3
-  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3
-  - `k8s.io/client-go` from v0.0.0 to v0.23.3
-  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0
-
-- Removed dependencies: (#8)
-
-  - `github.com/gin-gonic/gin`
-  - `github.com/go-git/go-git`
-
-- Changed Go runtime from v1.13 to v1.17. (#8)
-
-- Added new implementation for `wharf run`. (#33)
-
-- Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 
 ## v0.6.0 (2020-02-04)
 
