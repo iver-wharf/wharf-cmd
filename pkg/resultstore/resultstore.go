@@ -11,6 +11,7 @@ import (
 
 type LogLine struct {
 	StepID    uint64
+	LogID     uint64
 	Line      string
 	Timestamp time.Time
 }
@@ -33,28 +34,20 @@ type Store interface {
 	ReadAllLogLines(stepID uint64) ([]LogLine, error)
 }
 
-func NewStore(fs fs.FS) Store {
+func NewStore(fs FS) Store {
 	return &store{
 		fs: fs,
 	}
 }
 
 type store struct {
-	fs             fs.FS
-	lastLogID      uint64
+	fs             FS
 	lastStatusID   uint64
 	lastArtifactID uint64
 }
 
 type stepID struct {
 	stageID, stepID uint64
-}
-
-func (s *store) AddLogLine(stepID uint64, line string) error {
-	//logID := atomic.AddUint64(&s.lastLogID, 1)
-	// TODO: Open file with os.O_APPEND|os.O_WRONLY|os.O_CREATE
-	file, err := s.fs.Open(s.resolveLogPath(stepID))
-	return nil
 }
 
 func (s *store) AddStatusUpdate(stepID uint64, newStatus Status) error {
@@ -64,11 +57,6 @@ func (s *store) AddStatusUpdate(stepID uint64, newStatus Status) error {
 
 func (s *store) AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error) {
 	//artifactID := atomic.AddUint64(&s.lastArtifactID, 1)
-	return nil, nil
-}
-
-func (s *store) ReadAllLogLines(stepID uint64) ([]LogLine, error) {
-	file, err := s.fs.Open(s.resolveLogPath(stepID))
 	return nil, nil
 }
 
@@ -98,7 +86,7 @@ func (s *store) resolveArtifactPath(stepID uint64, artifactID uint64) (string, e
 }
 
 func (s *store) readArtifactListMeta(stepID uint64) (ArtifactListMeta, error) {
-	file, err := s.fs.Open(s.resolveArtifactListMetaPath(stepID))
+	file, err := s.fs.OpenRead(s.resolveArtifactListMetaPath(stepID))
 	if errors.Is(err, fs.ErrNotExist) {
 		return ArtifactListMeta{}, nil
 	}
