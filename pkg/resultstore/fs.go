@@ -9,7 +9,6 @@ import (
 type FS interface {
 	OpenAppend(name string) (io.WriteCloser, error)
 	OpenWrite(name string) (io.WriteCloser, error)
-	OpenReadWrite(name string) (io.ReadWriteCloser, error)
 	OpenRead(name string) (io.ReadCloser, error)
 }
 
@@ -27,10 +26,6 @@ func (fs osFS) OpenAppend(name string) (io.WriteCloser, error) {
 
 func (fs osFS) OpenWrite(name string) (io.WriteCloser, error) {
 	return os.OpenFile(filepath.Join(fs.dir, name), os.O_WRONLY|os.O_CREATE, 0644)
-}
-
-func (fs osFS) OpenReadWrite(name string) (io.ReadWriteCloser, error) {
-	return os.OpenFile(filepath.Join(fs.dir, name), os.O_RDWR|os.O_CREATE, 0644)
 }
 
 func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {

@@ -17,10 +17,9 @@ func (nopWriteCloser) Close() error {
 }
 
 type mockFS struct {
-	openAppend    func(name string) (io.WriteCloser, error)
-	openWrite     func(name string) (io.WriteCloser, error)
-	openReadWrite func(name string) (io.ReadWriteCloser, error)
-	openRead      func(name string) (io.ReadCloser, error)
+	openAppend func(name string) (io.WriteCloser, error)
+	openWrite  func(name string) (io.WriteCloser, error)
+	openRead   func(name string) (io.ReadCloser, error)
 }
 
 func (fs mockFS) OpenAppend(name string) (io.WriteCloser, error) {
@@ -29,10 +28,6 @@ func (fs mockFS) OpenAppend(name string) (io.WriteCloser, error) {
 
 func (fs mockFS) OpenWrite(name string) (io.WriteCloser, error) {
 	return fs.openWrite(name)
-}
-
-func (fs mockFS) OpenReadWrite(name string) (io.ReadWriteCloser, error) {
-	return fs.openReadWrite(name)
 }
 
 func (fs mockFS) OpenRead(name string) (io.ReadCloser, error) {

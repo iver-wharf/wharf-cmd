@@ -18,6 +18,16 @@ type LogLine struct {
 	Timestamp time.Time
 }
 
+type StatusList struct {
+	StatusUpdates []StatusUpdate `json:"statusUpdates"`
+}
+
+type StatusUpdate struct {
+	UpdateID  uint64    `json:"updateId"`
+	Timestamp time.Time `json:"timestamp"`
+	Status    string    `json:"status"`
+}
+
 type ArtifactListMeta struct {
 	Artifacts []ArtifactMeta `json:"artifacts"`
 }
@@ -52,6 +62,8 @@ type store struct {
 	fs             FS
 	lastStatusID   uint64
 	lastArtifactID uint64
+
+	statusMutex keyedMutex
 }
 
 func (s *store) AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error) {
