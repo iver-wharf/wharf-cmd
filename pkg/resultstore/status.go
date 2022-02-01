@@ -2,7 +2,9 @@ package resultstore
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
 	"sync/atomic"
 	"time"
 
@@ -31,6 +33,9 @@ func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus wo
 
 func (s *store) readStatusUpdatesFile(stepID uint64) (StatusList, error) {
 	file, err := s.fs.OpenRead(s.resolveStatusPath(stepID))
+	if errors.Is(err, fs.ErrNotExist) {
+		return StatusList{}, nil
+	}
 	if err != nil {
 		return StatusList{}, fmt.Errorf("open status updates file for reading: %w", err)
 	}

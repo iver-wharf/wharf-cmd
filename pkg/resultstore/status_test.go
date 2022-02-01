@@ -2,10 +2,13 @@ package resultstore
 
 import (
 	"bytes"
+	"errors"
 	"io"
+	"io/fs"
 	"testing"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -112,4 +115,94 @@ func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 	]
 }`
 	assert.JSONEq(t, want, buf.String())
+}
+
+func TestStore_AddStatusUpdateFirst(t *testing.T) {
+	var buf bytes.Buffer
+	s := NewStore(mockFS{
+		openRead: func(name string) (io.ReadCloser, error) {
+			return nil, fs.ErrNotExist
+		},
+		openWrite: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{&buf}, nil
+		},
+	})
+	stepID := uint64(1)
+	sampleTime := time.Date(2021, 5, 15, 9, 1, 15, 0, time.UTC)
+	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
+	require.NoError(t, err)
+	want := `
+{
+	"statusUpdates": [
+		{
+			"updateId": 1,
+			"timestamp": "2021-05-15T09:01:15Z",
+			"status": "Cancelled"
+		}
+	]
+}`
+	assert.JSONEq(t, want, buf.String())
+}
+
+func TestStore_AddStatusUpdateSecond(t *testing.T) {
+	buf := bytes.NewBufferString(`{
+	"statusUpdates": [
+		{
+			"updateId": 1,
+			"timestamp": "2021-05-15T09:01:15Z",
+			"status": "Scheduling"
+		}
+	]
+}`)
+	s := NewStore(mockFS{
+		openRead: func(name string) (io.ReadCloser, error) {
+			return io.NopCloser(buf), nil
+		},
+		openWrite: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{buf}, nil
+		},
+	})
+	s.(*store).lastStatusID = 1
+	stepID := uint64(1)
+	sampleTime := time.Date(2021, 5, 15, 9, 1, 15, 0, time.UTC)
+	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
+	require.NoError(t, err)
+	want := `
+{
+	"statusUpdates": [
+		{
+			"updateId": 1,
+			"timestamp": "2021-05-15T09:01:15Z",
+			"status": "Scheduling"
+		},
+		{
+			"updateId": 2,
+			"timestamp": "2021-05-15T09:01:15Z",
+			"status": "Cancelled"
+		}
+	]
+}`
+	assert.JSONEq(t, want, buf.String())
+}
+
+func TestStore_AddStatusUpdateSkipIfSameStatus(t *testing.T) {
+	content := `{
+	"statusUpdates": [
+		{
+			"updateId": 1,
+			"timestamp": "2021-05-15T09:01:15Z",
+			"status": "Cancelled"
+		}
+	]
+}`
+	s := NewStore(mockFS{
+		openRead: func(name string) (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewReader([]byte(content))), nil
+		},
+		openWrite: func(name string) (io.WriteCloser, error) {
+			return nil, errors.New("should not write")
+		},
+	})
+	err := s.AddStatusUpdate(1, time.Now(), worker.StatusCancelled)
+	require.NoError(t, err)
 }
