@@ -3,6 +3,7 @@ package resultstore
 import (
 	"io"
 	"os"
+	"path/filepath"
 )
 
 type FS interface {
@@ -12,20 +13,26 @@ type FS interface {
 	OpenRead(name string) (io.ReadCloser, error)
 }
 
-type osFS struct{}
-
-func (osFS) OpenAppend(name string) (io.WriteCloser, error) {
-	return os.OpenFile(name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+func NewFS(dir string) FS {
+	return osFS{dir: dir}
 }
 
-func (osFS) OpenWrite(name string) (io.WriteCloser, error) {
-	return os.OpenFile(name, os.O_WRONLY|os.O_CREATE, 0644)
+type osFS struct {
+	dir string
 }
 
-func (osFS) OpenReadWrite(name string) (io.ReadWriteCloser, error) {
-	return os.OpenFile(name, os.O_RDWR|os.O_CREATE, 0644)
+func (fs osFS) OpenAppend(name string) (io.WriteCloser, error) {
+	return os.OpenFile(filepath.Join(fs.dir, name), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 }
 
-func (osFS) OpenRead(name string) (io.ReadCloser, error) {
-	return os.OpenFile(name, os.O_RDONLY, 0644)
+func (fs osFS) OpenWrite(name string) (io.WriteCloser, error) {
+	return os.OpenFile(filepath.Join(fs.dir, name), os.O_WRONLY|os.O_CREATE, 0644)
+}
+
+func (fs osFS) OpenReadWrite(name string) (io.ReadWriteCloser, error) {
+	return os.OpenFile(filepath.Join(fs.dir, name), os.O_RDWR|os.O_CREATE, 0644)
+}
+
+func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
+	return os.OpenFile(filepath.Join(fs.dir, name), os.O_RDONLY, 0644)
 }
