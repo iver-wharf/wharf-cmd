@@ -14,6 +14,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
+- Added new implementation for `wharf run`. (#33)
+
 - Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
 
 - Changed from `github.com/sirupsen/logrus` to
@@ -36,8 +38,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/go-git/go-git`
 
 - Changed Go runtime from v1.13 to v1.17. (#8)
-
-- Added new implementation for `wharf run`. (#33)
 
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 
