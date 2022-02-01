@@ -93,6 +93,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed Go runtime from v1.13 to v1.17. (#8)
 
+- Added new implementation for `wharf run`. (#33)
+
+- Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
+
 ## v0.6.0 (2020-02-04)
 
 - Added initial proof of concept to build in Kubernetes, based on a
