@@ -60,3 +60,7 @@ func (s *store) writeStatusUpdatesFile(stepID uint64, list StatusList) error {
 	}
 	return nil
 }
+
+func (s *store) resolveStatusPath(stepID uint64) string {
+	return fmt.Sprintf("steps/%d/status.json", stepID)
+}

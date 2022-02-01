@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"bufio"
+	"fmt"
 	"io"
 	"strings"
 	"time"
@@ -60,6 +61,10 @@ func (s *store) ReadAllLogLines(stepID uint64) ([]LogLine, error) {
 		return nil, err
 	}
 	return lines, nil
+}
+
+func (s *store) resolveLogPath(stepID uint64) string {
+	return fmt.Sprintf("steps/%d/logs.log", stepID)
 }
 
 func parseLogLine(line string) (time.Time, string) {
