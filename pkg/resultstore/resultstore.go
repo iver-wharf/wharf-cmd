@@ -29,7 +29,7 @@ type ArtifactMeta struct {
 type Store interface {
 	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
 
-	AddStatusUpdate(stepID uint64, newStatus Status) error
+	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus Status) error
 	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
 
 	ReadAllLogLines(stepID uint64) ([]LogLine, error)
@@ -50,15 +50,6 @@ type store struct {
 	fs             FS
 	lastStatusID   uint64
 	lastArtifactID uint64
-}
-
-type stepID struct {
-	stageID, stepID uint64
-}
-
-func (s *store) AddStatusUpdate(stepID uint64, newStatus Status) error {
-	//statusID := atomic.AddUint64(&s.lastStatusID, 1)
-	return nil
 }
 
 func (s *store) AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error) {

@@ -1,5 +1,7 @@
 package resultstore
 
+import "time"
+
 // Status is an enum of the different statuses for a Wharf build, stage, or step.
 //
 // TODO: Remove in favor of pkg/worker/status.go from PR #33
@@ -34,4 +36,9 @@ func (s Status) String() string {
 	default:
 		return "Unknown"
 	}
+}
+
+func (s *store) AddStatusUpdate(stepID uint64, timestmap time.Time, newStatus Status) error {
+	//statusID := atomic.AddUint64(&s.lastStatusID, 1)
+	return nil
 }
