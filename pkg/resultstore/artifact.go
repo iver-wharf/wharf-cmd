@@ -9,6 +9,7 @@ import (
 )
 
 func (s *store) AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error) {
+	// TODO: implement this
 	//artifactID := atomic.AddUint64(&s.lastArtifactID, 1)
 	return nil, nil
 }
