@@ -2,6 +2,8 @@ package wharfyml
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/docker"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
@@ -9,7 +11,6 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/kaniko"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/kubeapply"
 	kubecore "k8s.io/api/core/v1"
-	"strings"
 )
 
 type Step struct {

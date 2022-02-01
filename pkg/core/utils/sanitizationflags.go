@@ -9,5 +9,5 @@ const (
 )
 
 func (m SanitizationFlags) HasFlag(f SanitizationFlags) bool {
-	return m & f == f
+	return m&f == f
 }

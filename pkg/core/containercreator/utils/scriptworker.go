@@ -2,7 +2,7 @@ package utils
 
 import "regexp"
 
-const ParamPattern   = `\${([\w\_]+)}`
+const ParamPattern = `\${([\w\_]+)}`
 
 var paramPattern = regexp.MustCompile(ParamPattern)
 

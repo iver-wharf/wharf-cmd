@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
 	"github.com/iver-wharf/wharf-cmd/pkg/run"
+	"github.com/spf13/cobra"
 )
 
 var runPath string

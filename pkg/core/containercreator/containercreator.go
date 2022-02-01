@@ -9,6 +9,6 @@ type ContainerCreator interface {
 	GetCommands() []string
 	GetEnvVars() []kubecore.EnvVar
 	GetLifeCycle() *kubecore.Lifecycle
-	GetResources()  kubecore.ResourceRequirements
-	GetVolumes()  []kubecore.VolumeMount
+	GetResources() kubecore.ResourceRequirements
+	GetVolumes() []kubecore.VolumeMount
 }

@@ -128,7 +128,7 @@ func TestAddInitContainer(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			result:= tc.flags.AddInitContainer(tc.newContainer)
+			result := tc.flags.AddInitContainer(tc.newContainer)
 			assert.Equal(t, tc.expected, result)
 		})
 	}

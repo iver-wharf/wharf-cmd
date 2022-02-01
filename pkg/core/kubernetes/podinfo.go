@@ -12,7 +12,7 @@ func mapToPodInfo(pod *v1.Pod) podInfo {
 	if pod == nil {
 		return podInfo{}
 	}
-	
+
 	return podInfo{
 		namespace: pod.Namespace,
 		podUID:    string(pod.UID),
