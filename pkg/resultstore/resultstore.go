@@ -26,16 +26,8 @@ type StatusUpdate struct {
 	Status    string    `json:"status"`
 }
 
-type ArtifactListMeta struct {
-	Artifacts []ArtifactMeta `json:"artifacts"`
-}
-
-type ArtifactMeta struct {
-	ArtifactID uint64 `json:"artifactId"`
-	Name       string `json:"name"`
-	Path       string `json:"path"`
-}
-
+// Store is the interface for storing build results and accessing them as they
+// are created.
 type Store interface {
 	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
 	SubAllLogLines(buffer int) <-chan LogLine
@@ -44,8 +36,6 @@ type Store interface {
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
 	SubAllStatusUpdates(buffer int) <-chan StatusUpdate
 	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
-
-	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
 }
 
 type LogLineWriteCloser interface {
@@ -60,10 +50,9 @@ func NewStore(fs FS) Store {
 }
 
 type store struct {
-	fs             FS
-	lastStatusID   uint64
-	lastArtifactID uint64
+	fs FS
 
+	lastStatusID   uint64
 	statusSubMutex sync.RWMutex
 	statusMutex    keyedMutex
 	statusSubs     []chan StatusUpdate
