@@ -8,6 +8,8 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 )
 
+// LogLine is a single log line with metadata about its timestamp, ID, and what
+// step it belongs to.
 type LogLine struct {
 	StepID    uint64
 	LogID     uint64
@@ -15,15 +17,18 @@ type LogLine struct {
 	Timestamp time.Time
 }
 
+// StatusList is a list of status updates. This is the data structure that is
+// serialized in the status update list file for a given step.
 type StatusList struct {
 	StatusUpdates []StatusUpdate `json:"statusUpdates"`
 }
 
+// StatusUpdate is an update to a status of a build step.
 type StatusUpdate struct {
 	StepID    uint64    `json:"stepId"`
 	UpdateID  uint64    `json:"updateId"`
 	Timestamp time.Time `json:"timestamp"`
-	Status    string    `json:"status"`
+	Status    string    `json:"status"` // TODO: use worker.Status here
 }
 
 // Store is the interface for storing build results and accessing them as they
@@ -38,11 +43,14 @@ type Store interface {
 	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
 }
 
+// LogLineWriteCloser is the interface for writing log lines and ability to
+// close the file handle.
 type LogLineWriteCloser interface {
 	io.Closer
 	WriteLogLine(line string) error
 }
 
+// NewStore creates a new store using a given filesystem.
 func NewStore(fs FS) Store {
 	return &store{
 		fs: fs,
