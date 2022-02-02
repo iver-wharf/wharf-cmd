@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"io"
+	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
@@ -40,7 +41,13 @@ type Store interface {
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
 	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
 
+	SubAllLogLines(buffer int) <-chan LogLine
+	UnsubAllLogLines(ch <-chan LogLine) bool
+
+	// TODO: Remove this:
 	ReadAllLogLines(stepID uint64) ([]LogLine, error)
+
+	// TODO: Add streaming handles. Callback or channels? Need smart buffering
 }
 
 type LogLineWriteCloser interface {
@@ -60,4 +67,7 @@ type store struct {
 	lastArtifactID uint64
 
 	statusMutex keyedMutex
+
+	logSubMutex sync.RWMutex
+	logSubs     []chan LogLine
 }

@@ -9,6 +9,9 @@ type nopWriteCloser struct {
 }
 
 func (w nopWriteCloser) Write(p []byte) (n int, err error) {
+	if w.writer == nil {
+		return len(p), nil
+	}
 	return w.writer.Write(p)
 }
 

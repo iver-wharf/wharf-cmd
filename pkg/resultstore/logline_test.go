@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -12,7 +13,10 @@ import (
 
 func TestLogLineWriteCloser(t *testing.T) {
 	var buf bytes.Buffer
-	var w LogLineWriteCloser = logLineWriteCloser{writeCloser: nopWriteCloser{&buf}}
+	var w LogLineWriteCloser = logLineWriteCloser{
+		writeCloser: nopWriteCloser{&buf},
+		store:       &store{},
+	}
 	err := w.WriteLogLine("2021-11-24T11:22:08.800Z Foo bar")
 	require.NoError(t, err)
 
@@ -23,7 +27,10 @@ func TestLogLineWriteCloser(t *testing.T) {
 
 func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 	var buf bytes.Buffer
-	var w LogLineWriteCloser = logLineWriteCloser{writeCloser: nopWriteCloser{&buf}}
+	var w LogLineWriteCloser = logLineWriteCloser{
+		writeCloser: nopWriteCloser{&buf},
+		store:       &store{},
+	}
 	err := w.WriteLogLine("2021-11-24T11:22:08.800Z Foo \nbar")
 	require.NoError(t, err)
 
@@ -33,30 +40,27 @@ func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 }
 
 func TestStore_ReadAllLogLines(t *testing.T) {
-	buf := bytes.NewBufferString(`2021-11-24T11:22:08.800Z Foo bar
-2021-11-24T11:22:08.800Z Moo doo
-2021-11-24T11:22:08.800Z Baz taz`)
+	buf := bytes.NewBufferString(fmt.Sprintf(`%[1]s Foo bar
+%[1]s Moo doo
+%[1]s Baz taz`, sampleTimeStr))
 	fs := mockFS{
 		openRead: func(name string) (io.ReadCloser, error) {
 			return io.NopCloser(buf), nil
 		},
 	}
 	s := NewStore(fs)
-	stepID := uint64(1)
+	const stepID uint64 = 1
 	got, err := s.ReadAllLogLines(stepID)
 	require.NoError(t, err)
-	wantTime := time.Date(2021, 11, 24, 11, 22, 8, 800000000, time.UTC)
 	want := []LogLine{
-		{StepID: stepID, LogID: 1, Line: "Foo bar", Timestamp: wantTime},
-		{StepID: stepID, LogID: 2, Line: "Moo doo", Timestamp: wantTime},
-		{StepID: stepID, LogID: 3, Line: "Baz taz", Timestamp: wantTime},
+		{StepID: stepID, LogID: 1, Line: "Foo bar", Timestamp: sampleTime},
+		{StepID: stepID, LogID: 2, Line: "Moo doo", Timestamp: sampleTime},
+		{StepID: stepID, LogID: 3, Line: "Baz taz", Timestamp: sampleTime},
 	}
 	assert.Equal(t, want, got)
 }
 
 func TestParseLogLine(t *testing.T) {
-	sampleTimeStr := "2021-05-09T12:13:14.1234Z"
-	sampleTime := time.Date(2021, 5, 9, 12, 13, 14, 123400000, time.UTC)
 	zeroTime := time.Time{}
 	testCases := []struct {
 		name     string
@@ -126,4 +130,59 @@ func TestSanitizeLogLine(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestStore_SubUnsubLogLines(t *testing.T) {
+	s := NewStore(mockFS{}).(*store)
+	require.Empty(t, s.logSubs, "before sub")
+	ch := s.SubAllLogLines(0)
+	require.Len(t, s.logSubs, 1, "after sub")
+	assert.True(t, s.logSubs[0] == ch, "after sub")
+	s.UnsubAllLogLines(ch)
+	assert.Empty(t, s.logSubs, "after unsub")
+}
+
+func TestStore_UnsubLogLinesMiddle(t *testing.T) {
+	s := NewStore(mockFS{}).(*store)
+	require.Empty(t, s.logSubs, "before sub")
+	chs := []<-chan LogLine{
+		s.SubAllLogLines(0),
+		s.SubAllLogLines(0),
+		s.SubAllLogLines(0),
+		s.SubAllLogLines(0),
+		s.SubAllLogLines(0),
+	}
+	require.Len(t, s.logSubs, 5, "after sub")
+	s.UnsubAllLogLines(chs[2])
+	require.Len(t, s.logSubs, 4, "after unsub")
+	want := []<-chan LogLine{
+		chs[0], chs[1], chs[3], chs[4],
+	}
+	for i, ch := range want {
+		assert.Truef(t, ch == s.logSubs[i], "index %d, %v != %v", i, ch, s.logSubs[i])
+	}
+}
+
+func TestStore_PubSubLogLines(t *testing.T) {
+	s := NewStore(mockFS{
+		openAppend: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{}, nil
+		},
+	})
+	const buffer = 1
+	const stepID uint64 = 1
+	ch := s.SubAllLogLines(buffer)
+	w, err := s.OpenLogFile(stepID)
+	require.NoError(t, err)
+	w.WriteLogLine(sampleTimeStr + " Hello there")
+	w.Close()
+
+	got := <-ch
+	want := LogLine{
+		StepID:    stepID,
+		LogID:     1,
+		Line:      "Hello there",
+		Timestamp: sampleTime,
+	}
+	assert.Equal(t, want, got)
 }

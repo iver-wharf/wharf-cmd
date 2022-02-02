@@ -3,6 +3,7 @@ package resultstore
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"testing"
@@ -66,7 +67,6 @@ func TestStore_ReadStatusUpdatesFile(t *testing.T) {
 }
 
 func TestStore_WriteStatusUpdatesFile(t *testing.T) {
-	sampleTime := time.Date(2021, 5, 15, 9, 1, 15, 0, time.UTC)
 	list := StatusList{
 		StatusUpdates: []StatusUpdate{
 			{
@@ -94,26 +94,26 @@ func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 	}).(*store)
 	err := s.writeStatusUpdatesFile(1, list)
 	require.NoError(t, err)
-	want := `
+	want := fmt.Sprintf(`
 {
 	"statusUpdates": [
 		{
 			"updateId": 1,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%[1]s",
 			"status": "Scheduling"
 		},
 		{
 			"updateId": 2,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%[1]s",
 			"status": "Running"
 		},
 		{
 			"updateId": 3,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%[1]s",
 			"status": "Failed"
 		}
 	]
-}`
+}`, sampleTimeStr)
 	assert.JSONEq(t, want, buf.String())
 }
 
@@ -127,33 +127,32 @@ func TestStore_AddStatusUpdateFirst(t *testing.T) {
 			return nopWriteCloser{&buf}, nil
 		},
 	})
-	stepID := uint64(1)
-	sampleTime := time.Date(2021, 5, 15, 9, 1, 15, 0, time.UTC)
+	const stepID uint64 = 1
 	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
 	require.NoError(t, err)
-	want := `
+	want := fmt.Sprintf(`
 {
 	"statusUpdates": [
 		{
 			"updateId": 1,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%s",
 			"status": "Cancelled"
 		}
 	]
-}`
+}`, sampleTimeStr)
 	assert.JSONEq(t, want, buf.String())
 }
 
 func TestStore_AddStatusUpdateSecond(t *testing.T) {
-	buf := bytes.NewBufferString(`{
+	buf := bytes.NewBufferString(fmt.Sprintf(`{
 	"statusUpdates": [
 		{
 			"updateId": 1,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%s",
 			"status": "Scheduling"
 		}
 	]
-}`)
+}`, sampleTimeStr))
 	s := NewStore(mockFS{
 		openRead: func(name string) (io.ReadCloser, error) {
 			return io.NopCloser(buf), nil
@@ -163,25 +162,24 @@ func TestStore_AddStatusUpdateSecond(t *testing.T) {
 		},
 	})
 	s.(*store).lastStatusID = 1
-	stepID := uint64(1)
-	sampleTime := time.Date(2021, 5, 15, 9, 1, 15, 0, time.UTC)
+	const stepID uint64 = 1
 	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
 	require.NoError(t, err)
-	want := `
+	want := fmt.Sprintf(`
 {
 	"statusUpdates": [
 		{
 			"updateId": 1,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%[1]s",
 			"status": "Scheduling"
 		},
 		{
 			"updateId": 2,
-			"timestamp": "2021-05-15T09:01:15Z",
+			"timestamp": "%[1]s",
 			"status": "Cancelled"
 		}
 	]
-}`
+}`, sampleTimeStr)
 	assert.JSONEq(t, want, buf.String())
 }
 
