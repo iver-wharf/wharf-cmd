@@ -20,6 +20,7 @@ type StatusList struct {
 }
 
 type StatusUpdate struct {
+	StepID    uint64    `json:"stepId"`
 	UpdateID  uint64    `json:"updateId"`
 	Timestamp time.Time `json:"timestamp"`
 	Status    string    `json:"status"`
@@ -37,12 +38,14 @@ type ArtifactMeta struct {
 
 type Store interface {
 	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
-
-	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
-	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
-
 	SubAllLogLines(buffer int) <-chan LogLine
 	UnsubAllLogLines(ch <-chan LogLine) bool
+
+	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
+	SubAllStatusUpdates(buffer int) <-chan StatusUpdate
+	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
+
+	AddArtifact(stepID uint64, artifactName string) (io.WriteCloser, error)
 }
 
 type LogLineWriteCloser interface {
@@ -61,7 +64,9 @@ type store struct {
 	lastStatusID   uint64
 	lastArtifactID uint64
 
-	statusMutex keyedMutex
+	statusSubMutex sync.RWMutex
+	statusMutex    keyedMutex
+	statusSubs     []chan StatusUpdate
 
 	logSubMutex sync.RWMutex
 	logSubs     []chan LogLine

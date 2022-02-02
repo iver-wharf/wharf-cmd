@@ -13,8 +13,8 @@ import (
 
 func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error {
 	updateID := atomic.AddUint64(&s.lastStatusID, 1)
-	s.statusMutex.Lock(stepID)
-	defer s.statusMutex.Unlock(stepID)
+	//s.statusMutex.Lock(stepID)
+	//defer s.statusMutex.Unlock(stepID)
 	list, err := s.readStatusUpdatesFile(stepID)
 	if err != nil {
 		return err
@@ -23,12 +23,18 @@ func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus wo
 		list.StatusUpdates[len(list.StatusUpdates)-1].Status == newStatus.String() {
 		return nil
 	}
-	list.StatusUpdates = append(list.StatusUpdates, StatusUpdate{
+	statusUpdate := StatusUpdate{
+		StepID:    stepID,
 		UpdateID:  updateID,
 		Timestamp: timestamp,
 		Status:    newStatus.String(),
-	})
-	return s.writeStatusUpdatesFile(stepID, list)
+	}
+	list.StatusUpdates = append(list.StatusUpdates, statusUpdate)
+	if err := s.writeStatusUpdatesFile(stepID, list); err != nil {
+		return err
+	}
+	s.pubStatusUpdate(statusUpdate)
+	return nil
 }
 
 func (s *store) readStatusUpdatesFile(stepID uint64) (StatusList, error) {
@@ -63,4 +69,36 @@ func (s *store) writeStatusUpdatesFile(stepID uint64, list StatusList) error {
 
 func (s *store) resolveStatusPath(stepID uint64) string {
 	return fmt.Sprintf("steps/%d/status.json", stepID)
+}
+
+func (s *store) SubAllStatusUpdates(buffer int) <-chan StatusUpdate {
+	s.statusSubMutex.Lock()
+	defer s.statusSubMutex.Unlock()
+	ch := make(chan StatusUpdate, buffer)
+	s.statusSubs = append(s.statusSubs, ch)
+	return ch
+}
+
+func (s *store) UnsubAllStatusUpdates(statusCh <-chan StatusUpdate) bool {
+	s.statusSubMutex.Lock()
+	defer s.statusSubMutex.Unlock()
+	for i, ch := range s.statusSubs {
+		if ch == statusCh {
+			if i != len(s.statusSubs)-1 {
+				copy(s.statusSubs[i:], s.statusSubs[i+1:])
+			}
+			s.statusSubs = s.statusSubs[:len(s.statusSubs)-1]
+			close(ch)
+			return true
+		}
+	}
+	return false
+}
+
+func (s *store) pubStatusUpdate(statusUpdate StatusUpdate) {
+	s.statusSubMutex.RLock()
+	for _, ch := range s.statusSubs {
+		ch <- statusUpdate
+	}
+	s.statusSubMutex.RUnlock()
 }

@@ -116,7 +116,7 @@ func TestStore_SubUnsubLogLines(t *testing.T) {
 	ch := s.SubAllLogLines(0)
 	require.Len(t, s.logSubs, 1, "after sub")
 	assert.True(t, s.logSubs[0] == ch, "after sub")
-	s.UnsubAllLogLines(ch)
+	require.True(t, s.UnsubAllLogLines(ch), "unsub success")
 	assert.Empty(t, s.logSubs, "after unsub")
 }
 
@@ -132,7 +132,7 @@ func TestStore_UnsubLogLinesMiddle(t *testing.T) {
 		s.SubAllLogLines(buffer),
 	}
 	require.Len(t, s.logSubs, 5, "after sub")
-	s.UnsubAllLogLines(chs[2])
+	require.True(t, s.UnsubAllLogLines(chs[2]), "unsub success")
 	require.Len(t, s.logSubs, 4, "after unsub")
 	want := []<-chan LogLine{
 		chs[0], chs[1], chs[3], chs[4],
@@ -151,17 +151,23 @@ func TestStore_PubSubLogLines(t *testing.T) {
 	const buffer = 1
 	const stepID uint64 = 1
 	ch := s.SubAllLogLines(buffer)
+	require.NotNil(t, ch, "channel")
 	w, err := s.OpenLogFile(stepID)
 	require.NoError(t, err)
 	w.WriteLogLine(sampleTimeStr + " Hello there")
 	w.Close()
 
-	got := <-ch
-	want := LogLine{
-		StepID:    stepID,
-		LogID:     1,
-		Line:      "Hello there",
-		Timestamp: sampleTime,
+	select {
+	case got, ok := <-ch:
+		require.True(t, ok, "received on channel")
+		want := LogLine{
+			StepID:    stepID,
+			LogID:     1,
+			Line:      "Hello there",
+			Timestamp: sampleTime,
+		}
+		assert.Equal(t, want, got)
+	case <-time.After(time.Second):
+		t.Fatal("timeout")
 	}
-	assert.Equal(t, want, got)
 }
