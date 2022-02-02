@@ -43,11 +43,6 @@ type Store interface {
 
 	SubAllLogLines(buffer int) <-chan LogLine
 	UnsubAllLogLines(ch <-chan LogLine) bool
-
-	// TODO: Remove this:
-	ReadAllLogLines(stepID uint64) ([]LogLine, error)
-
-	// TODO: Add streaming handles. Callback or channels? Need smart buffering
 }
 
 type LogLineWriteCloser interface {

@@ -2,7 +2,6 @@ package resultstore
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -36,27 +35,6 @@ func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 
 	want := sampleTimeStr + " Foo \\nbar\n"
 	got := buf.String()
-	assert.Equal(t, want, got)
-}
-
-func TestStore_ReadAllLogLines(t *testing.T) {
-	buf := bytes.NewBufferString(fmt.Sprintf(`%[1]s Foo bar
-%[1]s Moo doo
-%[1]s Baz taz`, sampleTimeStr))
-	fs := mockFS{
-		openRead: func(name string) (io.ReadCloser, error) {
-			return io.NopCloser(buf), nil
-		},
-	}
-	s := NewStore(fs)
-	const stepID uint64 = 1
-	got, err := s.ReadAllLogLines(stepID)
-	require.NoError(t, err)
-	want := []LogLine{
-		{StepID: stepID, LogID: 1, Line: "Foo bar", Timestamp: sampleTime},
-		{StepID: stepID, LogID: 2, Line: "Moo doo", Timestamp: sampleTime},
-		{StepID: stepID, LogID: 3, Line: "Baz taz", Timestamp: sampleTime},
-	}
 	assert.Equal(t, want, got)
 }
 

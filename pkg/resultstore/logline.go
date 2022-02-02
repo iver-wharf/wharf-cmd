@@ -1,7 +1,6 @@
 package resultstore
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"strings"
@@ -50,31 +49,6 @@ func (w logLineWriteCloser) WriteLogLine(line string) error {
 
 func (w logLineWriteCloser) Close() error {
 	return w.writeCloser.Close()
-}
-
-func (s *store) ReadAllLogLines(stepID uint64) ([]LogLine, error) {
-	file, err := s.fs.OpenRead(s.resolveLogPath(stepID))
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
-	var lines []LogLine
-	var logID uint64
-	for scanner.Scan() {
-		tim, line := parseLogLine(scanner.Text())
-		logID++
-		lines = append(lines, LogLine{
-			StepID:    stepID,
-			LogID:     logID,
-			Timestamp: tim,
-			Line:      line,
-		})
-	}
-	if err := scanner.Err(); err != nil {
-		return nil, err
-	}
-	return lines, nil
 }
 
 func (s *store) SubAllLogLines(buffer int) <-chan LogLine {
