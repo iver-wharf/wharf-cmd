@@ -145,12 +145,13 @@ func TestStore_SubUnsubLogLines(t *testing.T) {
 func TestStore_UnsubLogLinesMiddle(t *testing.T) {
 	s := NewStore(mockFS{}).(*store)
 	require.Empty(t, s.logSubs, "before sub")
+	const buffer = 0
 	chs := []<-chan LogLine{
-		s.SubAllLogLines(0),
-		s.SubAllLogLines(0),
-		s.SubAllLogLines(0),
-		s.SubAllLogLines(0),
-		s.SubAllLogLines(0),
+		s.SubAllLogLines(buffer),
+		s.SubAllLogLines(buffer),
+		s.SubAllLogLines(buffer),
+		s.SubAllLogLines(buffer),
+		s.SubAllLogLines(buffer),
 	}
 	require.Len(t, s.logSubs, 5, "after sub")
 	s.UnsubAllLogLines(chs[2])
