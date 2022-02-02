@@ -18,6 +18,7 @@ type logLineWriteCloser struct {
 }
 
 func (s *store) OpenLogFile(stepID uint64) (LogLineWriteCloser, error) {
+	// TODO: Read log file to see what logID should be set to
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
 		return nil, err
@@ -54,6 +55,7 @@ func (w logLineWriteCloser) Close() error {
 func (s *store) SubAllLogLines(buffer int) <-chan LogLine {
 	s.logSubMutex.Lock()
 	defer s.logSubMutex.Unlock()
+	// TODO: Feed all existing logs into new channel
 	ch := make(chan LogLine, buffer)
 	s.logSubs = append(s.logSubs, ch)
 	return ch

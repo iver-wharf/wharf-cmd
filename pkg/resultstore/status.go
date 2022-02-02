@@ -74,6 +74,7 @@ func (s *store) resolveStatusPath(stepID uint64) string {
 func (s *store) SubAllStatusUpdates(buffer int) <-chan StatusUpdate {
 	s.statusSubMutex.Lock()
 	defer s.statusSubMutex.Unlock()
+	// TODO: Feed all existing status updates into new channel
 	ch := make(chan StatusUpdate, buffer)
 	s.statusSubs = append(s.statusSubs, ch)
 	return ch
