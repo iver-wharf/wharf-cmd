@@ -68,6 +68,7 @@ func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) bool {
 				copy(s.logSubs[i:], s.logSubs[i+1:])
 			}
 			s.logSubs = s.logSubs[:len(s.logSubs)-1]
+			close(ch)
 			return true
 		}
 	}
