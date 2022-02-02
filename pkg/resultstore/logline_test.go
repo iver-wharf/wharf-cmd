@@ -17,10 +17,10 @@ func TestLogLineWriteCloser(t *testing.T) {
 		writeCloser: nopWriteCloser{&buf},
 		store:       &store{},
 	}
-	err := w.WriteLogLine("2021-11-24T11:22:08.800Z Foo bar")
+	err := w.WriteLogLine(sampleTimeStr + " Foo bar")
 	require.NoError(t, err)
 
-	want := "2021-11-24T11:22:08.800Z Foo bar\n"
+	want := sampleTimeStr + " Foo bar\n"
 	got := buf.String()
 	assert.Equal(t, want, got)
 }
@@ -31,10 +31,10 @@ func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 		writeCloser: nopWriteCloser{&buf},
 		store:       &store{},
 	}
-	err := w.WriteLogLine("2021-11-24T11:22:08.800Z Foo \nbar")
+	err := w.WriteLogLine(sampleTimeStr + " Foo \nbar")
 	require.NoError(t, err)
 
-	want := "2021-11-24T11:22:08.800Z Foo \\nbar\n"
+	want := sampleTimeStr + " Foo \\nbar\n"
 	got := buf.String()
 	assert.Equal(t, want, got)
 }
