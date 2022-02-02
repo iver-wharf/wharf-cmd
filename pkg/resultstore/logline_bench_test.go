@@ -1,0 +1,79 @@
+package resultstore
+
+import (
+	"io"
+	"sync"
+	"testing"
+)
+
+var (
+	sampleShortLogLine = sampleTimeStr + " Build done."
+	sampleLongLogLine  = sampleTimeStr + " Some long log line that comes from the Wharf build logs that spans a really long line that could be a something like multiple exception messages all grouped together in a single line"
+)
+
+func BenchmarkLogChanShort0(b *testing.B) {
+	const buffer = 0
+	benchmarkLogChan(b, buffer, sampleShortLogLine)
+}
+
+func BenchmarkLogChanShort1(b *testing.B) {
+	const buffer = 1
+	benchmarkLogChan(b, buffer, sampleShortLogLine)
+}
+
+func BenchmarkLogChanShort100(b *testing.B) {
+	const buffer = 100
+	benchmarkLogChan(b, buffer, sampleShortLogLine)
+}
+
+func BenchmarkLogChanShort1000(b *testing.B) {
+	const buffer = 10000
+	benchmarkLogChan(b, buffer, sampleShortLogLine)
+}
+
+func BenchmarkLogChanLong0(b *testing.B) {
+	const buffer = 0
+	benchmarkLogChan(b, buffer, sampleLongLogLine)
+}
+
+func BenchmarkLogChanLong1(b *testing.B) {
+	const buffer = 1
+	benchmarkLogChan(b, buffer, sampleLongLogLine)
+}
+
+func BenchmarkLogChanLong100(b *testing.B) {
+	const buffer = 100
+	benchmarkLogChan(b, buffer, sampleLongLogLine)
+}
+
+func BenchmarkLogChanLong1000(b *testing.B) {
+	const buffer = 10000
+	benchmarkLogChan(b, buffer, sampleLongLogLine)
+}
+
+func benchmarkLogChan(b *testing.B, buffer int, line string) {
+	const stepID uint64 = 1
+	s := NewStore(mockFS{
+		openAppend: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{}, nil
+		},
+	})
+	w, err := s.OpenLogFile(stepID)
+	if err != nil {
+		b.Fatal(err)
+	}
+	ch := s.SubAllLogLines(buffer)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for range ch {
+		}
+		wg.Done()
+	}()
+	b.SetBytes(int64(len(line)))
+	for n := 0; n < b.N; n++ {
+		w.WriteLogLine(line)
+	}
+	s.UnsubAllLogLines(ch)
+	wg.Wait()
+}
