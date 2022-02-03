@@ -19,21 +19,21 @@ func (s *store) OpenLogReader(stepID uint64) (LogLineReadCloser, error) {
 }
 
 type logLineReadCloser struct {
-	stepID  uint64
-	logID   uint64
-	store   *store
-	closer  io.Closer
-	scanner *bufio.Scanner
+	stepID    uint64
+	nextLogID uint64
+	store     *store
+	closer    io.Closer
+	scanner   *bufio.Scanner
+	maxLogID  uint64
 }
 
 func (r *logLineReadCloser) ReadLogLine() (LogLine, error) {
-	if !r.scanner.Scan() {
+	if !r.scan() {
 		if err := r.scanner.Err(); err != nil {
 			return LogLine{}, err
 		}
 		return LogLine{}, io.EOF
 	}
-	r.logID++
 	return r.parseLogLine(r.scanner.Text()), nil
 }
 
@@ -41,7 +41,7 @@ func (r *logLineReadCloser) parseLogLine(text string) LogLine {
 	tim, msg := parseLogLine(text)
 	return LogLine{
 		StepID:    r.stepID,
-		LogID:     r.logID,
+		LogID:     r.nextLogID,
 		Line:      msg,
 		Timestamp: tim,
 	}
@@ -54,10 +54,9 @@ func (r *logLineReadCloser) Close() error {
 func (r *logLineReadCloser) ReadLastLogLine() (LogLine, error) {
 	var any bool
 	var lastLine string
-	for r.scanner.Scan() {
+	for r.scan() {
 		any = true
 		lastLine = r.scanner.Text()
-		r.logID++
 	}
 	if err := r.scanner.Err(); err != nil {
 		return LogLine{}, err
@@ -66,4 +65,19 @@ func (r *logLineReadCloser) ReadLastLogLine() (LogLine, error) {
 		return LogLine{}, io.EOF
 	}
 	return r.parseLogLine(lastLine), nil
+}
+
+func (r *logLineReadCloser) scan() bool {
+	if r.maxLogID != 0 && r.nextLogID >= r.maxLogID {
+		return false
+	}
+	if !r.scanner.Scan() {
+		return false
+	}
+	r.nextLogID++
+	return true
+}
+
+func (r *logLineReadCloser) SetMaxLogID(logID uint64) {
+	r.maxLogID = logID
 }

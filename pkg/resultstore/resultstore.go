@@ -97,6 +97,10 @@ type LogLineWriteCloser interface {
 // close the file handle.
 type LogLineReadCloser interface {
 	io.Closer
+	// SetMaxLogID sets the last log ID this reader will read before artifically
+	// returning io.EOF in ReadLogLine and ReadLastLogLine. Setting this to zero,
+	// which is the default, will disable this functionality.
+	SetMaxLogID(logID uint64)
 	// ReadLogLine will read the next log line in the file, or return io.EOF
 	// when the reader has reached the end of the file.
 	ReadLogLine() (LogLine, error)
