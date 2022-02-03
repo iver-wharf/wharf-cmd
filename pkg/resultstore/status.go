@@ -72,13 +72,39 @@ func (s *store) resolveStatusPath(stepID uint64) string {
 	return filepath.Join("steps", fmt.Sprint(stepID), "status.json")
 }
 
-func (s *store) SubAllStatusUpdates(buffer int) <-chan StatusUpdate {
+func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {
 	s.statusSubMutex.Lock()
 	defer s.statusSubMutex.Unlock()
-	// TODO: Feed all existing status updates into new channel
+	updates, err := s.listAllStatusUpdates()
+	if err != nil {
+		return nil, err
+	}
 	ch := make(chan StatusUpdate, buffer)
 	s.statusSubs = append(s.statusSubs, ch)
-	return ch
+	go s.pubStatusUpdatesToChan(updates, ch)
+	return ch, nil
+}
+
+func (s *store) pubStatusUpdatesToChan(updates []StatusUpdate, ch chan<- StatusUpdate) {
+	for _, u := range updates {
+		ch <- u
+	}
+}
+
+func (s *store) listAllStatusUpdates() ([]StatusUpdate, error) {
+	stepIDs, err := s.listAllStepIDs()
+	if err != nil {
+		return nil, err
+	}
+	var updates []StatusUpdate
+	for _, stepID := range stepIDs {
+		list, err := s.readStatusUpdatesFile(stepID)
+		if err != nil {
+			return nil, err
+		}
+		updates = append(updates, list.StatusUpdates...)
+	}
+	return updates, nil
 }
 
 func (s *store) UnsubAllStatusUpdates(statusCh <-chan StatusUpdate) bool {

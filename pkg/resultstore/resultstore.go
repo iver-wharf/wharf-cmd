@@ -1,7 +1,6 @@
 package resultstore
 
 import (
-	"fmt"
 	"io"
 	"strconv"
 	"sync"
@@ -42,7 +41,7 @@ type Store interface {
 	UnsubAllLogLines(ch <-chan LogLine) bool
 
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
-	SubAllStatusUpdates(buffer int) <-chan StatusUpdate
+	SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error)
 	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
 }
 
@@ -79,12 +78,10 @@ func (s *store) listAllStepIDs() ([]uint64, error) {
 	ids := make([]uint64, 0, len(entries))
 	for _, e := range entries {
 		if !e.IsDir() {
-			fmt.Println(e.Name(), " is not a dir")
 			continue
 		}
 		id, err := strconv.ParseUint(e.Name(), 10, 64)
 		if err != nil {
-			fmt.Println(e.Name(), " is not a valid uint64:", err)
 			continue
 		}
 		ids = append(ids, id)

@@ -2,10 +2,12 @@ package resultstore
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -228,10 +230,69 @@ func TestStore_AddStatusUpdateSkipIfSameStatus(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestStore_SubStatusUpdatesSendsAllOldStatuses(t *testing.T) {
+	updates1 := []StatusUpdate{
+		{StepID: 1, UpdateID: 1, Status: "Cancelled"},
+	}
+	updates2 := []StatusUpdate{
+		{StepID: 2, UpdateID: 1, Status: "Running"},
+		{StepID: 2, UpdateID: 2, Status: "Completed"},
+	}
+	oldLists := map[string]StatusList{
+		filepath.Join("steps", "1", "status.json"): {
+			StatusUpdates: updates1,
+		},
+		filepath.Join("steps", "2", "status.json"): {
+			StatusUpdates: updates2,
+		},
+	}
+	s := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			if name != "steps" {
+				return nil, errors.New("wrong dir")
+			}
+			return []fs.DirEntry{
+				newMockDirEntryDir("1"),
+				newMockDirEntryDir("2"),
+			}, nil
+		},
+		openRead: func(name string) (io.ReadCloser, error) {
+			list, ok := oldLists[name]
+			if !ok {
+				return nil, fs.ErrNotExist
+			}
+			b, err := json.Marshal(list)
+			if err != nil {
+				return nil, err
+			}
+			return io.NopCloser(bytes.NewReader(b)), nil
+		},
+	}).(*store)
+
+	buffer := len(updates1) + len(updates2)
+	ch := subStatusUpdatesNoErr(t, s, buffer)
+	var got []StatusUpdate
+	for i := 0; i < 3; i++ {
+		select {
+		case gotUpdate := <-ch:
+			got = append(got, gotUpdate)
+		case <-time.After(time.Second):
+			t.Fatalf("timed out, did not get enough results, only got: %d", len(got))
+		}
+	}
+	want := append(updates1, updates2...)
+	assert.ElementsMatch(t, want, got)
+}
+
 func TestStore_SubUnsubStatusUpdates(t *testing.T) {
-	s := NewStore(mockFS{}).(*store)
+	s := NewStore(mockFS{
+		listDirEntries: func(string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
+	}).(*store)
 	require.Empty(t, s.statusSubs, "before sub")
-	ch := s.SubAllStatusUpdates(0)
+	const buffer = 0
+	ch := subStatusUpdatesNoErr(t, s, buffer)
 	require.Len(t, s.statusSubs, 1, "after sub")
 	assert.True(t, s.statusSubs[0] == ch, "after sub")
 	require.True(t, s.UnsubAllStatusUpdates(ch), "unsub success")
@@ -239,15 +300,19 @@ func TestStore_SubUnsubStatusUpdates(t *testing.T) {
 }
 
 func TestStore_UnsubStatusUpdatesMiddle(t *testing.T) {
-	s := NewStore(mockFS{}).(*store)
+	s := NewStore(mockFS{
+		listDirEntries: func(string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
+	}).(*store)
 	require.Empty(t, s.statusSubs, "before sub")
 	const buffer = 0
 	chs := []<-chan StatusUpdate{
-		s.SubAllStatusUpdates(buffer),
-		s.SubAllStatusUpdates(buffer),
-		s.SubAllStatusUpdates(buffer),
-		s.SubAllStatusUpdates(buffer),
-		s.SubAllStatusUpdates(buffer),
+		subStatusUpdatesNoErr(t, s, buffer),
+		subStatusUpdatesNoErr(t, s, buffer),
+		subStatusUpdatesNoErr(t, s, buffer),
+		subStatusUpdatesNoErr(t, s, buffer),
+		subStatusUpdatesNoErr(t, s, buffer),
 	}
 	require.Len(t, s.statusSubs, 5, "after sub")
 	require.True(t, s.UnsubAllStatusUpdates(chs[2]), "unsub success")
@@ -260,6 +325,13 @@ func TestStore_UnsubStatusUpdatesMiddle(t *testing.T) {
 	}
 }
 
+func subStatusUpdatesNoErr(t *testing.T, s Store, buffer int) <-chan StatusUpdate {
+	ch, err := s.SubAllStatusUpdates(buffer)
+	require.NoError(t, err, "sub status updates: err")
+	require.NotNil(t, ch, "sub status updates: chan")
+	return ch
+}
+
 func TestStore_PubSubStatusUpdates(t *testing.T) {
 	s := NewStore(mockFS{
 		openRead: func(name string) (io.ReadCloser, error) {
@@ -268,11 +340,13 @@ func TestStore_PubSubStatusUpdates(t *testing.T) {
 		openWrite: func(name string) (io.WriteCloser, error) {
 			return nopWriteCloser{}, nil
 		},
+		listDirEntries: func(string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
 	})
 	const buffer = 1
 	const stepID uint64 = 1
-	ch := s.SubAllStatusUpdates(buffer)
-	require.NotNil(t, ch, "channel")
+	ch := subStatusUpdatesNoErr(t, s, buffer)
 	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
 	require.NoError(t, err)
 
