@@ -1,11 +1,20 @@
 package resultstore
 
 import (
+	"errors"
 	"io"
 	"sync/atomic"
 )
 
+var (
+	ErrLogWriterAlreadyOpen = errors.New("log write handle is already open for this file")
+)
+
 func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
+	_, alreadyOpen := s.logFilesOpened.LoadOrStore(stepID, true)
+	if alreadyOpen {
+		return nil, ErrLogWriterAlreadyOpen
+	}
 	// TODO: Read log file to see what logID should be set to
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
@@ -44,5 +53,6 @@ func (w *logLineWriteCloser) WriteLogLine(line string) error {
 }
 
 func (w *logLineWriteCloser) Close() error {
+	w.store.logFilesOpened.Delete(w.stepID)
 	return w.writeCloser.Close()
 }

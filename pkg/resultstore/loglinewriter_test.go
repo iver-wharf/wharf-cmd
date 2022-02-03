@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"bytes"
+	"io"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -37,4 +38,22 @@ func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 	want := sampleTimeStr + " Foo \\nbar\n"
 	got := buf.String()
 	assert.Equal(t, want, got)
+}
+
+func TestStore_OpenLogWriterCollision(t *testing.T) {
+	s := NewStore(mockFS{
+		openAppend: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{}, nil
+		},
+	})
+	const stepID uint64 = 1
+	w1, err := s.OpenLogWriter(stepID)
+	require.NoError(t, err, "open writer 1")
+
+	_, err = s.OpenLogWriter(stepID)
+	require.ErrorIs(t, err, ErrLogWriterAlreadyOpen, "open writer 2, expect collision")
+
+	w1.Close()
+	_, err = s.OpenLogWriter(stepID)
+	require.NoError(t, err, "open writer 2, expect no collision")
 }
