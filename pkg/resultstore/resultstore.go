@@ -20,6 +20,7 @@ type LogLine struct {
 // StatusList is a list of status updates. This is the data structure that is
 // serialized in the status update list file for a given step.
 type StatusList struct {
+	LastID        uint64         `json:"lastId"`
 	StatusUpdates []StatusUpdate `json:"statusUpdates"`
 }
 
@@ -60,7 +61,6 @@ func NewStore(fs FS) Store {
 type store struct {
 	fs FS
 
-	lastStatusID   uint64
 	statusSubMutex sync.RWMutex
 	statusMutex    keyedMutex
 	statusSubs     []chan StatusUpdate

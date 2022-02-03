@@ -5,16 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"sync/atomic"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 )
 
 func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error {
-	updateID := atomic.AddUint64(&s.lastStatusID, 1)
-	//s.statusMutex.Lock(stepID)
-	//defer s.statusMutex.Unlock(stepID)
+	s.statusMutex.Lock(stepID)
+	defer s.statusMutex.Unlock(stepID)
 	list, err := s.readStatusUpdatesFile(stepID)
 	if err != nil {
 		return err
@@ -23,6 +21,8 @@ func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus wo
 		list.StatusUpdates[len(list.StatusUpdates)-1].Status == newStatus.String() {
 		return nil
 	}
+	list.LastID++
+	updateID := list.LastID
 	statusUpdate := StatusUpdate{
 		StepID:    stepID,
 		UpdateID:  updateID,

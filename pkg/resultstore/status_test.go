@@ -76,6 +76,7 @@ func TestStore_ReadStatusUpdatesFile(t *testing.T) {
 func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 	const stepID uint64 = 1
 	list := StatusList{
+		LastID: 3,
 		StatusUpdates: []StatusUpdate{
 			{
 				StepID:    stepID,
@@ -107,6 +108,7 @@ func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 	require.NoError(t, err)
 	want := fmt.Sprintf(`
 {
+	"lastId": 3,
 	"statusUpdates": [
 		{
 			"stepId": 1,
@@ -146,6 +148,7 @@ func TestStore_AddStatusUpdateFirst(t *testing.T) {
 	require.NoError(t, err)
 	want := fmt.Sprintf(`
 {
+	"lastId": 1,
 	"statusUpdates": [
 		{
 			"stepId": 1,
@@ -160,6 +163,7 @@ func TestStore_AddStatusUpdateFirst(t *testing.T) {
 
 func TestStore_AddStatusUpdateSecond(t *testing.T) {
 	buf := bytes.NewBufferString(fmt.Sprintf(`{
+	"lastId": 5,
 	"statusUpdates": [
 		{
 			"stepId": 1,
@@ -177,12 +181,12 @@ func TestStore_AddStatusUpdateSecond(t *testing.T) {
 			return nopWriteCloser{buf}, nil
 		},
 	})
-	s.(*store).lastStatusID = 1
 	const stepID uint64 = 1
 	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
 	require.NoError(t, err)
 	want := fmt.Sprintf(`
 {
+	"lastId": 6,
 	"statusUpdates": [
 		{
 			"stepId": 1,
@@ -192,7 +196,7 @@ func TestStore_AddStatusUpdateSecond(t *testing.T) {
 		},
 		{
 			"stepId": 1,
-			"updateId": 2,
+			"updateId": 6,
 			"timestamp": "%[1]s",
 			"status": "Cancelled"
 		}
