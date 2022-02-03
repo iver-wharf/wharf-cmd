@@ -36,12 +36,33 @@ type StatusUpdate struct {
 // Store is the interface for storing build results and accessing them as they
 // are created.
 type Store interface {
+	// OpenLogFile opens a file handle abstraction for writing log lines. Logs
+	// will be automatically parsed when written and published to any active
+	// subscriptions.
 	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
+
+	// SubAllLogLines creates a new channel that streams all log lines
+	// from this restult store since the beginning, and keeps on streaming new
+	// updates until unsubscribed.
 	SubAllLogLines(buffer int) <-chan LogLine
+
+	// UnsubAllLogLines unsubscribes a subscription of all status updates
+	// created via SubAllLogLines.
 	UnsubAllLogLines(ch <-chan LogLine) bool
 
+	// AddStatusUpdate adds a status update to a step. If the latest status
+	// update found for the step is the same as the new status, then this
+	// status update is skipped. Any written status update is also published to
+	// any active subscriptions.
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
+
+	// SubAllStatusUpdates creates a new channel that streams all status updates
+	// from this restult store since the beginning, and keeps on streaming new
+	// updates until unsubscribed.
 	SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error)
+
+	// UnsubAllStatusUpdates unsubscribes a subscription of all status updates
+	// created via SubAllStatusUpdates.
 	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
 }
 
