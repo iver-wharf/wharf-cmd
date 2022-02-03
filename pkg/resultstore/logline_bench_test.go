@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"io"
+	"io/fs"
 	"sync"
 	"testing"
 )
@@ -54,6 +55,12 @@ func BenchmarkLogChanLong1000(b *testing.B) {
 func benchmarkLogChan(b *testing.B, buffer int, line string) {
 	const stepID uint64 = 1
 	s := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
+		openRead: func(name string) (io.ReadCloser, error) {
+			return nil, fs.ErrNotExist
+		},
 		openAppend: func(name string) (io.WriteCloser, error) {
 			return nopWriteCloser{}, nil
 		},
