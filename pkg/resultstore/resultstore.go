@@ -36,10 +36,10 @@ type StatusUpdate struct {
 // Store is the interface for storing build results and accessing them as they
 // are created.
 type Store interface {
-	// OpenLogFile opens a file handle abstraction for writing log lines. Logs
+	// OpenLogWriter opens a file handle abstraction for writing log lines. Logs
 	// will be automatically parsed when written and published to any active
 	// subscriptions.
-	OpenLogFile(stepID uint64) (LogLineWriteCloser, error)
+	OpenLogWriter(stepID uint64) (LogLineWriteCloser, error)
 
 	// SubAllLogLines creates a new channel that streams all log lines
 	// from this restult store since the beginning, and keeps on streaming new

@@ -58,7 +58,7 @@ func benchmarkLogChan(b *testing.B, buffer int, line string) {
 			return nopWriteCloser{}, nil
 		},
 	})
-	w, err := s.OpenLogFile(stepID)
+	w, err := s.OpenLogWriter(stepID)
 	if err != nil {
 		b.Fatal(err)
 	}

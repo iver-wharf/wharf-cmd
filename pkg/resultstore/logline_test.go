@@ -152,7 +152,7 @@ func TestStore_PubSubLogLines(t *testing.T) {
 	const stepID uint64 = 1
 	ch := s.SubAllLogLines(buffer)
 	require.NotNil(t, ch, "channel")
-	w, err := s.OpenLogFile(stepID)
+	w, err := s.OpenLogWriter(stepID)
 	require.NoError(t, err)
 	w.WriteLogLine(sampleTimeStr + " Hello there")
 	w.Close()

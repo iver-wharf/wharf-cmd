@@ -18,7 +18,7 @@ type logLineWriteCloser struct {
 	writeCloser io.WriteCloser
 }
 
-func (s *store) OpenLogFile(stepID uint64) (LogLineWriteCloser, error) {
+func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 	// TODO: Read log file to see what logID should be set to
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
