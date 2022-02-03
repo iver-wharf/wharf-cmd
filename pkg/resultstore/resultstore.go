@@ -1,7 +1,9 @@
 package resultstore
 
 import (
+	"fmt"
 	"io"
+	"strconv"
 	"sync"
 	"time"
 
@@ -67,4 +69,25 @@ type store struct {
 
 	logSubMutex sync.RWMutex
 	logSubs     []chan LogLine
+}
+
+func (s *store) listAllStepIDs() ([]uint64, error) {
+	entries, err := s.fs.ListDirEntries("steps")
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]uint64, 0, len(entries))
+	for _, e := range entries {
+		if !e.IsDir() {
+			fmt.Println(e.Name(), " is not a dir")
+			continue
+		}
+		id, err := strconv.ParseUint(e.Name(), 10, 64)
+		if err != nil {
+			fmt.Println(e.Name(), " is not a valid uint64:", err)
+			continue
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
 }

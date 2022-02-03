@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -18,6 +19,10 @@ type FS interface {
 	// OpenRead opens a file in read-only-mode, reading data from the start of
 	// the file.
 	OpenRead(name string) (io.ReadCloser, error)
+	// ListDirEntries will list all files, directories, symlinks, and other entries
+	// inside a directory, non-recursively. It does not include the current "."
+	// or parent ".." directory names.
+	ListDirEntries(name string) ([]fs.DirEntry, error)
 }
 
 // NewFS creates a filesystem that will use the given directory as the base
@@ -40,4 +45,8 @@ func (fs osFS) OpenWrite(name string) (io.WriteCloser, error) {
 
 func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
 	return os.OpenFile(filepath.Join(fs.dir, name), os.O_RDONLY, 0644)
+}
+
+func (fs osFS) ListDirEntries(name string) ([]fs.DirEntry, error) {
+	return os.ReadDir(name)
 }

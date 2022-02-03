@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"path/filepath"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
@@ -68,7 +69,7 @@ func (s *store) writeStatusUpdatesFile(stepID uint64, list StatusList) error {
 }
 
 func (s *store) resolveStatusPath(stepID uint64) string {
-	return fmt.Sprintf("steps/%d/status.json", stepID)
+	return filepath.Join("steps", fmt.Sprint(stepID), "status.json")
 }
 
 func (s *store) SubAllStatusUpdates(buffer int) <-chan StatusUpdate {

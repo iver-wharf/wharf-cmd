@@ -3,6 +3,7 @@ package resultstore
 import (
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -78,7 +79,7 @@ func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) bool {
 }
 
 func (s *store) resolveLogPath(stepID uint64) string {
-	return fmt.Sprintf("steps/%d/logs.log", stepID)
+	return filepath.Join("steps", fmt.Sprint(stepID), "logs.log")
 }
 
 func (s *store) pubLogLine(logLine LogLine) {
