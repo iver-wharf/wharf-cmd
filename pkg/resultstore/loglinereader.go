@@ -28,18 +28,42 @@ type logLineReadCloser struct {
 
 func (r *logLineReadCloser) ReadLogLine() (LogLine, error) {
 	if !r.scanner.Scan() {
+		if err := r.scanner.Err(); err != nil {
+			return LogLine{}, err
+		}
 		return LogLine{}, io.EOF
 	}
-	tim, msg := parseLogLine(r.scanner.Text())
 	r.logID++
+	return r.parseLogLine(r.scanner.Text()), nil
+}
+
+func (r *logLineReadCloser) parseLogLine(text string) LogLine {
+	tim, msg := parseLogLine(text)
 	return LogLine{
 		StepID:    r.stepID,
 		LogID:     r.logID,
 		Line:      msg,
 		Timestamp: tim,
-	}, nil
+	}
 }
 
 func (r *logLineReadCloser) Close() error {
 	return r.closer.Close()
+}
+
+func (r *logLineReadCloser) ReadLastLogLine() (LogLine, error) {
+	var any bool
+	var lastLine string
+	for r.scanner.Scan() {
+		any = true
+		lastLine = r.scanner.Text()
+		r.logID++
+	}
+	if err := r.scanner.Err(); err != nil {
+		return LogLine{}, err
+	}
+	if !any {
+		return LogLine{}, io.EOF
+	}
+	return r.parseLogLine(lastLine), nil
 }
