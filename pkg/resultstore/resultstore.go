@@ -41,6 +41,11 @@ type Store interface {
 	// subscriptions.
 	OpenLogWriter(stepID uint64) (LogLineWriteCloser, error)
 
+	// OpenLogReader opens a file handle abstraction for reading log lines. Logs
+	// will be automatically parsed when read. Will return fs.ErrNotExist if
+	// the log file does not exist yet.
+	OpenLogReader(stepID uint64) (LogLineReadCloser, error)
+
 	// SubAllLogLines creates a new channel that streams all log lines
 	// from this restult store since the beginning, and keeps on streaming new
 	// updates until unsubscribed.
@@ -70,7 +75,20 @@ type Store interface {
 // close the file handle.
 type LogLineWriteCloser interface {
 	io.Closer
+	// WriteLogLine will write the log line to the file and publish a parsed
+	// LogLine to any active subscriptions. An error is returned if it failed
+	// to write, such as if the file system has run out of disk space or if the
+	// file was removed.
 	WriteLogLine(line string) error
+}
+
+// LogLineReadCloser is the interface for reading log lines and ability to
+// close the file handle.
+type LogLineReadCloser interface {
+	io.Closer
+	// ReadLogLine will read the next log line in the file, or return io.EOF
+	// when the reader has reached the end of the file.
+	ReadLogLine() (LogLine, error)
 }
 
 // NewStore creates a new store using a given filesystem.
