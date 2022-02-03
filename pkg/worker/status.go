@@ -14,6 +14,10 @@ const (
 	// StatusNone means no execution has been performed. Such as when running a
 	// Wharf build stage with no steps.
 	StatusNone
+	// StatusScheduling means the step is not yet running.
+	StatusScheduling
+	// StatusRunning means the step is now running.
+	StatusRunning
 	// StatusSuccess means the build succeeded.
 	StatusSuccess
 	// StatusFailed means the build failed. More details of how it failed can be
@@ -28,6 +32,10 @@ func (s Status) String() string {
 	switch s {
 	case StatusNone:
 		return "None"
+	case StatusScheduling:
+		return "Scheduling"
+	case StatusRunning:
+		return "Running"
 	case StatusSuccess:
 		return "Success"
 	case StatusFailed:
@@ -46,6 +54,10 @@ func ParseStatus(s string) Status {
 	switch strings.ToLower(s) {
 	case "none":
 		return StatusNone
+	case "scheduling":
+		return StatusScheduling
+	case "running":
+		return StatusRunning
 	case "success":
 		return StatusSuccess
 	case "failed":
