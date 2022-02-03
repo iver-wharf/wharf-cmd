@@ -199,14 +199,14 @@ func TestStore_SubAllLogLinesSendsNonNewlyWrittenLogs(t *testing.T) {
 	ch := subLogLinesNoErr(t, s, buffer)
 	require.NotNil(t, ch, "channel")
 
-	var logIDsRecieved []uint64
-	for len(logIDsRecieved) < 5 {
+	var logIDsReceived []uint64
+	for len(logIDsReceived) < 5 {
 		select {
 		case got, ok := <-ch:
 			require.True(t, ok, "received on channel")
-			logIDsRecieved = append(logIDsRecieved, got.LogID)
+			logIDsReceived = append(logIDsReceived, got.LogID)
 		case <-time.After(time.Second):
-			t.Fatalf("timeout, received %d logs", len(logIDsRecieved))
+			t.Fatalf("timeout, received %d logs", len(logIDsReceived))
 		}
 	}
 	select {
@@ -216,7 +216,7 @@ func TestStore_SubAllLogLinesSendsNonNewlyWrittenLogs(t *testing.T) {
 		// OK
 	}
 	wantIDs := []uint64{1, 2, 3, 4, 5}
-	assert.Equal(t, wantIDs, logIDsRecieved, "log IDs received")
+	assert.Equal(t, wantIDs, logIDsReceived, "log IDs received")
 }
 
 func subLogLinesNoErr(t *testing.T, s Store, buffer int) <-chan LogLine {

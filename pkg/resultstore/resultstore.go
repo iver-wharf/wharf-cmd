@@ -62,7 +62,7 @@ type Store interface {
 	OpenLogReader(stepID uint64) (LogLineReadCloser, error)
 
 	// SubAllLogLines creates a new channel that streams all log lines
-	// from this restult store since the beginning, and keeps on streaming new
+	// from this result store since the beginning, and keeps on streaming new
 	// updates until unsubscribed.
 	SubAllLogLines(buffer int) (<-chan LogLine, error)
 
@@ -77,7 +77,7 @@ type Store interface {
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
 
 	// SubAllStatusUpdates creates a new channel that streams all status updates
-	// from this restult store since the beginning, and keeps on streaming new
+	// from this result store since the beginning, and keeps on streaming new
 	// updates until unsubscribed.
 	SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error)
 
@@ -101,7 +101,7 @@ type LogLineWriteCloser interface {
 // close the file handle.
 type LogLineReadCloser interface {
 	io.Closer
-	// SetMaxLogID sets the last log ID this reader will read before artifically
+	// SetMaxLogID sets the last log ID this reader will read before artificially
 	// returning io.EOF in ReadLogLine and ReadLastLogLine. Setting this to zero,
 	// which is the default, will disable this functionality.
 	SetMaxLogID(logID uint64)

@@ -22,7 +22,7 @@ will start by streaming from the files on disk to let the client catch up on all
 logs since the start of the build.
 
 This will cause logs to be received out of order if the build has not yet
-completed, as the streaming of old logs is performed in parallell to new logs
+completed, as the streaming of old logs is performed in parallel to new logs
 being received.
 
 Consider the following diagram, where the wharf-cmd-aggregator streams logs from
