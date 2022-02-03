@@ -60,7 +60,7 @@ type Store interface {
 	// SubAllLogLines creates a new channel that streams all log lines
 	// from this restult store since the beginning, and keeps on streaming new
 	// updates until unsubscribed.
-	SubAllLogLines(buffer int) <-chan LogLine
+	SubAllLogLines(buffer int) (<-chan LogLine, error)
 
 	// UnsubAllLogLines unsubscribes a subscription of all status updates
 	// created via SubAllLogLines.

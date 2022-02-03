@@ -314,13 +314,6 @@ func TestStore_UnsubStatusUpdatesMiddle(t *testing.T) {
 	}
 }
 
-func subStatusUpdatesNoErr(t *testing.T, s Store, buffer int) <-chan StatusUpdate {
-	ch, err := s.SubAllStatusUpdates(buffer)
-	require.NoError(t, err, "sub status updates: err")
-	require.NotNil(t, ch, "sub status updates: chan")
-	return ch
-}
-
 func TestStore_PubSubStatusUpdates(t *testing.T) {
 	s := NewStore(mockFS{
 		openRead: func(name string) (io.ReadCloser, error) {
@@ -352,4 +345,11 @@ func TestStore_PubSubStatusUpdates(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout")
 	}
+}
+
+func subStatusUpdatesNoErr(t *testing.T, s Store, buffer int) <-chan StatusUpdate {
+	ch, err := s.SubAllStatusUpdates(buffer)
+	require.NoError(t, err, "sub status updates: err")
+	require.NotNil(t, ch, "sub status updates: chan")
+	return ch
 }

@@ -80,7 +80,7 @@ func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {
 	defer s.statusSubMutex.Unlock()
 	updates, err := s.listAllStatusUpdates()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read all existing status updates: %w", err)
 	}
 	ch := make(chan StatusUpdate, buffer)
 	s.statusSubs = append(s.statusSubs, ch)

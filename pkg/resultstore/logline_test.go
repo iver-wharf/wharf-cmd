@@ -83,9 +83,14 @@ func TestSanitizeLogLine(t *testing.T) {
 }
 
 func TestStore_SubUnsubLogLines(t *testing.T) {
-	s := NewStore(mockFS{}).(*store)
+	s := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
+	}).(*store)
 	require.Empty(t, s.logSubs, "before sub")
-	ch := s.SubAllLogLines(0)
+	const buffer = 0
+	ch := subLogLinesNoErr(t, s, buffer)
 	require.Len(t, s.logSubs, 1, "after sub")
 	assert.True(t, s.logSubs[0] == ch, "after sub")
 	require.True(t, s.UnsubAllLogLines(ch), "unsub success")
@@ -93,15 +98,19 @@ func TestStore_SubUnsubLogLines(t *testing.T) {
 }
 
 func TestStore_UnsubLogLinesMiddle(t *testing.T) {
-	s := NewStore(mockFS{}).(*store)
+	s := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
+	}).(*store)
 	require.Empty(t, s.logSubs, "before sub")
 	const buffer = 0
 	chs := []<-chan LogLine{
-		s.SubAllLogLines(buffer),
-		s.SubAllLogLines(buffer),
-		s.SubAllLogLines(buffer),
-		s.SubAllLogLines(buffer),
-		s.SubAllLogLines(buffer),
+		subLogLinesNoErr(t, s, buffer),
+		subLogLinesNoErr(t, s, buffer),
+		subLogLinesNoErr(t, s, buffer),
+		subLogLinesNoErr(t, s, buffer),
+		subLogLinesNoErr(t, s, buffer),
 	}
 	require.Len(t, s.logSubs, 5, "after sub")
 	require.True(t, s.UnsubAllLogLines(chs[2]), "unsub success")
@@ -116,6 +125,9 @@ func TestStore_UnsubLogLinesMiddle(t *testing.T) {
 
 func TestStore_PubSubLogLines(t *testing.T) {
 	s := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
 		openRead: func(string) (io.ReadCloser, error) {
 			return nil, fs.ErrNotExist
 		},
@@ -125,7 +137,7 @@ func TestStore_PubSubLogLines(t *testing.T) {
 	})
 	const buffer = 1
 	const stepID uint64 = 1
-	ch := s.SubAllLogLines(buffer)
+	ch := subLogLinesNoErr(t, s, buffer)
 	require.NotNil(t, ch, "channel")
 	w, err := s.OpenLogWriter(stepID)
 	require.NoError(t, err)
@@ -145,4 +157,11 @@ func TestStore_PubSubLogLines(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout")
 	}
+}
+
+func subLogLinesNoErr(t *testing.T, s Store, buffer int) <-chan LogLine {
+	ch, err := s.SubAllLogLines(buffer)
+	require.NoError(t, err, "sub logs: err")
+	require.NotNil(t, ch, "sub logs: chan")
+	return ch
 }

@@ -62,7 +62,10 @@ func benchmarkLogChan(b *testing.B, buffer int, line string) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	ch := s.SubAllLogLines(buffer)
+	ch, err := s.SubAllLogLines(buffer)
+	if err != nil {
+		b.Fatal(err)
+	}
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {

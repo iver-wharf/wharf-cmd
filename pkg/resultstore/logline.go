@@ -1,7 +1,9 @@
 package resultstore
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -9,13 +11,54 @@ import (
 
 var newLineBytes = []byte{'\n'}
 
-func (s *store) SubAllLogLines(buffer int) <-chan LogLine {
+func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 	s.logSubMutex.Lock()
 	defer s.logSubMutex.Unlock()
-	// TODO: Feed all existing logs into new channel
+	readers, err := s.openAllLogFilesForRead()
+	if err != nil {
+		return nil, fmt.Errorf("open all log file handles: %w", err)
+	}
 	ch := make(chan LogLine, buffer)
 	s.logSubs = append(s.logSubs, ch)
-	return ch
+	go s.readAllLogsAndPubToChan(readers, ch)
+	return ch, nil
+}
+
+func (s *store) openAllLogFilesForRead() ([]LogLineReadCloser, error) {
+	stepIDs, err := s.listAllStepIDs()
+	if err != nil {
+		return nil, fmt.Errorf("list all steps: %w", err)
+	}
+	readers := make([]LogLineReadCloser, len(stepIDs))
+	for i, stepID := range stepIDs {
+		r, err := s.OpenLogReader(stepID)
+		if err != nil {
+			return nil, fmt.Errorf("read logs for step %d: %w", stepID, err)
+		}
+		readers[i] = r
+	}
+	return readers, nil
+}
+
+func (s *store) readAllLogsAndPubToChan(readers []LogLineReadCloser, ch chan<- LogLine) {
+	// TODO: make readers stop after last read log ID from when it started
+	for _, r := range readers {
+		go s.readLogsAndPubToChan(r, ch)
+	}
+}
+
+func (s *store) readLogsAndPubToChan(r LogLineReadCloser, ch chan<- LogLine) error {
+	defer r.Close()
+	for {
+		line, err := r.ReadLogLine()
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+		ch <- line
+	}
 }
 
 func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) bool {
