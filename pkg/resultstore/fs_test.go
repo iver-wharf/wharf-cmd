@@ -5,6 +5,10 @@ import (
 	"io/fs"
 )
 
+type nopCloser struct{}
+
+func (nopCloser) Close() error { return nil }
+
 type nopWriteCloser struct {
 	writer io.Writer
 }
@@ -16,9 +20,7 @@ func (w nopWriteCloser) Write(p []byte) (n int, err error) {
 	return w.writer.Write(p)
 }
 
-func (nopWriteCloser) Close() error {
-	return nil
-}
+func (nopWriteCloser) Close() error { return nil }
 
 type mockFS struct {
 	openAppend     func(name string) (io.WriteCloser, error)

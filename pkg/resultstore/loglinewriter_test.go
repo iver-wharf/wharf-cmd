@@ -15,9 +15,9 @@ func TestLogLineWriteCloser(t *testing.T) {
 		store:       &store{},
 	}
 	err := w.WriteLogLine(sampleTimeStr + " Foo bar")
-	require.NoError(t, err)
+	require.NoError(t, err, "write 1/2")
 	err = w.WriteLogLine(sampleTimeStr + " Moo doo")
-	require.NoError(t, err)
+	require.NoError(t, err, "write 2/2")
 
 	want := sampleTimeStr + " Foo bar\n" + sampleTimeStr + " Moo doo\n"
 	got := buf.String()

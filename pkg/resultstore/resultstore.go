@@ -1,6 +1,7 @@
 package resultstore
 
 import (
+	"fmt"
 	"io"
 	"strconv"
 	"sync"
@@ -18,6 +19,14 @@ type LogLine struct {
 	Timestamp time.Time
 }
 
+func (log LogLine) String() string {
+	return fmt.Sprintf("%s %s", log.Timestamp.Format(time.RFC3339Nano), log.Line)
+}
+
+func (log LogLine) GoString() string {
+	return fmt.Sprintf("(stepID: %d, logID: %d) \"%s %s\"", log.StepID, log.LogID, log.Timestamp.Format(time.RFC3339Nano), log.Line)
+}
+
 // StatusList is a list of status updates. This is the data structure that is
 // serialized in the status update list file for a given step.
 type StatusList struct {
@@ -27,7 +36,7 @@ type StatusList struct {
 
 // StatusUpdate is an update to a status of a build step.
 type StatusUpdate struct {
-	StepID    uint64    `json:"stepId"`
+	StepID    uint64    `json:"stepId"` // TODO: exclude from JSON
 	UpdateID  uint64    `json:"updateId"`
 	Timestamp time.Time `json:"timestamp"`
 	Status    string    `json:"status"` // TODO: use worker.Status here
