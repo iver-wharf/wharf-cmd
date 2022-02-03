@@ -123,9 +123,9 @@ type store struct {
 	statusMutex    keyedMutex
 	statusSubs     []chan StatusUpdate
 
-	logSubMutex    sync.RWMutex
-	logSubs        []chan LogLine
-	logFilesOpened sync.Map
+	logSubMutex      sync.RWMutex
+	logSubs          []chan LogLine
+	logWritersOpened sync.Map
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

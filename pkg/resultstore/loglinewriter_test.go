@@ -63,6 +63,34 @@ func TestStore_OpenLogWriterCollision(t *testing.T) {
 	require.NoError(t, err, "open writer 2, expect no collision")
 }
 
+func TestStore_OpenLogWriterGetListOfWriters(t *testing.T) {
+	s := NewStore(mockFS{
+		openRead: func(string) (io.ReadCloser, error) {
+			return nil, fs.ErrNotExist
+		},
+		openAppend: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{}, nil
+		},
+	})
+	w1, err := s.OpenLogWriter(1)
+	require.NoError(t, err, "open writer 1")
+
+	w2, err := s.OpenLogWriter(2)
+	require.NoError(t, err, "open writer 2")
+
+	w3, err := s.OpenLogWriter(3)
+	require.NoError(t, err, "open writer 3")
+
+	w1.Close()
+
+	wantWriters := []*logLineWriteCloser{
+		w2.(*logLineWriteCloser),
+		w3.(*logLineWriteCloser),
+	}
+	writers := s.(*store).listOpenLogWriters()
+	assert.Equal(t, wantWriters, writers, "list open writers")
+}
+
 func TestStore_OpenLogWriterUsesLastLogLineID(t *testing.T) {
 	buf := bytes.NewBufferString(fmt.Sprintf(`%[1]s Foo bar 1
 %[1]s Moo doo 2

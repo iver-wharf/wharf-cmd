@@ -14,7 +14,11 @@ var (
 )
 
 func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
-	_, alreadyOpen := s.logFilesOpened.LoadOrStore(stepID, true)
+	w := &logLineWriteCloser{
+		stepID: stepID,
+		store:  s,
+	}
+	_, alreadyOpen := s.logWritersOpened.LoadOrStore(stepID, w)
 	if alreadyOpen {
 		return nil, ErrLogWriterAlreadyOpen
 	}
@@ -22,16 +26,22 @@ func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read log file to get last log ID: %w", err)
 	}
+	w.logID = lastLogID
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
 		return nil, err
 	}
-	return &logLineWriteCloser{
-		logID:       lastLogID,
-		stepID:      stepID,
-		store:       s,
-		writeCloser: file,
-	}, nil
+	w.writeCloser = file
+	return w, nil
+}
+
+func (s *store) listOpenLogWriters() []*logLineWriteCloser {
+	var writers []*logLineWriteCloser
+	s.logWritersOpened.Range(func(_, value interface{}) bool {
+		writers = append(writers, value.(*logLineWriteCloser))
+		return true
+	})
+	return writers
 }
 
 func (s *store) getLastLogLineID(stepID uint64) (uint64, error) {
@@ -78,6 +88,6 @@ func (w *logLineWriteCloser) WriteLogLine(line string) error {
 }
 
 func (w *logLineWriteCloser) Close() error {
-	w.store.logFilesOpened.Delete(w.stepID)
+	w.store.logWritersOpened.Delete(w.stepID)
 	return w.writeCloser.Close()
 }
