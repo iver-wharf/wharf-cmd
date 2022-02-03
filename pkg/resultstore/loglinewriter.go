@@ -2,7 +2,9 @@ package resultstore
 
 import (
 	"errors"
+	"fmt"
 	"io"
+	"io/fs"
 	"sync/atomic"
 )
 
@@ -16,15 +18,10 @@ func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 	if alreadyOpen {
 		return nil, ErrLogWriterAlreadyOpen
 	}
-	var lastLogID uint64
-	r, err := s.OpenLogReader(stepID)
-	if err == nil {
-		lastLine, err := r.ReadLastLogLine()
-		if err == nil {
-			lastLogID = lastLine.LogID
-		}
+	lastLogID, err := s.getLastLogLineID(stepID)
+	if err != nil {
+		return nil, fmt.Errorf("read log file to get last log ID: %w", err)
 	}
-	// TODO: Read log file to see what logID should be set to
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
 		return nil, err
@@ -35,6 +32,24 @@ func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 		store:       s,
 		writeCloser: file,
 	}, nil
+}
+
+func (s *store) getLastLogLineID(stepID uint64) (uint64, error) {
+	r, err := s.OpenLogReader(stepID)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	lastLine, err := r.ReadLastLogLine()
+	if err != nil {
+		if errors.Is(err, io.EOF) {
+			return 0, nil
+		}
+		return 0, err
+	}
+	return lastLine.LogID, nil
 }
 
 type logLineWriteCloser struct {
