@@ -18,6 +18,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
 
+- Added build result (logs, status updates) caching via file system. New
+  package in `pkg/resultstore`. (#43)
+
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
