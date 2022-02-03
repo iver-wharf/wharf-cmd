@@ -19,7 +19,7 @@ func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus wo
 		return err
 	}
 	if len(list.StatusUpdates) > 0 &&
-		list.StatusUpdates[len(list.StatusUpdates)-1].Status == newStatus.String() {
+		list.StatusUpdates[len(list.StatusUpdates)-1].Status == newStatus {
 		return nil
 	}
 	list.LastID++
@@ -28,7 +28,7 @@ func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus wo
 		StepID:    stepID,
 		UpdateID:  updateID,
 		Timestamp: timestamp,
-		Status:    newStatus.String(),
+		Status:    newStatus,
 	}
 	list.StatusUpdates = append(list.StatusUpdates, statusUpdate)
 	if err := s.writeStatusUpdatesFile(stepID, list); err != nil {

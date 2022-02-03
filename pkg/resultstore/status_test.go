@@ -46,19 +46,19 @@ func TestStore_ReadStatusUpdatesFile(t *testing.T) {
 				StepID:    stepID,
 				UpdateID:  1,
 				Timestamp: wantTime,
-				Status:    "Scheduling",
+				Status:    worker.StatusScheduling,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  2,
 				Timestamp: wantTime,
-				Status:    "Running",
+				Status:    worker.StatusRunning,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  3,
 				Timestamp: wantTime,
-				Status:    "Failed",
+				Status:    worker.StatusFailed,
 			},
 		},
 	}
@@ -81,19 +81,19 @@ func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 				StepID:    stepID,
 				UpdateID:  1,
 				Timestamp: sampleTime,
-				Status:    "Scheduling",
+				Status:    worker.StatusScheduling,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  2,
 				Timestamp: sampleTime,
-				Status:    "Running",
+				Status:    worker.StatusRunning,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  3,
 				Timestamp: sampleTime,
-				Status:    "Failed",
+				Status:    worker.StatusFailed,
 			},
 		},
 	}
@@ -221,11 +221,11 @@ func TestStore_AddStatusUpdateSkipIfSameStatus(t *testing.T) {
 
 func TestStore_SubStatusUpdatesSendsAllOldStatuses(t *testing.T) {
 	updates1 := []StatusUpdate{
-		{StepID: 1, UpdateID: 1, Status: "Cancelled"},
+		{StepID: 1, UpdateID: 1, Status: worker.StatusCancelled},
 	}
 	updates2 := []StatusUpdate{
-		{StepID: 2, UpdateID: 1, Status: "Running"},
-		{StepID: 2, UpdateID: 2, Status: "Completed"},
+		{StepID: 2, UpdateID: 1, Status: worker.StatusRunning},
+		{StepID: 2, UpdateID: 2, Status: worker.StatusSuccess},
 	}
 	oldLists := map[string]StatusList{
 		filepath.Join("steps", "1", "status.json"): {
@@ -345,7 +345,7 @@ func TestStore_PubSubStatusUpdates(t *testing.T) {
 		want := StatusUpdate{
 			StepID:    stepID,
 			UpdateID:  1,
-			Status:    worker.StatusCancelled.String(),
+			Status:    worker.StatusCancelled,
 			Timestamp: sampleTime,
 		}
 		assert.Equal(t, want, got)

@@ -36,10 +36,10 @@ type StatusList struct {
 
 // StatusUpdate is an update to a status of a build step.
 type StatusUpdate struct {
-	StepID    uint64    `json:"-"`
-	UpdateID  uint64    `json:"updateId"`
-	Timestamp time.Time `json:"timestamp"`
-	Status    string    `json:"status"` // TODO: use worker.Status here
+	StepID    uint64        `json:"-"`
+	UpdateID  uint64        `json:"updateId"`
+	Timestamp time.Time     `json:"timestamp"`
+	Status    worker.Status `json:"status"`
 }
 
 // Store is the interface for storing build results and accessing them as they
