@@ -66,7 +66,9 @@ func benchmarkLogChan(b *testing.B, buffer int, line string) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		for range ch {
+		for logLine := range ch {
+			// read all, but do nothing with the values
+			_ = logLine
 		}
 		wg.Done()
 	}()
