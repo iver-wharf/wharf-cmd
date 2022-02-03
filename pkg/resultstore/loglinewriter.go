@@ -26,7 +26,7 @@ func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read log file to get last log ID: %w", err)
 	}
-	w.logID = lastLogID
+	w.lastLogID = lastLogID
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
 		return nil, err
@@ -35,13 +35,12 @@ func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 	return w, nil
 }
 
-func (s *store) listOpenLogWriters() []*logLineWriteCloser {
-	var writers []*logLineWriteCloser
-	s.logWritersOpened.Range(func(_, value interface{}) bool {
-		writers = append(writers, value.(*logLineWriteCloser))
-		return true
-	})
-	return writers
+func (s *store) getLogWriter(stepID uint64) (*logLineWriteCloser, bool) {
+	val, ok := s.logWritersOpened.Load(stepID)
+	if !ok {
+		return nil, false
+	}
+	return val.(*logLineWriteCloser), true
 }
 
 func (s *store) getLastLogLineID(stepID uint64) (uint64, error) {
@@ -64,7 +63,7 @@ func (s *store) getLastLogLineID(stepID uint64) (uint64, error) {
 
 type logLineWriteCloser struct {
 	stepID      uint64
-	logID       uint64
+	lastLogID   uint64
 	store       *store
 	writeCloser io.WriteCloser
 }
@@ -80,7 +79,7 @@ func (w *logLineWriteCloser) WriteLogLine(line string) error {
 	tim, msg := parseLogLine(sanitized)
 	w.store.pubLogLine(LogLine{
 		StepID:    w.stepID,
-		LogID:     atomic.AddUint64(&w.logID, 1),
+		LogID:     atomic.AddUint64(&w.lastLogID, 1),
 		Line:      msg,
 		Timestamp: tim,
 	})

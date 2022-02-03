@@ -1,6 +1,8 @@
 package resultstore
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"io/fs"
 	"testing"
@@ -157,6 +159,64 @@ func TestStore_PubSubLogLines(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("timeout")
 	}
+}
+
+func TestStore_SubAllLogLinesSendsNonNewlyWrittenLogs(t *testing.T) {
+	str := fmt.Sprintf(`%[1]s Foo bar 1
+%[1]s Moo doo 2
+%[1]s Faz 3
+%[1]s Baz 4
+%[1]s Boo 5
+%[1]s Foz 6
+%[1]s Roo 7
+%[1]s Goo 8
+`, sampleTimeStr)
+	s := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			if name != "steps" {
+				return nil, nil
+			}
+			return []fs.DirEntry{
+				newMockDirEntryDir("1"),
+			}, nil
+		},
+		openRead: func(string) (io.ReadCloser, error) {
+			return io.NopCloser(bytes.NewBufferString(str)), nil
+		},
+		openAppend: func(name string) (io.WriteCloser, error) {
+			return nopWriteCloser{}, nil
+		},
+	}).(*store)
+	const stepID uint64 = 1
+	const buffer = 10
+
+	_, err := s.OpenLogWriter(stepID)
+	require.NoError(t, err, "open writer")
+	w, _ := s.getLogWriter(stepID)
+	require.NotNil(t, w, "get writer")
+	w.lastLogID = 5
+
+	ch := subLogLinesNoErr(t, s, buffer)
+	require.NotNil(t, ch, "channel")
+
+	var logIDsRecieved []uint64
+	for len(logIDsRecieved) < 5 {
+		select {
+		case got, ok := <-ch:
+			require.True(t, ok, "received on channel")
+			logIDsRecieved = append(logIDsRecieved, got.LogID)
+		case <-time.After(time.Second):
+			t.Fatalf("timeout, received %d logs", len(logIDsRecieved))
+		}
+	}
+	select {
+	case got := <-ch:
+		t.Fatal("received too many logs, latest:", got)
+	default:
+		// OK
+	}
+	wantIDs := []uint64{1, 2, 3, 4, 5}
+	assert.Equal(t, wantIDs, logIDsRecieved, "log IDs received")
 }
 
 func subLogLinesNoErr(t *testing.T, s Store, buffer int) <-chan LogLine {

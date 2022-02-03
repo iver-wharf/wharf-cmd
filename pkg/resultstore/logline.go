@@ -31,8 +31,13 @@ func (s *store) openAllLogFilesForRead() ([]LogLineReadCloser, error) {
 	}
 	readers := make([]LogLineReadCloser, len(stepIDs))
 	for i, stepID := range stepIDs {
-		// TODO: make readers stop after last read log ID from when it started
 		r, err := s.OpenLogReader(stepID)
+		w, ok := s.getLogWriter(stepID)
+		if ok {
+			// Any additional logs that come in before this catching-up is done
+			// will get published via writers.
+			r.SetMaxLogID(w.lastLogID)
+		}
 		if err != nil {
 			return nil, fmt.Errorf("read logs for step %d: %w", stepID, err)
 		}
