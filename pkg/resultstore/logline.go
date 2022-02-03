@@ -14,17 +14,17 @@ var newLineBytes = []byte{'\n'}
 func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 	s.logSubMutex.Lock()
 	defer s.logSubMutex.Unlock()
-	readers, err := s.openAllLogFilesForRead()
+	readers, err := s.openAllLogReadersForCatchingUp()
 	if err != nil {
 		return nil, fmt.Errorf("open all log file handles: %w", err)
 	}
 	ch := make(chan LogLine, buffer)
 	s.logSubs = append(s.logSubs, ch)
-	go s.readAllLogsAndPubToChan(readers, ch)
+	go s.pubAllLogsToChanToCatchUp(readers, ch)
 	return ch, nil
 }
 
-func (s *store) openAllLogFilesForRead() ([]LogLineReadCloser, error) {
+func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 	stepIDs, err := s.listAllStepIDs()
 	if err != nil {
 		return nil, fmt.Errorf("list all steps: %w", err)
@@ -46,13 +46,13 @@ func (s *store) openAllLogFilesForRead() ([]LogLineReadCloser, error) {
 	return readers, nil
 }
 
-func (s *store) readAllLogsAndPubToChan(readers []LogLineReadCloser, ch chan<- LogLine) {
+func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, ch chan<- LogLine) {
 	for _, r := range readers {
-		go s.readLogsAndPubToChan(r, ch)
+		go s.pubLogsToChanToCatchUp(r, ch)
 	}
 }
 
-func (s *store) readLogsAndPubToChan(r LogLineReadCloser, ch chan<- LogLine) error {
+func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, ch chan<- LogLine) error {
 	defer r.Close()
 	for {
 		line, err := r.ReadLogLine()
