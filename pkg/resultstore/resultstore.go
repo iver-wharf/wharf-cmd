@@ -19,10 +19,12 @@ type LogLine struct {
 	Timestamp time.Time
 }
 
+// GoString implements fmt.Stringer
 func (log LogLine) String() string {
 	return fmt.Sprintf("%s %s", log.Timestamp.Format(time.RFC3339Nano), log.Line)
 }
 
+// GoString implements fmt.GoStringer
 func (log LogLine) GoString() string {
 	return fmt.Sprintf("(stepID: %d, logID: %d) \"%s %s\"", log.StepID, log.LogID, log.Timestamp.Format(time.RFC3339Nano), log.Line)
 }
