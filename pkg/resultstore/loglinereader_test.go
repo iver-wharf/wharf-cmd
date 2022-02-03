@@ -46,7 +46,8 @@ func TestLogLineReadCloser_ReadLastLogLine(t *testing.T) {
 %[1]s Boo 5
 %[1]s Foz 6
 %[1]s Roo 7
-%[1]s Goo 8`, sampleTimeStr))
+%[1]s Goo 8
+`, sampleTimeStr))
 	const stepID uint64 = 5
 	r := &logLineReadCloser{
 		stepID:  stepID,

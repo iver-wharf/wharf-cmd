@@ -16,12 +16,21 @@ func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
 	if alreadyOpen {
 		return nil, ErrLogWriterAlreadyOpen
 	}
+	var lastLogID uint64
+	r, err := s.OpenLogReader(stepID)
+	if err == nil {
+		lastLine, err := r.ReadLastLogLine()
+		if err == nil {
+			lastLogID = lastLine.LogID
+		}
+	}
 	// TODO: Read log file to see what logID should be set to
 	file, err := s.fs.OpenAppend(s.resolveLogPath(stepID))
 	if err != nil {
 		return nil, err
 	}
 	return &logLineWriteCloser{
+		logID:       lastLogID,
 		stepID:      stepID,
 		store:       s,
 		writeCloser: file,

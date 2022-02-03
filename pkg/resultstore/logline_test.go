@@ -2,6 +2,7 @@ package resultstore
 
 import (
 	"io"
+	"io/fs"
 	"testing"
 	"time"
 
@@ -115,6 +116,9 @@ func TestStore_UnsubLogLinesMiddle(t *testing.T) {
 
 func TestStore_PubSubLogLines(t *testing.T) {
 	s := NewStore(mockFS{
+		openRead: func(string) (io.ReadCloser, error) {
+			return nil, fs.ErrNotExist
+		},
 		openAppend: func(name string) (io.WriteCloser, error) {
 			return nopWriteCloser{}, nil
 		},

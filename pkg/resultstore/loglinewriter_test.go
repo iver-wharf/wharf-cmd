@@ -3,6 +3,7 @@ package resultstore
 import (
 	"bytes"
 	"io"
+	"io/fs"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -42,6 +43,9 @@ func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 
 func TestStore_OpenLogWriterCollision(t *testing.T) {
 	s := NewStore(mockFS{
+		openRead: func(string) (io.ReadCloser, error) {
+			return nil, fs.ErrNotExist
+		},
 		openAppend: func(name string) (io.WriteCloser, error) {
 			return nopWriteCloser{}, nil
 		},

@@ -100,6 +100,9 @@ type LogLineReadCloser interface {
 	// ReadLogLine will read the next log line in the file, or return io.EOF
 	// when the reader has reached the end of the file.
 	ReadLogLine() (LogLine, error)
+	// ReadLastLogLine will read the entire file and return the last log line
+	// in the file. Wil return io.EOF if the file is empty.
+	ReadLastLogLine() (LogLine, error)
 }
 
 // NewStore creates a new store using a given filesystem.
