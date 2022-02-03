@@ -36,7 +36,7 @@ type StatusList struct {
 
 // StatusUpdate is an update to a status of a build step.
 type StatusUpdate struct {
-	StepID    uint64    `json:"stepId"` // TODO: exclude from JSON
+	StepID    uint64    `json:"-"`
 	UpdateID  uint64    `json:"updateId"`
 	Timestamp time.Time `json:"timestamp"`
 	Status    string    `json:"status"` // TODO: use worker.Status here

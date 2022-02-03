@@ -21,19 +21,16 @@ func TestStore_ReadStatusUpdatesFile(t *testing.T) {
 {
 	"statusUpdates": [
 		{
-			"stepId": 1,
 			"updateId": 1,
 			"timestamp": "2021-05-15T09:01:15.0000Z",
 			"status": "Scheduling"
 		},
 		{
-			"stepId": 1,
 			"updateId": 2,
 			"timestamp": "2021-05-15T09:01:15.0000Z",
 			"status": "Running"
 		},
 		{
-			"stepId": 1,
 			"updateId": 3,
 			"timestamp": "2021-05-15T09:01:15.0000Z",
 			"status": "Failed"
@@ -113,19 +110,16 @@ func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 	"lastId": 3,
 	"statusUpdates": [
 		{
-			"stepId": 1,
 			"updateId": 1,
 			"timestamp": "%[1]s",
 			"status": "Scheduling"
 		},
 		{
-			"stepId": 1,
 			"updateId": 2,
 			"timestamp": "%[1]s",
 			"status": "Running"
 		},
 		{
-			"stepId": 1,
 			"updateId": 3,
 			"timestamp": "%[1]s",
 			"status": "Failed"
@@ -153,7 +147,6 @@ func TestStore_AddStatusUpdateFirst(t *testing.T) {
 	"lastId": 1,
 	"statusUpdates": [
 		{
-			"stepId": 1,
 			"updateId": 1,
 			"timestamp": "%s",
 			"status": "Cancelled"
@@ -168,7 +161,6 @@ func TestStore_AddStatusUpdateSecond(t *testing.T) {
 	"lastId": 5,
 	"statusUpdates": [
 		{
-			"stepId": 1,
 			"updateId": 1,
 			"timestamp": "%s",
 			"status": "Scheduling"
@@ -191,13 +183,11 @@ func TestStore_AddStatusUpdateSecond(t *testing.T) {
 	"lastId": 6,
 	"statusUpdates": [
 		{
-			"stepId": 1,
 			"updateId": 1,
 			"timestamp": "%[1]s",
 			"status": "Scheduling"
 		},
 		{
-			"stepId": 1,
 			"updateId": 6,
 			"timestamp": "%[1]s",
 			"status": "Cancelled"
@@ -211,7 +201,6 @@ func TestStore_AddStatusUpdateSkipIfSameStatus(t *testing.T) {
 	content := `{
 	"statusUpdates": [
 		{
-			"stepId": 1,
 			"updateId": 1,
 			"timestamp": "2021-05-15T09:01:15Z",
 			"status": "Cancelled"
