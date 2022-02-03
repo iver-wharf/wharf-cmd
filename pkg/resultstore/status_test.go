@@ -228,16 +228,16 @@ func TestStore_SubStatusUpdatesSendsAllOldStatuses(t *testing.T) {
 		{StepID: 2, UpdateID: 2, Status: worker.StatusSuccess},
 	}
 	oldLists := map[string]StatusList{
-		filepath.Join("steps", "1", "status.json"): {
+		filepath.Join(dirNameSteps, "1", fileNameStatusUpdates): {
 			StatusUpdates: updates1,
 		},
-		filepath.Join("steps", "2", "status.json"): {
+		filepath.Join(dirNameSteps, "2", fileNameStatusUpdates): {
 			StatusUpdates: updates2,
 		},
 	}
 	s := NewStore(mockFS{
 		listDirEntries: func(name string) ([]fs.DirEntry, error) {
-			if name != "steps" {
+			if name != dirNameSteps {
 				return nil, errors.New("wrong dir")
 			}
 			return []fs.DirEntry{

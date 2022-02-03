@@ -30,8 +30,8 @@ func TestLogLineReadCloser_ReadLogLine(t *testing.T) {
 	assert.ErrorIs(t, err, io.EOF, fmt.Sprintf("unexpected result: %v", logLineUnwanted))
 
 	want := []LogLine{
-		{StepID: stepID, LogID: 1, Line: "Foo bar", Timestamp: sampleTime},
-		{StepID: stepID, LogID: 2, Line: "Moo doo", Timestamp: sampleTime},
+		{StepID: stepID, LogID: 1, Message: "Foo bar", Timestamp: sampleTime},
+		{StepID: stepID, LogID: 2, Message: "Moo doo", Timestamp: sampleTime},
 	}
 	got := []LogLine{logLine1, logLine2}
 	assert.Equal(t, want, got)
@@ -60,7 +60,7 @@ func TestLogLineReadCloser_ReadLastLogLine(t *testing.T) {
 	want := LogLine{
 		StepID:    stepID,
 		LogID:     8,
-		Line:      "Goo 8",
+		Message:   "Goo 8",
 		Timestamp: sampleTime,
 	}
 	assert.Equal(t, want, lastLine)
@@ -89,7 +89,7 @@ func TestLogLineReadCloser_ReadUntilMaxLogID(t *testing.T) {
 	want := LogLine{
 		StepID:    stepID,
 		LogID:     5,
-		Line:      "Boo 5",
+		Message:   "Boo 5",
 		Timestamp: sampleTime,
 	}
 	assert.Equal(t, want, lastLine)

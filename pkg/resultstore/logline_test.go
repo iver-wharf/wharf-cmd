@@ -152,7 +152,7 @@ func TestStore_PubSubLogLines(t *testing.T) {
 		want := LogLine{
 			StepID:    stepID,
 			LogID:     1,
-			Line:      "Hello there",
+			Message:   "Hello there",
 			Timestamp: sampleTime,
 		}
 		assert.Equal(t, want, got)
@@ -173,7 +173,7 @@ func TestStore_SubAllLogLinesSendsNonNewlyWrittenLogs(t *testing.T) {
 `, sampleTimeStr)
 	s := NewStore(mockFS{
 		listDirEntries: func(name string) ([]fs.DirEntry, error) {
-			if name != "steps" {
+			if name != dirNameSteps {
 				return nil, nil
 			}
 			return []fs.DirEntry{

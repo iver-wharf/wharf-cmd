@@ -11,6 +11,10 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 )
 
+var (
+	fileNameStatusUpdates = "status.json"
+)
+
 func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error {
 	s.statusMutex.Lock(stepID)
 	defer s.statusMutex.Unlock(stepID)
@@ -72,7 +76,7 @@ func (s *store) writeStatusUpdatesFile(stepID uint64, list StatusList) error {
 }
 
 func (s *store) resolveStatusPath(stepID uint64) string {
-	return filepath.Join("steps", fmt.Sprint(stepID), "status.json")
+	return filepath.Join(dirNameSteps, fmt.Sprint(stepID), fileNameStatusUpdates)
 }
 
 func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {

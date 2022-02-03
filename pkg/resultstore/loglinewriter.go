@@ -76,13 +76,8 @@ func (w *logLineWriteCloser) WriteLogLine(line string) error {
 	if _, err := w.writeCloser.Write(newLineBytes); err != nil {
 		return err
 	}
-	tim, msg := parseLogLine(sanitized)
-	w.store.pubLogLine(LogLine{
-		StepID:    w.stepID,
-		LogID:     atomic.AddUint64(&w.lastLogID, 1),
-		Line:      msg,
-		Timestamp: tim,
-	})
+	logID := atomic.AddUint64(&w.lastLogID, 1)
+	w.store.parseAndPubLogLine(w.stepID, logID, sanitized)
 	return nil
 }
 

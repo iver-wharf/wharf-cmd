@@ -57,7 +57,7 @@ func TestStore_ListAllStepIDs(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			s := NewStore(mockFS{
 				listDirEntries: func(name string) ([]fs.DirEntry, error) {
-					if name != "steps" {
+					if name != dirNameSteps {
 						return nil, errors.New("wrong dir")
 					}
 					var dirEntries []fs.DirEntry

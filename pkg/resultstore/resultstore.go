@@ -10,23 +10,27 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 )
 
+var (
+	dirNameSteps = "steps"
+)
+
 // LogLine is a single log line with metadata about its timestamp, ID, and what
 // step it belongs to.
 type LogLine struct {
 	StepID    uint64
 	LogID     uint64
-	Line      string
+	Message   string
 	Timestamp time.Time
 }
 
 // GoString implements fmt.Stringer
 func (log LogLine) String() string {
-	return fmt.Sprintf("%s %s", log.Timestamp.Format(time.RFC3339Nano), log.Line)
+	return fmt.Sprintf("%s %s", log.Timestamp.Format(time.RFC3339Nano), log.Message)
 }
 
 // GoString implements fmt.GoStringer
 func (log LogLine) GoString() string {
-	return fmt.Sprintf("(stepID: %d, logID: %d) \"%s %s\"", log.StepID, log.LogID, log.Timestamp.Format(time.RFC3339Nano), log.Line)
+	return fmt.Sprintf("(stepID: %d, logID: %d) \"%s %s\"", log.StepID, log.LogID, log.Timestamp.Format(time.RFC3339Nano), log.Message)
 }
 
 // StatusList is a list of status updates. This is the data structure that is
@@ -129,7 +133,7 @@ type store struct {
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {
-	entries, err := s.fs.ListDirEntries("steps")
+	entries, err := s.fs.ListDirEntries(dirNameSteps)
 	if err != nil {
 		return nil, err
 	}

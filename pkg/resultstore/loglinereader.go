@@ -42,7 +42,7 @@ func (r *logLineReadCloser) parseLogLine(text string) LogLine {
 	return LogLine{
 		StepID:    r.stepID,
 		LogID:     r.nextLogID,
-		Line:      msg,
+		Message:   msg,
 		Timestamp: tim,
 	}
 }

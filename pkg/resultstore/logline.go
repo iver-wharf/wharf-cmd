@@ -9,7 +9,14 @@ import (
 	"time"
 )
 
-var newLineBytes = []byte{'\n'}
+var (
+	newLineBytes    = []byte{'\n'}
+	logLineReplacer = strings.NewReplacer(
+		"\n", `\n`,
+		"\r", `\r`,
+	)
+	fileNameLogs = "logs.log"
+)
 
 func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 	s.logSubMutex.Lock()
@@ -83,11 +90,22 @@ func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) bool {
 }
 
 func (s *store) resolveLogPath(stepID uint64) string {
-	return filepath.Join("steps", fmt.Sprint(stepID), "logs.log")
+	return filepath.Join(dirNameSteps, fmt.Sprint(stepID), fileNameLogs)
 }
 
-func (s *store) pubLogLine(logLine LogLine) {
+func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) {
 	s.logSubMutex.RLock()
+	if len(s.logSubs) == 0 {
+		s.logSubMutex.RUnlock()
+		return
+	}
+	tim, msg := parseLogLine(line)
+	logLine := LogLine{
+		StepID:    stepID,
+		LogID:     logID,
+		Message:   msg,
+		Timestamp: tim,
+	}
 	for _, ch := range s.logSubs {
 		ch <- logLine
 	}
@@ -107,11 +125,6 @@ func parseLogLine(line string) (time.Time, string) {
 	message := line[index+1:]
 	return t, message
 }
-
-var logLineReplacer = strings.NewReplacer(
-	"\n", `\n`,
-	"\r", `\r`,
-)
 
 func sanitizeLogLine(line string) string {
 	return logLineReplacer.Replace(line)
