@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -27,10 +28,8 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	}
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: fmt.Sprintf("wharf-build-%s-%s-",
-				strings.ToLower(step.Type.StepTypeName()),
-				strings.ToLower(step.Name)),
-			Annotations: annotations,
+			GenerateName: getPodGenerateName(step),
+			Annotations:  annotations,
 			Labels: map[string]string{
 				"wharf.iver.com/build": "true",
 			},
@@ -77,6 +76,37 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 			},
 		},
 	}, nil
+}
+
+func getPodGenerateName(step wharfyml.Step) string {
+	name := fmt.Sprintf("wharf-build-%s-%s-",
+		sanitizePodName(step.Type.StepTypeName()),
+		sanitizePodName(step.Name))
+	// Kubernetes API will respond with error if the GenerateName is too long.
+	// We trim it here to less than the 253 char limit as 253 is an excessive
+	// name length.
+	const maxLen = 42 // jokes aside, 42 is actually a great maximum name length
+	// For reference, this is what a 42-long name looks like:
+	// wharf-build-container-some-long-step-name-
+	if len(name) > maxLen {
+		name = name[:maxLen-1] + "-"
+	}
+	return name
+}
+
+var regexInvalidDNSSubdomainChars = regexp.MustCompile(`[^a-z0-9-]`)
+
+func sanitizePodName(name string) string {
+	// Pods names must be valid DNS Subdomain names (IETF RFC-1123), meaning:
+	// - max 253 chars long
+	// - only lowercase alphanumeric or '-'
+	// - must start and end with alphanumeric char
+	// https://kubernetes.io/docs/concepts/workloads/pods/#working-with-pods
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#dns-subdomain-names
+	name = strings.ToLower(name)
+	name = regexInvalidDNSSubdomainChars.ReplaceAllLiteralString(name, "-")
+	name = strings.Trim(name, "-")
+	return name
 }
 
 func getPodImage(step wharfyml.Step) (string, error) {
