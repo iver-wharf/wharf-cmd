@@ -41,6 +41,22 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 
+- Changed location of packages and code files: (#44)
+
+  - File `pkg/core/utils/variablesreplacer.go` to its own package in `pkg/varsub`
+  - Package `pkg/core/wharfyml` to `pkg/wharfyml`
+
+- Removed packages: (#44)
+
+  - `pkg/core/buildclient`
+  - `pkg/core/containercreator`
+  - `pkg/core/kubernetes`
+  - `pkg/core/utils`
+  - `pkg/namespace`
+  - `pkg/run`
+
+- Removed `containercreator` references from `pkg/core/wharfyml`. (#44)
+
 ## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)
