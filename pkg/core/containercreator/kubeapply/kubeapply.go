@@ -2,7 +2,6 @@ package kubeapply
 
 import (
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/utils"
 	kubecore "k8s.io/api/core/v1"
 )
@@ -31,7 +30,6 @@ type containerCreator struct {
 	iverCertPath  string
 	variables     Variables
 	stageName     string
-	repo          map[git.EnvVar]string
 }
 
 func GetVolume(configMapName string) kubecore.Volume {
@@ -51,7 +49,6 @@ func NewContainerCreator(
 	imageName string,
 	variables Variables,
 	stageName string,
-	repo map[git.EnvVar]string,
 ) containercreator.ContainerCreator {
 
 	return containerCreator{
@@ -66,7 +63,6 @@ func NewContainerCreator(
 		},
 		variables: variables,
 		stageName: stageName,
-		repo:      repo,
 	}
 }
 

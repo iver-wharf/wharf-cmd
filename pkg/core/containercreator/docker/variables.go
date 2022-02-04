@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/kaniko"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/utils"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -104,8 +103,6 @@ func (v Variables) getStringValue(t ParamType, stageName string, secret string, 
 		imageTags := v.getStringValue(ImageTags, stageName, secret, builtinVars)
 		destinations := v.getStringValue(ImageDestination, stageName, secret, builtinVars)
 		return getDestinations(imageTags, destinations)
-	case GitRepoSrc:
-		return git.RepoDest
 	}
 
 	return ""

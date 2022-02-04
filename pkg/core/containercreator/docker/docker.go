@@ -2,7 +2,6 @@ package docker
 
 import (
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/git"
 	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/utils"
 	kubecore "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -30,7 +29,6 @@ type containerCreator struct {
 	variables     Variables
 	stageName     string
 	secret        string
-	repo          map[git.EnvVar]string
 	builtinVars   map[containercreator.BuiltinVar]string
 }
 
@@ -42,7 +40,6 @@ func NewContainerCreator(
 	variables Variables,
 	stageName string,
 	secret string,
-	repo map[git.EnvVar]string,
 	builtinVars map[containercreator.BuiltinVar]string) containercreator.ContainerCreator {
 
 	return containerCreator{
@@ -54,7 +51,6 @@ func NewContainerCreator(
 		variables:     variables,
 		stageName:     stageName,
 		secret:        secret,
-		repo:          repo,
 		builtinVars:   builtinVars,
 	}
 }
