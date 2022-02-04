@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"sigs.k8s.io/yaml"
 )
@@ -60,13 +59,13 @@ func (b BuildDefinition) GetStageWithReplacement(stageName string, environmentNa
 	return stage, nil
 }
 
-func Parse(path string, builtinVars map[containercreator.BuiltinVar]string) (BuildDefinition, error) {
+func Parse(path string) (BuildDefinition, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return BuildDefinition{}, err
 	}
 
-	after := varsub.ReplaceVariables(string(data), containercreator.ConvertToParams(builtinVars))
+	after := varsub.ReplaceVariables(string(data), map[string]interface{}{})
 
 	return parseContent(after)
 }
