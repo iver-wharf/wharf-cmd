@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/utils"
+	"github.com/iver-wharf/wharf-cmd/pkg/containercreator/utils"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 

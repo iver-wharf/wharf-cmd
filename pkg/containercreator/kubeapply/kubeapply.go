@@ -1,8 +1,8 @@
 package kubeapply
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator/utils"
+	"github.com/iver-wharf/wharf-cmd/pkg/containercreator"
+	"github.com/iver-wharf/wharf-cmd/pkg/containercreator/utils"
 	kubecore "k8s.io/api/core/v1"
 )
 
