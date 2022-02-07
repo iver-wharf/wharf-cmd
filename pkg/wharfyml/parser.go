@@ -63,7 +63,7 @@ func parse(reader io.Reader) (def Definition, errSlice []error) {
 	// TODO: second pass to validate environment usage:
 	// - error on unused environment
 	// - error on use of undeclared environment
-	return def, errs
+	return
 }
 
 func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {

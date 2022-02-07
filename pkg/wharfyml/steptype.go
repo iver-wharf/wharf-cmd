@@ -79,7 +79,11 @@ func parseStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
 		docker := DefaultStepDocker
 		err = yamlUnmarshalNodeWithValidator(node, &docker)
 		stepType = docker
-	case "helm", "helm-package", "kubectl", "nuget-package":
+	case "helm-package":
+		helmPackage := DefaultStepHelmPackage
+		err = yamlUnmarshalNodeWithValidator(node, &helmPackage)
+		stepType = helmPackage
+	case "helm", "kubectl", "nuget-package":
 		return nil, errors.New("not yet implemented")
 	default:
 		return nil, wrapParseErrNode(ErrStepTypeUnknown, key)
@@ -164,9 +168,21 @@ type StepHelm struct{}
 
 func (StepHelm) StepTypeName() string { return "helm" }
 
-type StepHelmPackage struct{}
+type StepHelmPackage struct {
+	Version     string `yaml:"version"`
+	ChartPath   string `yaml:"chart-path"`
+	Destination string `yaml:"destination"`
+}
+
+var DefaultStepHelmPackage = StepHelmPackage{
+	Destination: "", // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
+}
 
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
+
+func (s StepHelmPackage) Validate() (errSlice []error) {
+	return
+}
 
 type StepKubectl struct{}
 

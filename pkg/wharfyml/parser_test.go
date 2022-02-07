@@ -135,15 +135,6 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 	requireContainsErr(t, errs, ErrKeyNotString)
 }
 
-func TestParser_ErrIfNoStages(t *testing.T) {
-	_, errs := Parse2(strings.NewReader(`
-environments:
-  foo:
-    var: 123
-`))
-	requireContainsErr(t, errs, ErrMissingStages)
-}
-
 // TODO: Test the following:
 // - error on unused environment
 // - error on use of undeclared environment

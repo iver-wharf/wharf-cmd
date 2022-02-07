@@ -37,7 +37,8 @@ myStage:
 func TestParseStep_Name(t *testing.T) {
 	def, errs := Parse2(strings.NewReader(`
 myStage:
-  myStep: {}
+  myStep:
+    helm-package: {}
 `))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
