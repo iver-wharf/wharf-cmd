@@ -55,6 +55,7 @@ func ParseStepType(name string) StepType {
 
 type StepType2 interface {
 	StepTypeName() string
+	Validate() []error
 }
 
 func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, []error) {
@@ -62,8 +63,7 @@ func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, []error) {
 	if err != nil {
 		return nil, []error{err}
 	}
-	// TODO: validate step type
-	return stepType, nil
+	return stepType, stepType.Validate()
 }
 
 func parseStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
@@ -72,11 +72,11 @@ func parseStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
 	switch key.Value {
 	case "container":
 		container := DefaultStepContainer
-		err = yamlUnmarshalNode(node, &container)
+		err = yamlUnmarshalNodeWithValidator(node, &container)
 		stepType = container
 	case "docker":
 		docker := DefaultStepDocker
-		err = yamlUnmarshalNode(node, &docker)
+		err = yamlUnmarshalNodeWithValidator(node, &docker)
 		stepType = docker
 	case "helm", "helm-package", "kubectl", "nuget-package":
 		return nil, errors.New("not yet implemented")
@@ -89,7 +89,7 @@ func parseStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
 	return stepType, nil
 }
 
-func yamlUnmarshalNode(node ast.Node, valuePtr interface{}) error {
+func yamlUnmarshalNodeWithValidator(node ast.Node, valuePtr interface{}) error {
 	var buf bytes.Buffer
 	return yaml.NewDecoder(&buf).DecodeFromNode(node, valuePtr)
 }
@@ -112,6 +112,16 @@ var DefaultStepContainer = StepContainer{
 }
 
 func (StepContainer) StepTypeName() string { return "container" }
+
+func (s StepContainer) Validate() (errSlice []error) {
+	if s.Image == "" {
+		errSlice = append(errSlice, fmt.Errorf("%w: image", ErrStepTypeMissingRequired))
+	}
+	if len(s.Cmds) == 0 {
+		errSlice = append(errSlice, fmt.Errorf("%w: cmds", ErrStepTypeMissingRequired))
+	}
+	return
+}
 
 type StepDocker struct {
 	File string `yaml:"file"`
@@ -138,6 +148,16 @@ var DefaultStepDocker = StepDocker{
 }
 
 func (StepDocker) StepTypeName() string { return "docker" }
+
+func (s StepDocker) Validate() (errSlice []error) {
+	if s.File == "" {
+		errSlice = append(errSlice, fmt.Errorf("%w: file", ErrStepTypeMissingRequired))
+	}
+	if s.Tag == "" {
+		errSlice = append(errSlice, fmt.Errorf("%w: tag", ErrStepTypeMissingRequired))
+	}
+	return
+}
 
 type StepHelm struct{}
 
