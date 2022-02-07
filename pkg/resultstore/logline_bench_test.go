@@ -27,7 +27,7 @@ func BenchmarkLogChanShort100(b *testing.B) {
 	benchmarkLogChan(b, buffer, sampleShortLogLine)
 }
 
-func BenchmarkLogChanShort1000(b *testing.B) {
+func BenchmarkLogChanShort10000(b *testing.B) {
 	const buffer = 10000
 	benchmarkLogChan(b, buffer, sampleShortLogLine)
 }
@@ -47,7 +47,7 @@ func BenchmarkLogChanLong100(b *testing.B) {
 	benchmarkLogChan(b, buffer, sampleLongLogLine)
 }
 
-func BenchmarkLogChanLong1000(b *testing.B) {
+func BenchmarkLogChanLong10000(b *testing.B) {
 	const buffer = 10000
 	benchmarkLogChan(b, buffer, sampleLongLogLine)
 }
