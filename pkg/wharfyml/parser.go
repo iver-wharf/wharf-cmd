@@ -43,65 +43,93 @@ func Parse2(reader io.Reader) (Definition, []error) {
 }
 
 func parse(reader io.Reader) (def Definition, errSlice []error) {
-	bytes, err := io.ReadAll(reader)
+	doc, err := parseFirstDocAsDocNode(reader)
+	if err != nil {
+		errSlice = append(errSlice, err)
+	}
+	if doc == nil {
+		return
+	}
+	nodes, err := docBodyAsNodes(doc.Body)
 	if err != nil {
 		errSlice = append(errSlice, err)
 		return
+	}
+	var errs []error
+	def, errs = parseDocNodes(nodes)
+	if len(errs) > 0 {
+		errSlice = append(errSlice, errs...)
+	}
+	// TODO: second pass to validate environment usage:
+	// - error on unused environment
+	// - error on use of undeclared environment
+	return def, errs
+}
+
+func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
+	bytes, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
 	}
 	file, err := parser.ParseBytes(bytes, parser.ParseComments)
 	if err != nil {
-		errSlice = append(errSlice, err)
-		return
+		return nil, err
 	}
 	if len(file.Docs) == 0 {
-		errSlice = append(errSlice, ErrMissingDoc)
-		return
+		return nil, ErrMissingDoc
 	}
+	doc := file.Docs[0]
 	if len(file.Docs) > 1 {
-		errSlice = append(errSlice, fmt.Errorf("documents: %d: %w", len(file.Docs), ErrTooManyDocs))
+		err := fmt.Errorf("documents: %d: %w", len(file.Docs), ErrTooManyDocs)
 		// Continue, but only parse the first doc
+		return doc, err
 	}
-	nodes, err := docBodyAsNodes(file.Docs[0].Body)
-	if err != nil {
-		errSlice = append(errSlice, err)
-		return
-	}
+	return doc, nil
+}
+
+func parseDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice []error) {
 	for _, n := range nodes {
 		key, err := parseDocMapKey(n.Key)
 		if err != nil {
 			errSlice = append(errSlice, fmt.Errorf("%q: %w", n.Key, err))
 			continue
 		}
-		switch key.Value {
-		case propEnvironments:
-			envs, errs := parseEnvironments(n.Value)
-			if len(errs) > 0 {
-				for i, err := range errs {
-					errs[i] = fmt.Errorf("environments: %w", err)
-				}
-				errSlice = append(errSlice, errs...)
-				continue
-			}
-			def.Envs = envs
-		case propInput:
-			// TODO: support inputs
-			errSlice = append(errSlice, errors.New("does not support input vars yet"))
-		default:
-			stage, errs := parseStage2(key, n.Value)
-			if len(errs) > 0 {
-				for i, err := range errs {
-					errs[i] = fmt.Errorf("stage %q: %w", key, err)
-				}
-				errSlice = append(errSlice, errs...)
-				continue
-			}
-			def.Stages = append(def.Stages, stage)
-		}
+		errs := parseDocNodeIntoDef(&def, key, n)
+		errSlice = append(errSlice, errs...)
 	}
-	// TODO: second pass to validate environment usage:
-	// - error on unused environment
-	// - error on use of undeclared environment
 	return
+}
+
+func parseDocNodeIntoDef(def *Definition, key *ast.StringNode, node *ast.MappingValueNode) []error {
+	var errSlice []error
+	switch key.Value {
+	case propEnvironments:
+		def.Envs, errSlice = parseDocEnvironmentsNode(node)
+	case propInput:
+		// TODO: support inputs
+		return []error{errors.New("does not support input vars yet")}
+	default:
+		stage, errs := parseDocStageNode(key, node)
+		def.Stages = append(def.Stages, stage)
+		errSlice = errs
+	}
+	return errSlice
+}
+
+func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, []error) {
+	envs, errs := parseEnvironments(node.Value)
+	for i, err := range errs {
+		errs[i] = fmt.Errorf("environments: %w", err)
+	}
+	return envs, errs
+}
+
+func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage, []error) {
+	stage, errs := parseStage2(key, node.Value)
+	for i, err := range errs {
+		errs[i] = fmt.Errorf("stage %q: %w", key, err)
+	}
+	return stage, errs
 }
 
 func parseDocMapKey(keyNode ast.Node) (*ast.StringNode, error) {
