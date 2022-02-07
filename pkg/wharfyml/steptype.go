@@ -63,6 +63,7 @@ func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, []error) {
 	if err != nil {
 		return nil, []error{err}
 	}
+	// TODO: unmarshal explicitly to keep node references in validation errors
 	return stepType, stepType.Validate()
 }
 
