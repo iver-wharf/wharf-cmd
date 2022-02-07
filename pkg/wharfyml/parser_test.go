@@ -1,6 +1,8 @@
 package wharfyml
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -18,14 +20,14 @@ func TestParse_PreservesStageOrder(t *testing.T) {
 			name: "A-B-C",
 			input: `
 A:
-	myStep:
-		helm-package: {}
+  myStep:
+    helm-package: {}
 B:
-	myStep:
-		helm-package: {}
+  myStep:
+    helm-package: {}
 C:
-	myStep:
-		helm-package: {}
+  myStep:
+    helm-package: {}
 `,
 			wantOrder: []string{"A", "B", "C"},
 		},
@@ -33,21 +35,21 @@ C:
 			name: "B-A-C",
 			input: `
 B:
-	myStep:
-		helm-package: {}
+  myStep:
+    helm-package: {}
 A:
-	myStep:
-		helm-package: {}
+  myStep:
+    helm-package: {}
 C:
-	myStep:
-		helm-package: {}
+  myStep:
+    helm-package: {}
 `,
 			wantOrder: []string{"B", "A", "C"},
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := parse(strings.NewReader(tc.input))
+			got, errs := Parse2(strings.NewReader(tc.input))
 			require.Empty(t, errs)
 			var gotOrder []string
 			for _, s := range got.Stages {
@@ -93,7 +95,7 @@ myStage:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := parse(strings.NewReader(tc.input))
+			got, errs := Parse2(strings.NewReader(tc.input))
 			require.Empty(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
@@ -105,21 +107,72 @@ myStage:
 	}
 }
 
+func TestParser_TooManyDocs(t *testing.T) {
+	_, errs := Parse2(strings.NewReader(`
+a: 1
+---
+b: 2
+---
+c: 3
+`))
+	requireContainsErr(t, errs, ErrTooManyDocs)
+}
+
+func TestParser_MissingDoc(t *testing.T) {
+	_, errs := Parse2(strings.NewReader(``))
+	requireContainsErr(t, errs, ErrMissingDoc)
+}
+
+func TestParser_ErrIfDocNotMap(t *testing.T) {
+	_, errs := Parse2(strings.NewReader(`123`))
+	requireContainsErr(t, errs, ErrDocNotMap)
+}
+
+func TestParser_ErrIfNonStringKey(t *testing.T) {
+	_, errs := Parse2(strings.NewReader(`
+123: {}
+`))
+	requireContainsErr(t, errs, ErrKeyNotString)
+}
+
+func TestParser_ErrIfNoStages(t *testing.T) {
+	_, errs := Parse2(strings.NewReader(`
+environments:
+  foo:
+    var: 123
+`))
+	requireContainsErr(t, errs, ErrMissingStages)
+}
+
 // TODO: Test the following:
-// - error on stage not YAML map
-// - error on step not YAML map
-// - error on step with multiple step types
-// - error on empty step
-// - error on missing required fields on a per-step-type basis
-// - error on missing required fields on a per-step-type basis
-// - error on empty stages
 // - error on unused environment
 // - error on use of undeclared environment
-// - error on invalid environment variable type
 // - error on invalid input variable def
 // - error on use of undeclared variable
 // - error on multiple YAML documents (sep by three dashes)
+// - can use aliases and anchors on stages
+// - can use aliases and anchors on steps
 //
 // TODO: Create issue on using https://pkg.go.dev/github.com/goccy/go-yaml
 // instead to be able to annotate errors with line numbers, to be able
 // to add a `wharf-cmd lint` option
+
+func requireContainsErr(t *testing.T, errs []error, err error) {
+	for _, e := range errs {
+		if errors.Is(e, err) {
+			return
+		}
+	}
+	t.Fatalf("\nexpected contains error: %q\nactual: (len=%d) %v",
+		err, len(errs), errs)
+}
+
+func requireContainsErrf(t *testing.T, errs []error, err error, format string, args ...interface{}) {
+	for _, e := range errs {
+		if errors.Is(e, err) {
+			return
+		}
+	}
+	t.Fatalf("\nexpected contains error: %q\nactual: (len=%d) %v\nmessage: %s",
+		err, len(errs), errs, fmt.Sprintf(format, args...))
+}

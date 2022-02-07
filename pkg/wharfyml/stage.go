@@ -1,6 +1,17 @@
 package wharfyml
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+
+	"github.com/goccy/go-yaml/ast"
+)
+
+var (
+	ErrStageNotMap    = errors.New("stage should be a YAML map")
+	ErrStageEmpty     = errors.New("stage is missing steps")
+	ErrStageEmptyName = errors.New("stage name cannot be empty")
+)
 
 type Stage struct {
 	Name         string
@@ -56,4 +67,22 @@ func parseStageEnvironments(content []interface{}) ([]string, error) {
 		envs = append(envs, str)
 	}
 	return envs, nil
+}
+
+// ----------------------------------------
+
+func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage, errSlice []error) {
+	if key.Value == "" {
+		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmptyName, key))
+		// Continue, its not a fatal issue
+	}
+	if node.Type() != ast.MappingType {
+		errSlice = append(errSlice, wrapParseErrNode(fmt.Errorf("stage type: %s: %w", node.Type(), ErrStageNotMap), node))
+		return
+	}
+	m := node.(*ast.MappingNode)
+	if len(m.Values) == 0 {
+		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmpty, node))
+	}
+	return
 }

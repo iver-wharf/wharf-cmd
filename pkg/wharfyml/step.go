@@ -1,7 +1,16 @@
 package wharfyml
 
 import (
+	"errors"
 	"fmt"
+
+	"gopkg.in/yaml.v2"
+)
+
+var (
+	ErrStepWithMultipleStepTypes = errors.New("step contains multiple step types")
+	ErrStepMissingStepType       = errors.New("step is missing a step type")
+	ErrStepTypeMissingRequired   = errors.New("step type is missing required field")
 )
 
 type Step struct {
@@ -23,4 +32,8 @@ func parseStep(name string, content map[string]interface{}) (Step, error) {
 	}
 
 	return Step{Name: name, Type: stepType, Variables: variables}, nil
+}
+
+func parseStep2(mapItem yaml.MapItem) (Step, []error) {
+	return Step{}, nil
 }

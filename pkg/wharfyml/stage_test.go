@@ -1,6 +1,7 @@
 package wharfyml
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,4 +21,27 @@ func TestParseStageEnvironmentsFails(t *testing.T) {
 
 	_, err := parseStageEnvironments(content)
 	require.NotNil(t, err)
+}
+
+// -------------
+
+func TestParseStage_ErrIfNotMap(t *testing.T) {
+	_, errs := parse(strings.NewReader(`
+myStage: 123
+`))
+	requireContainsErr(t, errs, ErrStageNotMap)
+}
+
+func TestParseStage_ErrIfEmptyKey(t *testing.T) {
+	_, errs := parse(strings.NewReader(`
+"": {}
+`))
+	requireContainsErr(t, errs, ErrStageEmptyName)
+}
+
+func TestParseStage_ErrIfEmptyMap(t *testing.T) {
+	_, errs := parse(strings.NewReader(`
+myStage: {}
+`))
+	requireContainsErr(t, errs, ErrStageEmpty)
 }
