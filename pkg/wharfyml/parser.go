@@ -94,13 +94,13 @@ func parseDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice []er
 			errSlice = append(errSlice, fmt.Errorf("%q: %w", n.Key, err))
 			continue
 		}
-		errs := parseDocNodeIntoDef(&def, key, n)
+		errs := parseDocNodeIntoDefinition(&def, key, n)
 		errSlice = append(errSlice, errs...)
 	}
 	return
 }
 
-func parseDocNodeIntoDef(def *Definition, key *ast.StringNode, node *ast.MappingValueNode) []error {
+func parseDocNodeIntoDefinition(def *Definition, key *ast.StringNode, node *ast.MappingValueNode) []error {
 	var errSlice []error
 	switch key.Value {
 	case propEnvironments:
