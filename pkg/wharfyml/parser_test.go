@@ -2,7 +2,6 @@ package wharfyml
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -118,6 +117,14 @@ c: 3
 	requireContainsErr(t, errs, ErrTooManyDocs)
 }
 
+func TestParser_OneDocWithDocSeparator(t *testing.T) {
+	_, errs := Parse2(strings.NewReader(`
+---
+c: 3
+`))
+	requireNotContainsErr(t, errs, ErrTooManyDocs)
+}
+
 func TestParser_MissingDoc(t *testing.T) {
 	_, errs := Parse2(strings.NewReader(``))
 	requireContainsErr(t, errs, ErrMissingDoc)
@@ -158,12 +165,12 @@ func requireContainsErr(t *testing.T, errs []error, err error) {
 		err, len(errs), errs)
 }
 
-func requireContainsErrf(t *testing.T, errs []error, err error, format string, args ...interface{}) {
-	for _, e := range errs {
+func requireNotContainsErr(t *testing.T, errs []error, err error) {
+	for i, e := range errs {
 		if errors.Is(e, err) {
+			t.Fatalf("\nexpected not to contain error: %q\nfound at index=%d\nactual: (len=%d) %v",
+				err, i, len(errs), errs)
 			return
 		}
 	}
-	t.Fatalf("\nexpected contains error: %q\nactual: (len=%d) %v\nmessage: %s",
-		err, len(errs), errs, fmt.Sprintf(format, args...))
 }
