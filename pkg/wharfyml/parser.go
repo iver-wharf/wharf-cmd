@@ -89,7 +89,7 @@ func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
 
 func parseDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice []error) {
 	for _, n := range nodes {
-		key, err := parseDocMapKey(n.Key)
+		key, err := parseMapKey(n.Key)
 		if err != nil {
 			errSlice = append(errSlice, fmt.Errorf("%q: %w", n.Key, err))
 			continue
@@ -117,7 +117,7 @@ func parseDocNodeIntoDefinition(def *Definition, key *ast.StringNode, node *ast.
 }
 
 func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, []error) {
-	envs, errs := parseEnvironments(node.Value)
+	envs, errs := parseDefEnvironments(node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("environments: %w", err)
 	}
@@ -127,12 +127,12 @@ func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, []err
 func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage, []error) {
 	stage, errs := parseStage2(key, node.Value)
 	for i, err := range errs {
-		errs[i] = fmt.Errorf("stage %q: %w", key, err)
+		errs[i] = fmt.Errorf("stage %q: %w", key.Value, err)
 	}
 	return stage, errs
 }
 
-func parseDocMapKey(keyNode ast.Node) (*ast.StringNode, error) {
+func parseMapKey(keyNode ast.Node) (*ast.StringNode, error) {
 	switch key := keyNode.(type) {
 	case *ast.StringNode:
 		return key, nil
@@ -142,12 +142,20 @@ func parseDocMapKey(keyNode ast.Node) (*ast.StringNode, error) {
 }
 
 func docBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
-	switch b := body.(type) {
-	case *ast.MappingValueNode:
-		return []*ast.MappingValueNode{b}, nil
-	case *ast.MappingNode:
-		return b.Values, nil
-	default:
+	n, ok := getMappingValueNodes(body)
+	if !ok {
 		return nil, wrapParseErrNode(fmt.Errorf("document type: %s: %w", body.Type(), ErrDocNotMap), body)
+	}
+	return n, nil
+}
+
+func getMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, bool) {
+	switch n := node.(type) {
+	case *ast.MappingValueNode:
+		return []*ast.MappingValueNode{n}, true
+	case *ast.MappingNode:
+		return n.Values, true
+	default:
+		return nil, false
 	}
 }

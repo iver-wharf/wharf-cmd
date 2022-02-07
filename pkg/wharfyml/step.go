@@ -4,13 +4,15 @@ import (
 	"errors"
 	"fmt"
 
-	"gopkg.in/yaml.v2"
+	"github.com/goccy/go-yaml/ast"
 )
 
 var (
-	ErrStepWithMultipleStepTypes = errors.New("step contains multiple step types")
-	ErrStepMissingStepType       = errors.New("step is missing a step type")
-	ErrStepTypeMissingRequired   = errors.New("step type is missing required field")
+	ErrStepNotMap              = errors.New("step should be a YAML map")
+	ErrStepEmpty               = errors.New("missing a step type")
+	ErrStepMultipleStepTypes   = errors.New("contains multiple step types")
+	ErrStepTypeInvalidField    = errors.New("invalid field type")
+	ErrStepTypeMissingRequired = errors.New("missing required field")
 )
 
 type Step struct {
@@ -34,6 +36,8 @@ func parseStep(name string, content map[string]interface{}) (Step, error) {
 	return Step{Name: name, Type: stepType, Variables: variables}, nil
 }
 
-func parseStep2(mapItem yaml.MapItem) (Step, []error) {
+// -------------------
+
+func parseStep2(key *ast.StringNode, node *ast.MappingValueNode) (Step, []error) {
 	return Step{}, nil
 }

@@ -72,17 +72,65 @@ func parseStageEnvironments(content []interface{}) ([]string, error) {
 // ----------------------------------------
 
 func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage, errSlice []error) {
+	stage.Name = key.Value
 	if key.Value == "" {
 		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmptyName, key))
 		// Continue, its not a fatal issue
 	}
-	if node.Type() != ast.MappingType {
-		errSlice = append(errSlice, wrapParseErrNode(fmt.Errorf("stage type: %s: %w", node.Type(), ErrStageNotMap), node))
+	nodes, err := stageBodyAsNodes(node)
+	if err != nil {
+		errSlice = append(errSlice, err)
 		return
 	}
-	m := node.(*ast.MappingNode)
-	if len(m.Values) == 0 {
+	if len(nodes) == 0 {
 		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmpty, node))
+		return
+	}
+	for _, stepNode := range nodes {
+		key, err := parseMapKey(stepNode.Key)
+		if err != nil {
+			errSlice = append(errSlice, err)
+			continue
+		}
+		errs := parseStepNodeIntoStage(&stage, key, stepNode)
+		errSlice = append(errSlice, errs...)
 	}
 	return
+}
+
+func parseStepNodeIntoStage(stage *Stage, key *ast.StringNode, node *ast.MappingValueNode) []error {
+	var errSlice []error
+	switch key.Value {
+	case propEnvironments:
+		stage.Environments, errSlice = parseStageEnvironmentsNode(node)
+	default:
+		step, errs := parseStageStepNode(key, node)
+		stage.Steps = append(stage.Steps, step)
+		errSlice = errs
+	}
+	return errSlice
+}
+
+func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, []error) {
+	envs, errs := parseStageEnvironments2(node.Value)
+	for i, err := range errs {
+		errs[i] = fmt.Errorf("environments: %w", err)
+	}
+	return envs, errs
+}
+
+func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, []error) {
+	step, errs := parseStep2(key, node)
+	for i, err := range errs {
+		errs[i] = fmt.Errorf("step %q: %w", key.Value, err)
+	}
+	return step, errs
+}
+
+func stageBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
+	n, ok := getMappingValueNodes(body)
+	if !ok {
+		return nil, wrapParseErrNode(fmt.Errorf("document type: %s: %w", body.Type(), ErrDocNotMap), body)
+	}
+	return n, nil
 }
