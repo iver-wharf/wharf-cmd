@@ -45,3 +45,14 @@ myStage: {}
 `))
 	requireContainsErr(t, errs, ErrStageEmpty)
 }
+
+func TestParseStage_Name(t *testing.T) {
+	def, errs := parse(strings.NewReader(`
+myStage: {}
+`))
+	if len(errs) > 0 {
+		t.Logf("errs: %v", errs)
+	}
+	require.NotEmpty(t, def.Stages)
+	assert.Equal(t, "myStage", def.Stages[0].Name)
+}

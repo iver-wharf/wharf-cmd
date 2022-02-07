@@ -120,7 +120,7 @@ func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, []error) 
 }
 
 func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, []error) {
-	step, errs := parseStep2(key, node)
+	step, errs := parseStep2(key, node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("step %q: %w", key.Value, err)
 	}
@@ -130,7 +130,7 @@ func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, 
 func stageBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	n, ok := getMappingValueNodes(body)
 	if !ok {
-		return nil, wrapParseErrNode(fmt.Errorf("document type: %s: %w", body.Type(), ErrDocNotMap), body)
+		return nil, wrapParseErrNode(fmt.Errorf("stage type: %s: %w", body.Type(), ErrStageNotMap), body)
 	}
 	return n, nil
 }

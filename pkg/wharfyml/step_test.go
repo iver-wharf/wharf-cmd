@@ -3,6 +3,9 @@ package wharfyml
 import (
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseStep_ErrIfNotMap(t *testing.T) {
@@ -48,4 +51,17 @@ myStage:
     container: {} # cmds and image are required
 `))
 	requireContainsErr(t, errs, ErrStepTypeMissingRequired)
+}
+
+func TestParseStep_Name(t *testing.T) {
+	def, errs := parse(strings.NewReader(`
+myStage:
+  myStep: {}
+`))
+	if len(errs) > 0 {
+		t.Logf("errs: %v", errs)
+	}
+	require.NotEmpty(t, def.Stages)
+	require.NotEmpty(t, def.Stages[0].Steps)
+	assert.Equal(t, "myStep", def.Stages[0].Steps[0].Name)
 }
