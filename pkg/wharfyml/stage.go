@@ -71,7 +71,13 @@ func parseStageEnvironments(content []interface{}) ([]string, error) {
 
 // ----------------------------------------
 
-func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage, errSlice []error) {
+type Stage2 struct {
+	Name         string
+	Environments []string
+	Steps        []Step2
+}
+
+func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice []error) {
 	stage.Name = key.Value
 	if key.Value == "" {
 		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmptyName, key))
@@ -98,7 +104,7 @@ func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage, errSlice []er
 	return
 }
 
-func parseStepNodeIntoStage(stage *Stage, key *ast.StringNode, node *ast.MappingValueNode) []error {
+func parseStepNodeIntoStage(stage *Stage2, key *ast.StringNode, node *ast.MappingValueNode) []error {
 	var errSlice []error
 	switch key.Value {
 	case propEnvironments:
@@ -119,7 +125,7 @@ func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, []error) 
 	return envs, errs
 }
 
-func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, []error) {
+func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, []error) {
 	step, errs := parseStep2(key, node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("step %q: %w", key.Value, err)

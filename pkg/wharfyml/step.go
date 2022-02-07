@@ -8,12 +8,10 @@ import (
 )
 
 var (
-	ErrStepNotMap              = errors.New("step should be a YAML map")
-	ErrStepEmpty               = errors.New("missing a step type")
-	ErrStepEmptyName           = errors.New("step name cannot be empty")
-	ErrStepMultipleStepTypes   = errors.New("contains multiple step types")
-	ErrStepTypeInvalidField    = errors.New("invalid field type")
-	ErrStepTypeMissingRequired = errors.New("missing required field")
+	ErrStepNotMap            = errors.New("step should be a YAML map")
+	ErrStepEmpty             = errors.New("missing a step type")
+	ErrStepEmptyName         = errors.New("step name cannot be empty")
+	ErrStepMultipleStepTypes = errors.New("contains multiple step types")
 )
 
 type Step struct {
@@ -39,7 +37,12 @@ func parseStep(name string, content map[string]interface{}) (Step, error) {
 
 // -------------------
 
-func parseStep2(key *ast.StringNode, node ast.Node) (step Step, errSlice []error) {
+type Step2 struct {
+	Name string
+	Type StepType2
+}
+
+func parseStep2(key *ast.StringNode, node ast.Node) (step Step2, errSlice []error) {
 	step.Name = key.Value
 	if key.Value == "" {
 		errSlice = append(errSlice, wrapParseErrNode(ErrStepEmptyName, key))
@@ -64,14 +67,19 @@ func parseStep2(key *ast.StringNode, node ast.Node) (step Step, errSlice []error
 			errSlice = append(errSlice, err)
 			continue
 		}
-		errs := parseStepTypeNodeIntoStep(&step, key, stepTypeNode)
+		stepType, errs := parseStepStepTypeNode(key, stepTypeNode)
+		step.Type = stepType
 		errSlice = append(errSlice, errs...)
 	}
 	return
 }
 
-func parseStepTypeNodeIntoStep(step *Step, ket *ast.StringNode, node *ast.MappingValueNode) []error {
-	return nil
+func parseStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType2, []error) {
+	stepType, errs := parseStepType(key, node.Value)
+	for i, err := range errs {
+		errs[i] = fmt.Errorf("type %q: %w", key.Value, err)
+	}
+	return stepType, errs
 }
 
 func stepBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {

@@ -20,7 +20,7 @@ var (
 
 type Definition struct {
 	Envs   map[string]Env
-	Stages []Stage
+	Stages []Stage2
 }
 
 type yamlDefinition struct {
@@ -124,7 +124,7 @@ func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, []err
 	return envs, errs
 }
 
-func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage, []error) {
+func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, []error) {
 	stage, errs := parseStage2(key, node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("stage %q: %w", key.Value, err)
