@@ -31,7 +31,7 @@ var runCmd = &cobra.Command{
 				var parseErr wharfyml.ParseError
 				if errors.As(err, &parseErr) {
 					log.Warn().Messagef("%4d:%-4d%s",
-						parseErr.Position.Line, parseErr.Position.Column, err.Error())
+						parseErr.Line, parseErr.Column, err.Error())
 				} else {
 					log.Warn().Messagef("   -:-   %s", err.Error())
 				}

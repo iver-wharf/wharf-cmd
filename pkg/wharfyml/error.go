@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/token"
 )
 
 type errorSlice []error
@@ -25,20 +24,23 @@ func (s *errorSlice) addNonNils(errs ...error) {
 
 var fmtErrorfPlaceholder = errors.New("placeholder")
 
-func newParseError(err error, pos *token.Position) error {
+func newParseError(err error, line, column int) error {
 	return ParseError{
-		Inner:    err,
-		Position: pos,
+		Inner:  err,
+		Line:   line,
+		Column: column,
 	}
 }
 
 func newParseErrorNode(err error, node ast.Node) error {
-	return newParseError(err, node.GetToken().Position)
+	pos := node.GetToken().Position
+	return newParseError(err, pos.Line, pos.Column)
 }
 
 type ParseError struct {
-	Inner    error
-	Position *token.Position
+	Inner  error
+	Line   int
+	Column int
 }
 
 func (err ParseError) Error() string {
