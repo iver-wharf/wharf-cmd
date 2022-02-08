@@ -17,7 +17,6 @@ var (
 
 type StepType interface {
 	StepTypeName() string
-	Validate() errorSlice
 }
 
 func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, errorSlice) {
@@ -25,18 +24,17 @@ func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, errorSlice
 	if err != nil {
 		return nil, errorSlice{err}
 	}
-	stepType, errs := unmarshalStepTypeNode(key, nodes)
-	if len(errs) > 0 {
-		return stepType, errs
-	}
-	return stepType, stepType.Validate()
+	return unmarshalStepTypeNode(key, nodes)
 }
 
 func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType, errorSlice) {
 	var errSlice errorSlice
 	m, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	stepType, errs := getStepTypeUnmarshalled(key, nodeMapUnmarshaller(m))
+	stepType, errs := getStepTypeUnmarshalled(key, nodeMapUnmarshaller{
+		parent: key,
+		nodes:  m,
+	})
 	errSlice.add(errs...)
 	return stepType, errSlice
 }
@@ -72,16 +70,4 @@ func stepTypeBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 func yamlUnmarshalNodeWithValidator(node ast.Node, valuePtr interface{}) error {
 	var buf bytes.Buffer
 	return yaml.NewDecoder(&buf).DecodeFromNode(node, valuePtr)
-}
-
-func validateRequiredString(errs *errorSlice, key string, value string) {
-	if value == "" {
-		errs.add(wrapPathError(key, ErrStepTypeMissingRequired))
-	}
-}
-
-func validateRequiredStringSlice(errs *errorSlice, key string, value []string) {
-	if len(value) == 0 {
-		errs.add(wrapPathError(key, ErrStepTypeMissingRequired))
-	}
 }

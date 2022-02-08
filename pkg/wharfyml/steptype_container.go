@@ -15,18 +15,14 @@ type StepContainer struct {
 
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) Validate() (errSlice errorSlice) {
-	validateRequiredString(&errSlice, "image", s.Image)
-	validateRequiredStringSlice(&errSlice, "cmds", s.Cmds)
-	return
-}
-
 func (s StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
 
 	var errSlice errorSlice
+
+	// Unmarshalling
 	errSlice.addNonNils(
 		nodes.unmarshalString("image", &s.Image),
 		nodes.unmarshalString("os", &s.OS),
@@ -36,5 +32,11 @@ func (s StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, erro
 		nodes.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
 	)
 	errSlice.add(nodes.unmarshalStringSlice("cmds", &s.Cmds)...)
+
+	// Validation
+	errSlice.addNonNils(
+		nodes.validateRequiredString("image"),
+		nodes.validateRequiredSlice("cmds"),
+	)
 	return s, errSlice
 }

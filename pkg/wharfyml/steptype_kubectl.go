@@ -14,19 +14,13 @@ type StepKubectl struct {
 
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
-func (s StepKubectl) Validate() (errSlice errorSlice) {
-	// Only either file or files is required
-	if len(s.Files) == 0 {
-		validateRequiredString(&errSlice, "file", s.File)
-	}
-	return
-}
-
 func (s StepKubectl) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 
 	var errSlice errorSlice
+
+	// Unmarshalling
 	errSlice.addNonNils(
 		nodes.unmarshalString("file", &s.File),
 		nodes.unmarshalString("namespace", &s.Namespace),
@@ -35,5 +29,11 @@ func (s StepKubectl) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorS
 		nodes.unmarshalString("cluster", &s.Cluster),
 	)
 	errSlice.add(nodes.unmarshalStringSlice("files", &s.Files)...)
+
+	// Validation
+	if len(s.Files) == 0 {
+		// Only either file or files is required
+		errSlice.addNonNils(nodes.validateRequiredString("file"))
+	}
 	return s, errSlice
 }

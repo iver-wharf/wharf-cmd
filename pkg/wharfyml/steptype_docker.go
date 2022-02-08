@@ -19,12 +19,6 @@ type StepDocker struct {
 
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) Validate() (errSlice errorSlice) {
-	validateRequiredString(&errSlice, "file", s.File)
-	validateRequiredString(&errSlice, "tag", s.Tag)
-	return
-}
-
 func (s StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
 	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
 	s.Name = ""         // TODO: default to "${step_name}"
@@ -36,6 +30,8 @@ func (s StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSl
 	s.Secret = "gitlab-registry"
 
 	var errSlice errorSlice
+
+	// Unmarshalling
 	errSlice.addNonNils(
 		nodes.unmarshalString("file", &s.File),
 		nodes.unmarshalString("tag", &s.Tag),
@@ -49,5 +45,11 @@ func (s StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSl
 		nodes.unmarshalBool("push", &s.Push),
 	)
 	errSlice.add(nodes.unmarshalStringSlice("args", &s.Args)...)
+
+	// Validation
+	errSlice.addNonNils(
+		nodes.validateRequiredString("file"),
+		nodes.validateRequiredString("tag"),
+	)
 	return s, errSlice
 }

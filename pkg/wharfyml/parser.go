@@ -33,6 +33,12 @@ func ParseFile(path string) (Definition, errorSlice) {
 }
 
 func Parse(reader io.Reader) (def Definition, errSlice errorSlice) {
+	def, errs := parse(reader)
+	sortErrorsByPosition(errs)
+	return def, errs
+}
+
+func parse(reader io.Reader) (def Definition, errSlice errorSlice) {
 	doc, err := parseFirstDocAsDocNode(reader)
 	if err != nil {
 		errSlice.add(err)

@@ -3,6 +3,7 @@ package wharfyml
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/goccy/go-yaml/ast"
 )
@@ -56,6 +57,28 @@ func (err ParseError) Is(target error) bool {
 
 func (err ParseError) Unwrap() error {
 	return err.Inner
+}
+
+func parseErrorLineColumn(err error) (int, int) {
+	var parseErr ParseError
+	if !errors.As(err, &parseErr) {
+		return 0, 0
+	}
+	return parseErr.Line, parseErr.Column
+}
+
+func sortErrorsByPosition(errs errorSlice) {
+	if len(errs) == 0 {
+		return
+	}
+	sort.Slice(errs, func(i, j int) bool {
+		aLine, aCol := parseErrorLineColumn(errs[i])
+		bLine, bCol := parseErrorLineColumn(errs[j])
+		if aLine == bLine {
+			return aCol < bCol
+		}
+		return aLine < bLine
+	})
 }
 
 func wrapPathError(path string, err error) error {

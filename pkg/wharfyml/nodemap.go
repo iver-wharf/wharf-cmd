@@ -11,10 +11,13 @@ var (
 	ErrInvalidFieldType = errors.New("invalid field type")
 )
 
-type nodeMapUnmarshaller map[string]ast.Node
+type nodeMapUnmarshaller struct {
+	parent ast.Node
+	nodes  map[string]ast.Node
+}
 
 func (m nodeMapUnmarshaller) unmarshalString(key string, target *string) error {
-	node, ok := m[key]
+	node, ok := m.nodes[key]
 	if !ok {
 		return nil
 	}
@@ -27,7 +30,7 @@ func (m nodeMapUnmarshaller) unmarshalString(key string, target *string) error {
 }
 
 func (m nodeMapUnmarshaller) unmarshalStringSlice(key string, target *[]string) errorSlice {
-	node, ok := m[key]
+	node, ok := m.nodes[key]
 	if !ok {
 		return nil
 	}
@@ -51,7 +54,7 @@ func (m nodeMapUnmarshaller) unmarshalStringSlice(key string, target *[]string) 
 }
 
 func (m nodeMapUnmarshaller) unmarshalStringStringMap(key string, target *map[string]string) errorSlice {
-	node, ok := m[key]
+	node, ok := m.nodes[key]
 	if !ok {
 		return nil
 	}
@@ -80,7 +83,7 @@ func (m nodeMapUnmarshaller) unmarshalStringStringMap(key string, target *map[st
 }
 
 func (m nodeMapUnmarshaller) unmarshalBool(key string, target *bool) error {
-	node, ok := m[key]
+	node, ok := m.nodes[key]
 	if !ok {
 		return nil
 	}
@@ -90,6 +93,33 @@ func (m nodeMapUnmarshaller) unmarshalBool(key string, target *bool) error {
 	}
 	*target = strNode.Value
 	return nil
+}
+
+func (m nodeMapUnmarshaller) validateRequiredString(key string) error {
+	node, ok := m.nodes[key]
+	if ok {
+		strNode, ok := node.(*ast.StringNode)
+		if !ok || strNode.Value != "" {
+			return nil
+		}
+	}
+	return m.newRequiredError(key)
+}
+
+func (m nodeMapUnmarshaller) validateRequiredSlice(key string) error {
+	node, ok := m.nodes[key]
+	if ok {
+		seqNode, ok := node.(*ast.SequenceNode)
+		if !ok || len(seqNode.Values) > 0 {
+			return nil
+		}
+	}
+	return m.newRequiredError(key)
+}
+
+func (m nodeMapUnmarshaller) newRequiredError(key string) error {
+	inner := fmt.Errorf("%w: %q", ErrStepTypeMissingRequired, key)
+	return newParseErrorNode(inner, m.parent)
 }
 
 func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {

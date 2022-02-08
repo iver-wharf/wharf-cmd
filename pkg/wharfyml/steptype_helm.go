@@ -17,19 +17,14 @@ type StepHelm struct {
 
 func (StepHelm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) Validate() (errSlice errorSlice) {
-	validateRequiredString(&errSlice, "chart", s.Chart)
-	validateRequiredString(&errSlice, "name", s.Name)
-	validateRequiredString(&errSlice, "namespace", s.Namespace)
-	return
-}
-
 func (s StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
 	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 
 	var errSlice errorSlice
+
+	// Unmarshalling
 	errSlice.addNonNils(
 		nodes.unmarshalString("chart", &s.Chart),
 		nodes.unmarshalString("name", &s.Name),
@@ -44,5 +39,12 @@ func (s StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlic
 	if s.Repo == "stage" {
 		s.Repo = "https://kubernetes-charts.storage.googleapis.com"
 	}
+
+	// Validation
+	errSlice.addNonNils(
+		nodes.validateRequiredString("chart"),
+		nodes.validateRequiredString("name"),
+		nodes.validateRequiredString("namespace"),
+	)
 	return s, errSlice
 }
