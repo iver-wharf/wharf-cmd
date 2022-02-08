@@ -155,7 +155,7 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 // instead to be able to annotate errors with line numbers, to be able
 // to add a `wharf-cmd lint` option
 
-func requireContainsErr(t *testing.T, errs []error, err error) {
+func requireContainsErr(t *testing.T, errs errorSlice, err error) {
 	for _, e := range errs {
 		if errors.Is(e, err) {
 			return
@@ -165,7 +165,7 @@ func requireContainsErr(t *testing.T, errs []error, err error) {
 		err, len(errs), errs)
 }
 
-func requireNotContainsErr(t *testing.T, errs []error, err error) {
+func requireNotContainsErr(t *testing.T, errs errorSlice, err error) {
 	for i, e := range errs {
 		if errors.Is(e, err) {
 			t.Fatalf("\nexpected not to contain error: %q\nfound at index=%d\nactual: (len=%d) %v",

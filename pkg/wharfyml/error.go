@@ -7,6 +7,12 @@ import (
 	"github.com/goccy/go-yaml/token"
 )
 
+type errorSlice []error
+
+func (s *errorSlice) add(errs ...error) {
+	*s = append(*s, errs...)
+}
+
 func wrapParseErr(err error, pos *token.Position) error {
 	return ParseError{
 		Inner:    err,

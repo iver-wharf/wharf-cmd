@@ -28,7 +28,7 @@ type yamlDefinition struct {
 	Stages       yaml.MapSlice          `yaml:",inline"`
 }
 
-func Parse2(reader io.Reader) (Definition, []error) {
+func Parse2(reader io.Reader) (Definition, errorSlice) {
 	def, errs := parse(reader)
 	if len(errs) == 0 {
 		return def, nil
@@ -42,23 +42,23 @@ func Parse2(reader io.Reader) (Definition, []error) {
 	return Definition{}, errs
 }
 
-func parse(reader io.Reader) (def Definition, errSlice []error) {
+func parse(reader io.Reader) (def Definition, errSlice errorSlice) {
 	doc, err := parseFirstDocAsDocNode(reader)
 	if err != nil {
-		errSlice = append(errSlice, err)
+		errSlice.add(err)
 	}
 	if doc == nil {
 		return
 	}
 	nodes, err := docBodyAsNodes(doc.Body)
 	if err != nil {
-		errSlice = append(errSlice, err)
+		errSlice.add(err)
 		return
 	}
-	var errs []error
+	var errs errorSlice
 	def, errs = parseDocNodes(nodes)
 	if len(errs) > 0 {
-		errSlice = append(errSlice, errs...)
+		errSlice.add(errs...)
 	}
 	// TODO: second pass to validate environment usage:
 	// - error on unused environment
@@ -87,36 +87,36 @@ func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
 	return doc, nil
 }
 
-func parseDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice []error) {
+func parseDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice errorSlice) {
 	for _, n := range nodes {
 		key, err := parseMapKey(n.Key)
 		if err != nil {
-			errSlice = append(errSlice, fmt.Errorf("%q: %w", n.Key, err))
+			errSlice.add(fmt.Errorf("%q: %w", n.Key, err))
 			continue
 		}
 		errs := parseDocNodeIntoDefinition(&def, key, n)
-		errSlice = append(errSlice, errs...)
+		errSlice.add(errs...)
 	}
 	return
 }
 
-func parseDocNodeIntoDefinition(def *Definition, key *ast.StringNode, node *ast.MappingValueNode) []error {
-	var errSlice []error
+func parseDocNodeIntoDefinition(def *Definition, key *ast.StringNode, node *ast.MappingValueNode) errorSlice {
 	switch key.Value {
 	case propEnvironments:
-		def.Envs, errSlice = parseDocEnvironmentsNode(node)
+		var errs errorSlice
+		def.Envs, errs = parseDocEnvironmentsNode(node)
+		return errs
 	case propInput:
 		// TODO: support inputs
-		return []error{errors.New("does not support input vars yet")}
+		return errorSlice{errors.New("does not support input vars yet")}
 	default:
 		stage, errs := parseDocStageNode(key, node)
 		def.Stages = append(def.Stages, stage)
-		errSlice = errs
+		return errs
 	}
-	return errSlice
 }
 
-func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, []error) {
+func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, errorSlice) {
 	envs, errs := parseDefEnvironments(node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("environments: %w", err)
@@ -124,7 +124,7 @@ func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, []err
 	return envs, errs
 }
 
-func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, []error) {
+func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, errorSlice) {
 	stage, errs := parseStage2(key, node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("stage %q: %w", key.Value, err)

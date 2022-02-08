@@ -55,13 +55,13 @@ func ParseStepType(name string) StepType {
 
 type StepType2 interface {
 	StepTypeName() string
-	Validate() []error
+	Validate() errorSlice
 }
 
-func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, []error) {
+func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, errorSlice) {
 	stepType, err := parseStepTypeNode(key, node)
 	if err != nil {
-		return nil, []error{err}
+		return nil, errorSlice{err}
 	}
 	// TODO: unmarshal explicitly to keep node references in validation errors
 	return stepType, stepType.Validate()
@@ -118,12 +118,12 @@ var DefaultStepContainer = StepContainer{
 
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) Validate() (errSlice []error) {
+func (s StepContainer) Validate() (errSlice errorSlice) {
 	if s.Image == "" {
-		errSlice = append(errSlice, fmt.Errorf("%w: image", ErrStepTypeMissingRequired))
+		errSlice.add(fmt.Errorf("%w: image", ErrStepTypeMissingRequired))
 	}
 	if len(s.Cmds) == 0 {
-		errSlice = append(errSlice, fmt.Errorf("%w: cmds", ErrStepTypeMissingRequired))
+		errSlice.add(fmt.Errorf("%w: cmds", ErrStepTypeMissingRequired))
 	}
 	return
 }
@@ -154,12 +154,12 @@ var DefaultStepDocker = StepDocker{
 
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) Validate() (errSlice []error) {
+func (s StepDocker) Validate() (errSlice errorSlice) {
 	if s.File == "" {
-		errSlice = append(errSlice, fmt.Errorf("%w: file", ErrStepTypeMissingRequired))
+		errSlice.add(fmt.Errorf("%w: file", ErrStepTypeMissingRequired))
 	}
 	if s.Tag == "" {
-		errSlice = append(errSlice, fmt.Errorf("%w: tag", ErrStepTypeMissingRequired))
+		errSlice.add(fmt.Errorf("%w: tag", ErrStepTypeMissingRequired))
 	}
 	return
 }
@@ -180,7 +180,7 @@ var DefaultStepHelmPackage = StepHelmPackage{
 
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s StepHelmPackage) Validate() (errSlice []error) {
+func (s StepHelmPackage) Validate() (errSlice errorSlice) {
 	return
 }
 

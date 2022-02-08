@@ -77,35 +77,35 @@ type Stage2 struct {
 	Steps        []Step2
 }
 
-func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice []error) {
+func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice errorSlice) {
 	stage.Name = key.Value
 	if key.Value == "" {
-		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmptyName, key))
+		errSlice.add(wrapParseErrNode(ErrStageEmptyName, key))
 		// Continue, its not a fatal issue
 	}
 	nodes, err := stageBodyAsNodes(node)
 	if err != nil {
-		errSlice = append(errSlice, err)
+		errSlice.add(err)
 		return
 	}
 	if len(nodes) == 0 {
-		errSlice = append(errSlice, wrapParseErrNode(ErrStageEmpty, node))
+		errSlice.add(wrapParseErrNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {
 		key, err := parseMapKey(stepNode.Key)
 		if err != nil {
-			errSlice = append(errSlice, err)
+			errSlice.add(err)
 			continue
 		}
 		errs := parseStepNodeIntoStage(&stage, key, stepNode)
-		errSlice = append(errSlice, errs...)
+		errSlice.add(errs...)
 	}
 	return
 }
 
-func parseStepNodeIntoStage(stage *Stage2, key *ast.StringNode, node *ast.MappingValueNode) []error {
-	var errSlice []error
+func parseStepNodeIntoStage(stage *Stage2, key *ast.StringNode, node *ast.MappingValueNode) errorSlice {
+	var errSlice errorSlice
 	switch key.Value {
 	case propEnvironments:
 		stage.Environments, errSlice = parseStageEnvironmentsNode(node)
@@ -117,7 +117,7 @@ func parseStepNodeIntoStage(stage *Stage2, key *ast.StringNode, node *ast.Mappin
 	return errSlice
 }
 
-func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, []error) {
+func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlice) {
 	envs, errs := parseStageEnvironments2(node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("environments: %w", err)
@@ -125,7 +125,7 @@ func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, []error) 
 	return envs, errs
 }
 
-func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, []error) {
+func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, errorSlice) {
 	step, errs := parseStep2(key, node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("step %q: %w", key.Value, err)

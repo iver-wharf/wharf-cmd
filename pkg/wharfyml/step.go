@@ -42,39 +42,39 @@ type Step2 struct {
 	Type StepType2
 }
 
-func parseStep2(key *ast.StringNode, node ast.Node) (step Step2, errSlice []error) {
+func parseStep2(key *ast.StringNode, node ast.Node) (step Step2, errSlice errorSlice) {
 	step.Name = key.Value
 	if key.Value == "" {
-		errSlice = append(errSlice, wrapParseErrNode(ErrStepEmptyName, key))
+		errSlice.add(wrapParseErrNode(ErrStepEmptyName, key))
 		// Continue, its not a fatal issue
 	}
 	nodes, err := stepBodyAsNodes(node)
 	if err != nil {
-		errSlice = append(errSlice, err)
+		errSlice.add(err)
 		return
 	}
 	if len(nodes) == 0 {
-		errSlice = append(errSlice, wrapParseErrNode(ErrStepEmpty, node))
+		errSlice.add(wrapParseErrNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice = append(errSlice, wrapParseErrNode(ErrStepMultipleStepTypes, node))
+		errSlice.add(wrapParseErrNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
 		key, err := parseMapKey(stepTypeNode.Key)
 		if err != nil {
-			errSlice = append(errSlice, err)
+			errSlice.add(err)
 			continue
 		}
 		stepType, errs := parseStepStepTypeNode(key, stepTypeNode)
 		step.Type = stepType
-		errSlice = append(errSlice, errs...)
+		errSlice.add(errs...)
 	}
 	return
 }
 
-func parseStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType2, []error) {
+func parseStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType2, errorSlice) {
 	stepType, errs := parseStepType(key, node.Value)
 	for i, err := range errs {
 		errs[i] = fmt.Errorf("type %q: %w", key.Value, err)
