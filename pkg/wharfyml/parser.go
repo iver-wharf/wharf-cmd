@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
 )
@@ -21,11 +20,6 @@ var (
 type Definition struct {
 	Envs   map[string]Env
 	Stages []Stage2
-}
-
-type yamlDefinition struct {
-	Environments map[string]Environment `yaml:"environments"`
-	Stages       yaml.MapSlice          `yaml:",inline"`
 }
 
 func Parse2(reader io.Reader) (Definition, errorSlice) {

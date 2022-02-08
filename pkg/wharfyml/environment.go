@@ -12,10 +12,6 @@ var (
 	ErrStageEnvEmpty     = errors.New("environment name cannot be empty")
 )
 
-type Environment struct {
-	Variables map[string]interface{}
-}
-
 type Env struct {
 	Name string
 	Vars map[string]interface{}
