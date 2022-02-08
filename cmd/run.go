@@ -27,7 +27,10 @@ var runCmd = &cobra.Command{
 		b := worker.New(stageRun)
 		def, errs := wharfyml.ParseFile(flagRunPath)
 		if len(errs) > 0 {
-			return errs[0]
+			for _, err := range errs {
+				log.Warn().Message(err.Error())
+			}
+			return errors.New("failed to parse .wharf-ci.yml")
 		}
 		res, err := b.Build(context.Background(), def, worker.BuildOptions{
 			StageFilter: flagStage,
