@@ -25,7 +25,7 @@ func (s errorSlice) fmtErrorfAll(format string, args ...interface{}) {
 				newArgs[j] = err
 			}
 		}
-		s[i] = fmt.Errorf(format, newArgs)
+		s[i] = fmt.Errorf(format, newArgs...)
 	}
 }
 
