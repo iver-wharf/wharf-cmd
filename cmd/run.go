@@ -28,7 +28,12 @@ var runCmd = &cobra.Command{
 		def, errs := wharfyml.ParseFile(flagRunPath)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				log.Warn().Message(err.Error())
+				var parseErr wharfyml.ParseError
+				if errors.As(err, &parseErr) {
+					log.Warn().WithError(err).Messagef("%4d:%-3d", parseErr.Position.Line, parseErr.Position.Column)
+				} else {
+					log.Warn().WithError(err).Message("")
+				}
 			}
 			return errors.New("failed to parse .wharf-ci.yml")
 		}

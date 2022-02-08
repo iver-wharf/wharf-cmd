@@ -32,22 +32,7 @@ func ParseFile(path string) (Definition, errorSlice) {
 	return Parse(file)
 }
 
-func Parse(reader io.Reader) (Definition, errorSlice) {
-	def, errs := parse(reader)
-	if len(errs) == 0 {
-		return def, nil
-	}
-	for i, err := range errs {
-		var parseErr ParseError
-		if errors.As(err, &parseErr) {
-			errs[i] = fmt.Errorf("%d:%d: %w",
-				parseErr.Position.Line, parseErr.Position.Column, err)
-		}
-	}
-	return Definition{}, errs
-}
-
-func parse(reader io.Reader) (def Definition, errSlice errorSlice) {
+func Parse(reader io.Reader) (def Definition, errSlice errorSlice) {
 	doc, err := parseFirstDocAsDocNode(reader)
 	if err != nil {
 		errSlice.add(err)
