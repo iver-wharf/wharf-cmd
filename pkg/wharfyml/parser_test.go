@@ -1,7 +1,6 @@
 package wharfyml
 
 import (
-	"errors"
 	"strings"
 	"testing"
 
@@ -154,23 +153,3 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 // TODO: Create issue on using https://pkg.go.dev/github.com/goccy/go-yaml
 // instead to be able to annotate errors with line numbers, to be able
 // to add a `wharf-cmd lint` option
-
-func requireContainsErr(t *testing.T, errs errorSlice, err error) {
-	for _, e := range errs {
-		if errors.Is(e, err) {
-			return
-		}
-	}
-	t.Fatalf("\nexpected contains error: %q\nactual: (len=%d) %v",
-		err, len(errs), errs)
-}
-
-func requireNotContainsErr(t *testing.T, errs errorSlice, err error) {
-	for i, e := range errs {
-		if errors.Is(e, err) {
-			t.Fatalf("\nexpected not to contain error: %q\nfound at index=%d\nactual: (len=%d) %v",
-				err, i, len(errs), errs)
-			return
-		}
-	}
-}
