@@ -1,7 +1,6 @@
 package wharfyml
 
 const (
-	WharfCIFileName  = ".wharf-ci.yml"
 	propInput        = "inputs"
 	propEnvironments = "environments"
 	inputName        = "name"

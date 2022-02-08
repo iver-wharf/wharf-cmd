@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func requireContainsErr(t *testing.T, errs errorSlice, err error) {
+func requireContainsErr(t *testing.T, errs Errors, err error) {
 	for _, e := range errs {
 		if errors.Is(e, err) {
 			return
@@ -17,7 +17,7 @@ func requireContainsErr(t *testing.T, errs errorSlice, err error) {
 		err, len(errs), formatErrorSlice("  - ", errs))
 }
 
-func requireNotContainsErr(t *testing.T, errs errorSlice, err error) {
+func requireNotContainsErr(t *testing.T, errs Errors, err error) {
 	for i, e := range errs {
 		if errors.Is(e, err) {
 			t.Fatalf("\nexpected not to contain error: %q\nfound at index=%d\nactual: (len=%d)\n%s",
@@ -27,7 +27,7 @@ func requireNotContainsErr(t *testing.T, errs errorSlice, err error) {
 	}
 }
 
-func formatErrorSlice(prefix string, errs errorSlice) string {
+func formatErrorSlice(prefix string, errs Errors) string {
 	var sb strings.Builder
 	for i, err := range errs {
 		fmt.Fprintf(&sb, "%s[i=%d] %s\n", prefix, i, err)

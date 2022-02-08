@@ -7,6 +7,7 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
+// Errors related to parsing steps.
 var (
 	ErrStepNotMap            = errors.New("step should be a YAML map")
 	ErrStepEmpty             = errors.New("missing a step type")
@@ -14,12 +15,13 @@ var (
 	ErrStepMultipleStepTypes = errors.New("contains multiple step types")
 )
 
+// Step holds the step type and name of this Wharf build step.
 type Step struct {
 	Name string
 	Type StepType
 }
 
-func visitStepNode(key *ast.StringNode, node ast.Node) (step Step, errSlice errorSlice) {
+func visitStepNode(key *ast.StringNode, node ast.Node) (step Step, errSlice Errors) {
 	step.Name = key.Value
 	if key.Value == "" {
 		errSlice.add(newPositionedErrorNode(ErrStepEmptyName, key))
@@ -51,7 +53,7 @@ func visitStepNode(key *ast.StringNode, node ast.Node) (step Step, errSlice erro
 	return
 }
 
-func visitStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType, errorSlice) {
+func visitStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType, Errors) {
 	stepType, errs := visitStepTypeNode(key, node.Value)
 	errs = wrapPathErrorSlice(key.Value, errs)
 	return stepType, errs

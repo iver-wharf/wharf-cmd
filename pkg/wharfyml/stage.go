@@ -7,19 +7,22 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
+// Errors related to parsing stages.
 var (
 	ErrStageNotMap    = errors.New("stage should be a YAML map")
 	ErrStageEmpty     = errors.New("stage is missing steps")
 	ErrStageEmptyName = errors.New("stage name cannot be empty")
 )
 
+// Stage holds the name, environment filter, and list of steps for this Wharf
+// build stage.
 type Stage struct {
 	Name         string
 	Environments []string
 	Steps        []Step
 }
 
-func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice errorSlice) {
+func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice Errors) {
 	stage.Name = key.Value
 	if key.Value == "" {
 		errSlice.add(newPositionedErrorNode(ErrStageEmptyName, key))
@@ -54,13 +57,13 @@ func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice e
 	return
 }
 
-func visitStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlice) {
+func visitStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, Errors) {
 	envs, errs := visitEnvironmentStringsNode(node.Value)
 	errs = wrapPathErrorSlice(propEnvironments, errs)
 	return envs, errs
 }
 
-func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, errorSlice) {
+func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, Errors) {
 	step, errs := visitStepNode(key, node.Value)
 	errs = wrapPathErrorSlice(key.Value, errs)
 	return step, errs

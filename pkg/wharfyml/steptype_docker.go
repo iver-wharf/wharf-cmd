@@ -1,5 +1,6 @@
 package wharfyml
 
+// StepDocker represents a step type for building and pushing Docker images.
 type StepDocker struct {
 	// Required fields
 	File string
@@ -17,9 +18,10 @@ type StepDocker struct {
 	Args        []string
 }
 
+// StepTypeName returns the name of this step type.
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+func (s StepDocker) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
 	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
 	s.Name = ""         // TODO: default to "${step_name}"
 	s.Group = ""        // TODO: default to "${REPO_GROUP}"
@@ -29,7 +31,7 @@ func (s StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSl
 	s.Push = true
 	s.Secret = "gitlab-registry"
 
-	var errSlice errorSlice
+	var errSlice Errors
 
 	// Unmarshalling
 	errSlice.addNonNils(

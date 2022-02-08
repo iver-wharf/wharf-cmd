@@ -1,5 +1,7 @@
 package wharfyml
 
+// StepHelm represents a step type for installing a Helm chart into a Kubernetes
+// cluster.
 type StepHelm struct {
 	// Required fields
 	Chart     string
@@ -15,14 +17,15 @@ type StepHelm struct {
 	Cluster      string
 }
 
+// StepTypeName returns the name of this step type.
 func (StepHelm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+func (s StepHelm) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
 	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 
-	var errSlice errorSlice
+	var errSlice Errors
 
 	// Unmarshalling
 	errSlice.addNonNils(

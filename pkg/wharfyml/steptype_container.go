@@ -1,5 +1,7 @@
 package wharfyml
 
+// StepContainer represents a step type for running commands inside a Docker
+// container.
 type StepContainer struct {
 	// Required fields
 	Image string
@@ -13,14 +15,15 @@ type StepContainer struct {
 	CertificatesMountPath string
 }
 
+// StepTypeName returns the name of this step type.
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+func (s StepContainer) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
 
-	var errSlice errorSlice
+	var errSlice Errors
 
 	// Unmarshalling
 	errSlice.addNonNils(

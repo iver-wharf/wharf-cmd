@@ -1,5 +1,7 @@
 package wharfyml
 
+// StepNuGetPackage represents a step type used for building .NET NuGet
+// packages.
 type StepNuGetPackage struct {
 	// Required fields
 	Version     string
@@ -11,10 +13,11 @@ type StepNuGetPackage struct {
 	CertificatesMountPath string
 }
 
+// StepTypeName returns the name of this step type.
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s StepNuGetPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
-	var errSlice errorSlice
+func (s StepNuGetPackage) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
+	var errSlice Errors
 
 	// Unmarshalling
 	errSlice.addNonNils(

@@ -7,17 +7,18 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
+// Errors related to parsing step type fields.
 var (
 	ErrInvalidFieldType = errors.New("invalid field type")
 )
 
-type nodeMapUnmarshaller struct {
+type stepTypeParser struct {
 	parent ast.Node
 	nodes  map[string]ast.Node
 }
 
-func (m nodeMapUnmarshaller) unmarshalString(key string, target *string) error {
-	node, ok := m.nodes[key]
+func (p stepTypeParser) unmarshalString(key string, target *string) error {
+	node, ok := p.nodes[key]
 	if !ok {
 		return nil
 	}
@@ -29,17 +30,17 @@ func (m nodeMapUnmarshaller) unmarshalString(key string, target *string) error {
 	return nil
 }
 
-func (m nodeMapUnmarshaller) unmarshalStringSlice(key string, target *[]string) errorSlice {
-	node, ok := m.nodes[key]
+func (p stepTypeParser) unmarshalStringSlice(key string, target *[]string) Errors {
+	node, ok := p.nodes[key]
 	if !ok {
 		return nil
 	}
 	arrayNode, ok := node.(*ast.SequenceNode)
 	if !ok {
-		return errorSlice{newInvalidFieldTypeErr(key, "string array", node)}
+		return Errors{newInvalidFieldTypeErr(key, "string array", node)}
 	}
 	strs := make([]string, 0, len(arrayNode.Values))
-	var errSlice errorSlice
+	var errSlice Errors
 	for i, n := range arrayNode.Values {
 		strNode, ok := n.(*ast.StringNode)
 		if !ok {
@@ -53,17 +54,17 @@ func (m nodeMapUnmarshaller) unmarshalStringSlice(key string, target *[]string) 
 	return errSlice
 }
 
-func (m nodeMapUnmarshaller) unmarshalStringStringMap(key string, target *map[string]string) errorSlice {
-	node, ok := m.nodes[key]
+func (p stepTypeParser) unmarshalStringStringMap(key string, target *map[string]string) Errors {
+	node, ok := p.nodes[key]
 	if !ok {
 		return nil
 	}
 	nodes, ok := getMappingValueNodes(node)
 	if !ok {
-		return errorSlice{newInvalidFieldTypeErr(key, "string to string map", node)}
+		return Errors{newInvalidFieldTypeErr(key, "string to string map", node)}
 	}
 	strMap := make(map[string]string, len(nodes))
-	var errSlice errorSlice
+	var errSlice Errors
 	for _, n := range nodes {
 		keyNode, err := parseMapKey(n.Key)
 		if err != nil {
@@ -82,8 +83,8 @@ func (m nodeMapUnmarshaller) unmarshalStringStringMap(key string, target *map[st
 	return errSlice
 }
 
-func (m nodeMapUnmarshaller) unmarshalBool(key string, target *bool) error {
-	node, ok := m.nodes[key]
+func (p stepTypeParser) unmarshalBool(key string, target *bool) error {
+	node, ok := p.nodes[key]
 	if !ok {
 		return nil
 	}
@@ -95,31 +96,31 @@ func (m nodeMapUnmarshaller) unmarshalBool(key string, target *bool) error {
 	return nil
 }
 
-func (m nodeMapUnmarshaller) validateRequiredString(key string) error {
-	node, ok := m.nodes[key]
+func (p stepTypeParser) validateRequiredString(key string) error {
+	node, ok := p.nodes[key]
 	if ok {
 		strNode, ok := node.(*ast.StringNode)
 		if !ok || strNode.Value != "" {
 			return nil
 		}
 	}
-	return m.newRequiredError(key)
+	return p.newRequiredError(key)
 }
 
-func (m nodeMapUnmarshaller) validateRequiredSlice(key string) error {
-	node, ok := m.nodes[key]
+func (p stepTypeParser) validateRequiredSlice(key string) error {
+	node, ok := p.nodes[key]
 	if ok {
 		seqNode, ok := node.(*ast.SequenceNode)
 		if !ok || len(seqNode.Values) > 0 {
 			return nil
 		}
 	}
-	return m.newRequiredError(key)
+	return p.newRequiredError(key)
 }
 
-func (m nodeMapUnmarshaller) newRequiredError(key string) error {
+func (p stepTypeParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrStepTypeMissingRequired, key)
-	return newPositionedErrorNode(inner, m.parent)
+	return newPositionedErrorNode(inner, p.parent)
 }
 
 func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {

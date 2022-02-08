@@ -8,13 +8,14 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
-type errorSlice []error
+// Errors is a slice of errors.
+type Errors []error
 
-func (s *errorSlice) add(errs ...error) {
+func (s *Errors) add(errs ...error) {
 	*s = append(*s, errs...)
 }
 
-func (s *errorSlice) addNonNils(errs ...error) {
+func (s *Errors) addNonNils(errs ...error) {
 	for _, err := range errs {
 		if err == nil {
 			continue
@@ -22,8 +23,6 @@ func (s *errorSlice) addNonNils(errs ...error) {
 		*s = append(*s, err)
 	}
 }
-
-var fmtErrorfPlaceholder = errors.New("placeholder")
 
 func newPositionedError(err error, line, column int) error {
 	return PositionedError{
@@ -38,12 +37,15 @@ func newPositionedErrorNode(err error, node ast.Node) error {
 	return newPositionedError(err, pos.Line, pos.Column)
 }
 
+// PositionedError is an error type that holds metadata about where the error
+// occurred (line and column).
 type PositionedError struct {
 	Inner  error
 	Line   int
 	Column int
 }
 
+// Error implements the error interface.
 func (err PositionedError) Error() string {
 	if err.Inner == nil {
 		return ""
@@ -51,10 +53,12 @@ func (err PositionedError) Error() string {
 	return err.Inner.Error()
 }
 
+// Is implements the interface to support errors.Is.
 func (err PositionedError) Is(target error) bool {
 	return errors.Is(err.Inner, target)
 }
 
+// Unwrap implements the interface to support errors.Unwrap.
 func (err PositionedError) Unwrap() error {
 	return err.Inner
 }
@@ -67,7 +71,7 @@ func positionedErrorLineColumn(err error) (int, int) {
 	return parseErr.Line, parseErr.Column
 }
 
-func sortErrorsByPosition(errs errorSlice) {
+func sortErrorsByPosition(errs Errors) {
 	if len(errs) == 0 {
 		return
 	}
@@ -95,8 +99,8 @@ func wrapPathError(path string, err error) error {
 	}
 }
 
-func wrapPathErrorSlice(path string, errs errorSlice) errorSlice {
-	result := make(errorSlice, len(errs))
+func wrapPathErrorSlice(path string, errs Errors) Errors {
+	result := make(Errors, len(errs))
 	for i, err := range errs {
 		result[i] = wrapPathError(path, err)
 	}
@@ -108,6 +112,7 @@ type pathError struct {
 	inner error
 }
 
+// Error implements the error interface.
 func (err pathError) Error() string {
 	if err.inner == nil {
 		return err.path
@@ -115,10 +120,12 @@ func (err pathError) Error() string {
 	return fmt.Sprintf("%s: %s", err.path, err.inner)
 }
 
+// Is implements the interface to support errors.Is.
 func (err pathError) Is(target error) bool {
 	return errors.Is(err.inner, target)
 }
 
+// Unwrap implements the interface to support errors.Unwrap.
 func (err pathError) Unwrap() error {
 	return err.inner
 }

@@ -9,29 +9,31 @@ import (
 	"github.com/goccy/go-yaml/ast"
 )
 
+// Errors related to parsing step types.
 var (
 	ErrStepTypeNotMap          = errors.New("step type should be a YAML map")
 	ErrStepTypeUnknown         = errors.New("unknown step type")
 	ErrStepTypeMissingRequired = errors.New("missing required field")
 )
 
+// StepType is an interface that is implemented by all step types.
 type StepType interface {
 	StepTypeName() string
 }
 
-func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, errorSlice) {
+func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, Errors) {
 	nodes, err := stepTypeBodyAsNodes(node)
 	if err != nil {
-		return nil, errorSlice{err}
+		return nil, Errors{err}
 	}
 	return unmarshalStepTypeNode(key, nodes)
 }
 
-func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType, errorSlice) {
-	var errSlice errorSlice
+func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType, Errors) {
+	var errSlice Errors
 	m, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	stepType, errs := getStepTypeUnmarshalled(key, nodeMapUnmarshaller{
+	stepType, errs := getStepTypeUnmarshalled(key, stepTypeParser{
 		parent: key,
 		nodes:  m,
 	})
@@ -39,7 +41,7 @@ func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (
 	return stepType, errSlice
 }
 
-func getStepTypeUnmarshalled(key *ast.StringNode, nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+func getStepTypeUnmarshalled(key *ast.StringNode, nodes stepTypeParser) (StepType, Errors) {
 	switch key.Value {
 	case "container":
 		return StepContainer{}.unmarshalNodes(nodes)
@@ -54,7 +56,7 @@ func getStepTypeUnmarshalled(key *ast.StringNode, nodes nodeMapUnmarshaller) (St
 	case "nuget-package":
 		return StepNuGetPackage{}.unmarshalNodes(nodes)
 	default:
-		return nil, errorSlice{newPositionedErrorNode(ErrStepTypeUnknown, key)}
+		return nil, Errors{newPositionedErrorNode(ErrStepTypeUnknown, key)}
 	}
 }
 
