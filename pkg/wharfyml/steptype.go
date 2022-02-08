@@ -54,14 +54,14 @@ func getStepTypeUnmarshalled(key *ast.StringNode, nodes nodeMapUnmarshaller) (St
 	case "nuget-package":
 		return StepNuGetPackage{}.unmarshalNodes(nodes)
 	default:
-		return nil, errorSlice{newParseErrorNode(ErrStepTypeUnknown, key)}
+		return nil, errorSlice{newPositionedErrorNode(ErrStepTypeUnknown, key)}
 	}
 }
 
 func stepTypeBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	n, ok := getMappingValueNodes(body)
 	if !ok {
-		return nil, newParseErrorNode(fmt.Errorf("step type type: %s: %w",
+		return nil, newPositionedErrorNode(fmt.Errorf("step type type: %s: %w",
 			body.Type(), ErrStepTypeNotMap), body)
 	}
 	return n, nil

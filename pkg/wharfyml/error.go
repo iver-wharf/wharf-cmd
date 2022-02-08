@@ -25,42 +25,42 @@ func (s *errorSlice) addNonNils(errs ...error) {
 
 var fmtErrorfPlaceholder = errors.New("placeholder")
 
-func newParseError(err error, line, column int) error {
-	return ParseError{
+func newPositionedError(err error, line, column int) error {
+	return PositionedError{
 		Inner:  err,
 		Line:   line,
 		Column: column,
 	}
 }
 
-func newParseErrorNode(err error, node ast.Node) error {
+func newPositionedErrorNode(err error, node ast.Node) error {
 	pos := node.GetToken().Position
-	return newParseError(err, pos.Line, pos.Column)
+	return newPositionedError(err, pos.Line, pos.Column)
 }
 
-type ParseError struct {
+type PositionedError struct {
 	Inner  error
 	Line   int
 	Column int
 }
 
-func (err ParseError) Error() string {
+func (err PositionedError) Error() string {
 	if err.Inner == nil {
 		return ""
 	}
 	return err.Inner.Error()
 }
 
-func (err ParseError) Is(target error) bool {
+func (err PositionedError) Is(target error) bool {
 	return errors.Is(err.Inner, target)
 }
 
-func (err ParseError) Unwrap() error {
+func (err PositionedError) Unwrap() error {
 	return err.Inner
 }
 
-func parseErrorLineColumn(err error) (int, int) {
-	var parseErr ParseError
+func positionedErrorLineColumn(err error) (int, int) {
+	var parseErr PositionedError
 	if !errors.As(err, &parseErr) {
 		return 0, 0
 	}
@@ -72,8 +72,8 @@ func sortErrorsByPosition(errs errorSlice) {
 		return
 	}
 	sort.Slice(errs, func(i, j int) bool {
-		aLine, aCol := parseErrorLineColumn(errs[i])
-		bLine, bCol := parseErrorLineColumn(errs[j])
+		aLine, aCol := positionedErrorLineColumn(errs[i])
+		bLine, bCol := positionedErrorLineColumn(errs[j])
 		if aLine == bLine {
 			return aCol < bCol
 		}

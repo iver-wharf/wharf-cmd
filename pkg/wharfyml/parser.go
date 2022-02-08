@@ -124,14 +124,14 @@ func parseMapKey(keyNode ast.Node) (*ast.StringNode, error) {
 	case *ast.StringNode:
 		return key, nil
 	default:
-		return nil, newParseErrorNode(ErrKeyNotString, keyNode)
+		return nil, newPositionedErrorNode(ErrKeyNotString, keyNode)
 	}
 }
 
 func docBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	n, ok := getMappingValueNodes(body)
 	if !ok {
-		return nil, newParseErrorNode(fmt.Errorf("document type: %s: %w", body.Type(), ErrDocNotMap), body)
+		return nil, newPositionedErrorNode(fmt.Errorf("document type: %s: %w", body.Type(), ErrDocNotMap), body)
 	}
 	return n, nil
 }

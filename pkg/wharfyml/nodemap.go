@@ -119,12 +119,12 @@ func (m nodeMapUnmarshaller) validateRequiredSlice(key string) error {
 
 func (m nodeMapUnmarshaller) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrStepTypeMissingRequired, key)
-	return newParseErrorNode(inner, m.parent)
+	return newPositionedErrorNode(inner, m.parent)
 }
 
 func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
 	gotType := prettyNodeTypeName(node)
-	err := newParseErrorNode(fmt.Errorf("%w: expected %s, but found %s",
+	err := newPositionedErrorNode(fmt.Errorf("%w: expected %s, but found %s",
 		ErrInvalidFieldType, wantType, gotType), node)
 	return wrapPathError(key, err)
 }
