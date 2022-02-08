@@ -37,15 +37,45 @@ func (m nodeMapUnmarshaller) unmarshalStringSlice(key string, target *[]string) 
 	}
 	strs := make([]string, 0, len(arrayNode.Values))
 	var errSlice errorSlice
-	for _, n := range arrayNode.Values {
+	for i, n := range arrayNode.Values {
 		strNode, ok := n.(*ast.StringNode)
 		if !ok {
-			errSlice.add(newInvalidFieldTypeErr(key, "string array", n))
+			errSlice.add(newInvalidFieldTypeErr(fmt.Sprintf("%s[%d]", key, i),
+				"string", n))
 			continue
 		}
 		strs = append(strs, strNode.Value)
 	}
 	*target = strs
+	return errSlice
+}
+
+func (m nodeMapUnmarshaller) unmarshalStringStringMap(key string, target *map[string]string) errorSlice {
+	node, ok := m[key]
+	if !ok {
+		return nil
+	}
+	nodes, ok := getMappingValueNodes(node)
+	if !ok {
+		return errorSlice{newInvalidFieldTypeErr(key, "string to string map", node)}
+	}
+	strMap := make(map[string]string, len(nodes))
+	var errSlice errorSlice
+	for _, n := range nodes {
+		keyNode, err := parseMapKey(n.Key)
+		if err != nil {
+			errSlice.add(err)
+			continue
+		}
+		valNode, ok := n.Value.(*ast.StringNode)
+		if !ok {
+			errSlice.add(newInvalidFieldTypeErr(fmt.Sprintf("%s.%s", key, keyNode.Value),
+				"string", n.Value))
+			continue
+		}
+		strMap[keyNode.Value] = valNode.Value
+	}
+	*target = strMap
 	return errSlice
 }
 

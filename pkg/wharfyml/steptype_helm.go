@@ -28,11 +28,11 @@ func (s *StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlic
 		nodes.unmarshalString("name", &s.Name),
 		nodes.unmarshalString("namespace", &s.Namespace),
 		nodes.unmarshalString("repo", &s.Repo),
-		//nodes.unmarshalString("set", &s.Set), // TODO
 		nodes.unmarshalString("chartVersion", &s.ChartVersion),
 		nodes.unmarshalString("helmVersion", &s.HelmVersion),
 		nodes.unmarshalString("cluster", &s.Cluster),
 	)
+	errSlice.add(nodes.unmarshalStringStringMap("set", &s.Set)...)
 	errSlice.add(nodes.unmarshalStringSlice("files", &s.Files)...)
 	if s.Repo == "stage" {
 		s.Repo = "https://kubernetes-charts.storage.googleapis.com"
