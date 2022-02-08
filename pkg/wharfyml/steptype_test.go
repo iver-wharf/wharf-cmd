@@ -11,7 +11,7 @@ func TestParseStepType_ErrIfNotMap(t *testing.T) {
 
 func TestParseStepType_ErrIfInvalidField(t *testing.T) {
 	_, errs := visitStepTypeNode(getKeyedNode(t, "container", `image: [123]`))
-	requireContainsErr(t, errs, ErrInvalidFieldType)
+	requireContainsErr(t, errs, ErrStepTypeInvalidFieldType)
 }
 
 func TestParseStepType_ErrIfMissingRequiredField(t *testing.T) {

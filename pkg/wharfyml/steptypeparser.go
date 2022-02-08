@@ -9,7 +9,7 @@ import (
 
 // Errors related to parsing step type fields.
 var (
-	ErrInvalidFieldType = errors.New("invalid field type")
+	ErrStepTypeInvalidFieldType = errors.New("invalid field type")
 )
 
 type stepTypeParser struct {
@@ -126,7 +126,7 @@ func (p stepTypeParser) newRequiredError(key string) error {
 func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
 	gotType := prettyNodeTypeName(node)
 	err := newPositionedErrorNode(fmt.Errorf("%w: expected %s, but found %s",
-		ErrInvalidFieldType, wantType, gotType), node)
+		ErrStepTypeInvalidFieldType, wantType, gotType), node)
 	return wrapPathError(key, err)
 }
 
