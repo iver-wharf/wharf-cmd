@@ -18,7 +18,9 @@ type StepHelm struct {
 func (StepHelm) StepTypeName() string { return "helm" }
 
 func (s StepHelm) Validate() (errSlice errorSlice) {
-	// TODO: validate
+	validateRequiredString(&errSlice, "chart", s.Chart)
+	validateRequiredString(&errSlice, "name", s.Name)
+	validateRequiredString(&errSlice, "namespace", s.Namespace)
 	return
 }
 

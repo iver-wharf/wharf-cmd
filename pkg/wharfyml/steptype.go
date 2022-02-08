@@ -73,3 +73,15 @@ func yamlUnmarshalNodeWithValidator(node ast.Node, valuePtr interface{}) error {
 	var buf bytes.Buffer
 	return yaml.NewDecoder(&buf).DecodeFromNode(node, valuePtr)
 }
+
+func validateRequiredString(errs *errorSlice, key string, value string) {
+	if value == "" {
+		errs.add(wrapPathError(key, ErrStepTypeMissingRequired))
+	}
+}
+
+func validateRequiredStringSlice(errs *errorSlice, key string, value []string) {
+	if len(value) == 0 {
+		errs.add(wrapPathError(key, ErrStepTypeMissingRequired))
+	}
+}

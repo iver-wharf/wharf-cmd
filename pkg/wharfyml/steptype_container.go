@@ -1,7 +1,5 @@
 package wharfyml
 
-import "fmt"
-
 type StepContainer struct {
 	// Required fields
 	Image string
@@ -18,12 +16,8 @@ type StepContainer struct {
 func (StepContainer) StepTypeName() string { return "container" }
 
 func (s StepContainer) Validate() (errSlice errorSlice) {
-	if s.Image == "" {
-		errSlice.add(fmt.Errorf("%w: image", ErrStepTypeMissingRequired))
-	}
-	if len(s.Cmds) == 0 {
-		errSlice.add(fmt.Errorf("%w: cmds", ErrStepTypeMissingRequired))
-	}
+	validateRequiredString(&errSlice, "image", s.Image)
+	validateRequiredStringSlice(&errSlice, "cmds", s.Cmds)
 	return
 }
 

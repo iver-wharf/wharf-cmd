@@ -15,7 +15,10 @@ type StepKubectl struct {
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
 func (s StepKubectl) Validate() (errSlice errorSlice) {
-	// TODO: validate
+	// Only either file or files is required
+	if len(s.Files) == 0 {
+		validateRequiredString(&errSlice, "file", s.File)
+	}
 	return
 }
 

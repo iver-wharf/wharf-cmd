@@ -1,7 +1,5 @@
 package wharfyml
 
-import "fmt"
-
 type StepDocker struct {
 	// Required fields
 	File string
@@ -22,12 +20,8 @@ type StepDocker struct {
 func (StepDocker) StepTypeName() string { return "docker" }
 
 func (s StepDocker) Validate() (errSlice errorSlice) {
-	if s.File == "" {
-		errSlice.add(fmt.Errorf("%w: file", ErrStepTypeMissingRequired))
-	}
-	if s.Tag == "" {
-		errSlice.add(fmt.Errorf("%w: tag", ErrStepTypeMissingRequired))
-	}
+	validateRequiredString(&errSlice, "file", s.File)
+	validateRequiredString(&errSlice, "tag", s.Tag)
 	return
 }
 

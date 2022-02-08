@@ -14,7 +14,9 @@ type StepNuGetPackage struct {
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
 func (s StepNuGetPackage) Validate() (errSlice errorSlice) {
-	// TODO: validate
+	validateRequiredString(&errSlice, "version", s.Version)
+	validateRequiredString(&errSlice, "project-path", s.ProjectPath)
+	validateRequiredString(&errSlice, "repo", s.Repo)
 	return
 }
 
