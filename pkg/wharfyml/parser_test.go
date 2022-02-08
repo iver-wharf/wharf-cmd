@@ -158,9 +158,13 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 // to add a `wharf-cmd lint` option
 
 func getKeyedNode(t *testing.T, key, content string) (*ast.StringNode, ast.Node) {
+	strNode := ast.String(token.String(key, key, &token.Position{}))
+	return strNode, getNode(t, content)
+}
+
+func getNode(t *testing.T, content string) ast.Node {
 	file, err := parser.ParseBytes([]byte(content), parser.Mode(0))
 	require.NoError(t, err, "parse keyed node")
 	require.Len(t, file.Docs, 1, "document count")
-	strNode := ast.String(token.String(key, key, &token.Position{}))
-	return strNode, file.Docs[0].Body
+	return file.Docs[0].Body
 }

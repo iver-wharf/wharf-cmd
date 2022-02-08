@@ -98,7 +98,6 @@ func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice 
 			errSlice.add(err)
 			continue
 		}
-		var errSlice errorSlice
 		switch key.Value {
 		case propEnvironments:
 			envs, errs := visitStageEnvironmentsNode(stepNode)

@@ -81,7 +81,7 @@ func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
 	}
 	doc := file.Docs[0]
 	if len(file.Docs) > 1 {
-		err := fmt.Errorf("documents: %d: %w", len(file.Docs), ErrTooManyDocs)
+		err := fmt.Errorf("found %d documents: %w", len(file.Docs), ErrTooManyDocs)
 		// Continue, but only parse the first doc
 		return doc, err
 	}
