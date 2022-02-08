@@ -4,10 +4,77 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // TODO: Test the following:
 // - error on invalid environment variable type
+
+func TestParseDefEnvironments_ErrIfNotMap(t *testing.T) {
+	_, errs := visitEnvironmentMapsNode(getNode(t, `123`))
+	requireContainsErr(t, errs, ErrEnvsNotMap)
+}
+
+func TestParseDefEnvironments_ErrIfKeyNotString(t *testing.T) {
+	_, errs := visitEnvironmentMapsNode(getNode(t, `123: {}`))
+	requireContainsErr(t, errs, ErrKeyNotString)
+}
+
+func TestParseDefEnvironments_ValidMapOfEnvs(t *testing.T) {
+	envs, _ := visitEnvironmentMapsNode(getNode(t, `
+myEnv1: {}
+myEnv2: {}
+myEnv3: {}
+`))
+	require.Len(t, envs, 3)
+	_, hasEnv1 := envs["myEnv1"]
+	_, hasEnv2 := envs["myEnv2"]
+	_, hasEnv3 := envs["myEnv3"]
+	assert.True(t, hasEnv1, "has myEnv1")
+	assert.True(t, hasEnv2, "has myEnv2")
+	assert.True(t, hasEnv3, "has myEnv3")
+}
+
+func TestParseEnvironment_ErrIfEmptyName(t *testing.T) {
+	_, errs := visitEnvironmentNode(getKeyedNode(t, "", `{}`))
+	requireContainsErr(t, errs, ErrEnvEmptyName)
+}
+
+func TestParseEnvironment_ValidName(t *testing.T) {
+	env, _ := visitEnvironmentNode(getKeyedNode(t, "myEnv", `{}`))
+	assert.Equal(t, "myEnv", env.Name)
+}
+
+func TestParseEnvironment_ErrIfEnvNotMap(t *testing.T) {
+	_, errs := visitEnvironmentNode(getKeyedNode(t, "myEnv", `123`))
+	requireContainsErr(t, errs, ErrEnvNotMap)
+}
+
+func TestParseEnvironment_ErrIfInvalidVarType(t *testing.T) {
+	_, errs := visitEnvironmentNode(getKeyedNode(t, "myEnv", `
+myVar: [123]
+`))
+	requireContainsErr(t, errs, ErrEnvInvalidVarType)
+}
+
+func TestParseEnvironment_ValidVarTypes(t *testing.T) {
+	env, errs := visitEnvironmentNode(getKeyedNode(t, "myEnv", `
+myInt: -123
+myUint: 123
+myFloat: 456.789
+myString: foo bar
+myBool: true
+`))
+	requireNotContainsErr(t, errs, ErrEnvInvalidVarType)
+	want := map[string]interface{}{
+		"myInt":    int64(-123),
+		"myUint":   uint64(123),
+		"myFloat":  456.789,
+		"myString": "foo bar",
+		"myBool":   true,
+	}
+	assert.Equal(t, want, env.Vars)
+}
 
 func TestParseStageEnvironments_ErrIfNotArray(t *testing.T) {
 	_, errs := visitEnvironmentStringsNode(getNode(t, `123`))

@@ -98,13 +98,13 @@ func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Erro
 		switch key.Value {
 		case propEnvironments:
 			var errs Errors
-			def.Envs, errs = visitDocEnvironmentsNodes(n)
+			def.Envs, errs = visitDocEnvironmentsNodes(n.Value)
 			errSlice.add(errs...)
 		case propInput:
 			// TODO: support inputs
 			errSlice.add(errors.New("does not support input vars yet"))
 		default:
-			stage, errs := visitDocStageNode(key, n)
+			stage, errs := visitDocStageNode(key, n.Value)
 			def.Stages = append(def.Stages, stage)
 			errSlice.add(errs...)
 		}
@@ -112,14 +112,14 @@ func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Erro
 	return
 }
 
-func visitDocEnvironmentsNodes(node *ast.MappingValueNode) (map[string]Env, Errors) {
-	envs, errs := visitEnvironmentMapsNode(node.Value)
+func visitDocEnvironmentsNodes(node ast.Node) (map[string]Env, Errors) {
+	envs, errs := visitEnvironmentMapsNode(node)
 	errs = wrapPathErrorSlice(propEnvironments, errs)
 	return envs, errs
 }
 
-func visitDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage, Errors) {
-	stage, errs := visitStageNode(key, node.Value)
+func visitDocStageNode(key *ast.StringNode, node ast.Node) (Stage, Errors) {
+	stage, errs := visitStageNode(key, node)
 	errs = wrapPathErrorSlice(key.Value, errs)
 	return stage, errs
 }
@@ -141,6 +141,7 @@ func docBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	return n, nil
 }
 
+// TODO: return err instead and only have 1 error type for non-map errors
 func getMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, bool) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
