@@ -18,7 +18,8 @@ func (s StepNuGetPackage) Validate() (errSlice errorSlice) {
 	return
 }
 
-func (s *StepNuGetPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+func (s StepNuGetPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+	var errSlice errorSlice
 	errSlice.addNonNils(
 		nodes.unmarshalString("version", &s.Version),
 		nodes.unmarshalString("project-path", &s.ProjectPath),
@@ -26,9 +27,5 @@ func (s *StepNuGetPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice e
 		nodes.unmarshalBool("skip-duplicate", &s.SkipDuplicate),
 		nodes.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
 	)
-	return
-}
-
-func (s *StepNuGetPackage) resetDefaults() errorSlice {
-	return nil
+	return s, errSlice
 }

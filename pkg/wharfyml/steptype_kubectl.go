@@ -19,7 +19,11 @@ func (s StepKubectl) Validate() (errSlice errorSlice) {
 	return
 }
 
-func (s *StepKubectl) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+func (s StepKubectl) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+	s.Cluster = "kubectl-config"
+	s.Action = "apply"
+
+	var errSlice errorSlice
 	errSlice.addNonNils(
 		nodes.unmarshalString("file", &s.File),
 		nodes.unmarshalString("namespace", &s.Namespace),
@@ -28,11 +32,5 @@ func (s *StepKubectl) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorS
 		nodes.unmarshalString("cluster", &s.Cluster),
 	)
 	errSlice.add(nodes.unmarshalStringSlice("files", &s.Files)...)
-	return
-}
-
-func (s *StepKubectl) resetDefaults() errorSlice {
-	s.Cluster = "kubectl-config"
-	s.Action = "apply"
-	return nil
+	return s, errSlice
 }

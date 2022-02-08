@@ -31,7 +31,17 @@ func (s StepDocker) Validate() (errSlice errorSlice) {
 	return
 }
 
-func (s *StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+func (s StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
+	s.Name = ""         // TODO: default to "${step_name}"
+	s.Group = ""        // TODO: default to "${REPO_GROUP}"
+	s.Registry = ""     // TODO: default to "${REG_URL}"
+	s.AppendCert = true // TODO: default to true if REPO_GROUP starts with "default", case insensitive
+
+	s.Push = true
+	s.Secret = "gitlab-registry"
+
+	var errSlice errorSlice
 	errSlice.addNonNils(
 		nodes.unmarshalString("file", &s.File),
 		nodes.unmarshalString("tag", &s.Tag),
@@ -45,17 +55,5 @@ func (s *StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSl
 		nodes.unmarshalBool("push", &s.Push),
 	)
 	errSlice.add(nodes.unmarshalStringSlice("args", &s.Args)...)
-	return
-}
-
-func (s *StepDocker) resetDefaults() errorSlice {
-	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
-	s.Name = ""         // TODO: default to "${step_name}"
-	s.Group = ""        // TODO: default to "${REPO_GROUP}"
-	s.Registry = ""     // TODO: default to "${REG_URL}"
-	s.AppendCert = true // TODO: default to true if REPO_GROUP starts with "default", case insensitive
-
-	s.Push = true
-	s.Secret = "gitlab-registry"
-	return nil
+	return s, errSlice
 }

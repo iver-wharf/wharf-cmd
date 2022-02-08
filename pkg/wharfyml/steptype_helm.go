@@ -22,7 +22,12 @@ func (s StepHelm) Validate() (errSlice errorSlice) {
 	return
 }
 
-func (s *StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+func (s StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
+	s.Cluster = "kubectl-config"
+	s.HelmVersion = "v2.14.1"
+
+	var errSlice errorSlice
 	errSlice.addNonNils(
 		nodes.unmarshalString("chart", &s.Chart),
 		nodes.unmarshalString("name", &s.Name),
@@ -37,12 +42,5 @@ func (s *StepHelm) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlic
 	if s.Repo == "stage" {
 		s.Repo = "https://kubernetes-charts.storage.googleapis.com"
 	}
-	return
-}
-
-func (s *StepHelm) resetDefaults() errorSlice {
-	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
-	s.Cluster = "kubectl-config"
-	s.HelmVersion = "v2.14.1"
-	return nil
+	return s, errSlice
 }

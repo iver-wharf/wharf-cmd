@@ -20,13 +20,6 @@ type StepType interface {
 	Validate() errorSlice
 }
 
-type stepTypePrep interface {
-	StepType
-
-	resetDefaults() errorSlice
-	unmarshalNodes(nodes nodeMapUnmarshaller) errorSlice
-}
-
 func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, errorSlice) {
 	nodes, err := stepTypeBodyAsNodes(node)
 	if err != nil {
@@ -40,37 +33,30 @@ func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, errorSlice
 }
 
 func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType, errorSlice) {
-	stepType, err := getStepTypeUnmarshaller(key)
-	if err != nil {
-		return nil, errorSlice{err}
-	}
 	var errSlice errorSlice
-	errSlice.add(stepType.resetDefaults()...)
-
 	m, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	if m != nil {
-		errSlice.add(stepType.unmarshalNodes(nodeMapUnmarshaller(m))...)
-	}
+	stepType, errs := getStepTypeUnmarshalled(key, nodeMapUnmarshaller(m))
+	errSlice.add(errs...)
 	return stepType, errSlice
 }
 
-func getStepTypeUnmarshaller(key *ast.StringNode) (stepTypePrep, error) {
+func getStepTypeUnmarshalled(key *ast.StringNode, nodes nodeMapUnmarshaller) (StepType, errorSlice) {
 	switch key.Value {
 	case "container":
-		return &StepContainer{}, nil
+		return StepContainer{}.unmarshalNodes(nodes)
 	case "docker":
-		return &StepDocker{}, nil
+		return StepDocker{}.unmarshalNodes(nodes)
 	case "helm":
-		return &StepHelm{}, nil
+		return StepHelm{}.unmarshalNodes(nodes)
 	case "helm-package":
-		return &StepHelmPackage{}, nil
+		return StepHelmPackage{}.unmarshalNodes(nodes)
 	case "kubectl":
-		return &StepKubectl{}, nil
+		return StepKubectl{}.unmarshalNodes(nodes)
 	case "nuget-package":
-		return &StepNuGetPackage{}, nil
+		return StepNuGetPackage{}.unmarshalNodes(nodes)
 	default:
-		return nil, newParseErrorNode(ErrStepTypeUnknown, key)
+		return nil, errorSlice{newParseErrorNode(ErrStepTypeUnknown, key)}
 	}
 }
 

@@ -13,16 +13,14 @@ func (s StepHelmPackage) Validate() (errSlice errorSlice) {
 	return
 }
 
-func (s *StepHelmPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+func (s StepHelmPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
+
+	var errSlice errorSlice
 	errSlice.addNonNils(
 		nodes.unmarshalString("version", &s.Version),
 		nodes.unmarshalString("chart-path", &s.ChartPath),
 		nodes.unmarshalString("destination", &s.Destination),
 	)
-	return
-}
-
-func (s *StepHelmPackage) resetDefaults() errorSlice {
-	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
-	return nil
+	return s, errSlice
 }

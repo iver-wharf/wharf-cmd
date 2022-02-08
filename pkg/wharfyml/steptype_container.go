@@ -27,7 +27,12 @@ func (s StepContainer) Validate() (errSlice errorSlice) {
 	return
 }
 
-func (s *StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+func (s StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (StepType, errorSlice) {
+	s.OS = "linux"
+	s.Shell = "/bin/sh"
+	s.ServiceAccount = "default"
+
+	var errSlice errorSlice
 	errSlice.addNonNils(
 		nodes.unmarshalString("image", &s.Image),
 		nodes.unmarshalString("os", &s.OS),
@@ -37,12 +42,5 @@ func (s *StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice erro
 		nodes.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
 	)
 	errSlice.add(nodes.unmarshalStringSlice("cmds", &s.Cmds)...)
-	return
-}
-
-func (s *StepContainer) resetDefaults() errorSlice {
-	s.OS = "linux"
-	s.Shell = "/bin/sh"
-	s.ServiceAccount = "default"
-	return nil
+	return s, errSlice
 }
