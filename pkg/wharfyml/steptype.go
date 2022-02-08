@@ -58,8 +58,8 @@ type StepType2 interface {
 	Validate() errorSlice
 }
 
-func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, errorSlice) {
-	stepType, err := parseStepTypeNode(key, node)
+func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, errorSlice) {
+	stepType, err := unmarshalStepTypeNode(key, node)
 	if err != nil {
 		return nil, errorSlice{err}
 	}
@@ -67,7 +67,7 @@ func parseStepType(key *ast.StringNode, node ast.Node) (StepType2, errorSlice) {
 	return stepType, stepType.Validate()
 }
 
-func parseStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
+func unmarshalStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
 	var stepType StepType2
 	var err error
 	switch key.Value {

@@ -77,7 +77,7 @@ type Stage2 struct {
 	Steps        []Step2
 }
 
-func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice errorSlice) {
+func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice errorSlice) {
 	stage.Name = key.Value
 	if key.Value == "" {
 		errSlice.add(newParseErrorNode(ErrStageEmptyName, key))
@@ -98,33 +98,29 @@ func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice err
 			errSlice.add(err)
 			continue
 		}
-		errs := parseStepNodeIntoStage(&stage, key, stepNode)
-		errSlice.add(errs...)
+		var errSlice errorSlice
+		switch key.Value {
+		case propEnvironments:
+			envs, errs := visitStageEnvironmentsNode(stepNode)
+			stage.Environments = envs
+			errSlice.add(errs...)
+		default:
+			step, errs := visitStageStepNode(key, stepNode)
+			stage.Steps = append(stage.Steps, step)
+			errSlice.add(errs...)
+		}
 	}
 	return
 }
 
-func parseStepNodeIntoStage(stage *Stage2, key *ast.StringNode, node *ast.MappingValueNode) errorSlice {
-	var errSlice errorSlice
-	switch key.Value {
-	case propEnvironments:
-		stage.Environments, errSlice = parseStageEnvironmentsNode(node)
-	default:
-		step, errs := parseStageStepNode(key, node)
-		stage.Steps = append(stage.Steps, step)
-		errSlice = errs
-	}
-	return errSlice
-}
-
-func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlice) {
-	envs, errs := parseStageEnvironments2(node.Value)
+func visitStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlice) {
+	envs, errs := visitEnvironmentStringsNode(node.Value)
 	errs.fmtErrorfAll("environments: %w", fmtErrorfPlaceholder)
 	return envs, errs
 }
 
-func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, errorSlice) {
-	step, errs := parseStep2(key, node.Value)
+func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, errorSlice) {
+	step, errs := visitStepNode(key, node.Value)
 	errs.fmtErrorfAll("step %q: %w", key.Value, fmtErrorfPlaceholder)
 	return step, errs
 }
@@ -132,7 +128,8 @@ func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2,
 func stageBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	n, ok := getMappingValueNodes(body)
 	if !ok {
-		return nil, newParseErrorNode(fmt.Errorf("stage type: %s: %w", body.Type(), ErrStageNotMap), body)
+		return nil, newParseErrorNode(fmt.Errorf("stage type: %s: %w",
+			body.Type(), ErrStageNotMap), body)
 	}
 	return n, nil
 }

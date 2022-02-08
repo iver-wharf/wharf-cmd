@@ -57,7 +57,7 @@ func parse(reader io.Reader) (def Definition, errSlice errorSlice) {
 		return
 	}
 	var errs errorSlice
-	def, errs = parseDocNodes(nodes)
+	def, errs = visitDocNodes(nodes)
 	if len(errs) > 0 {
 		errSlice.add(errs...)
 	}
@@ -88,43 +88,38 @@ func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
 	return doc, nil
 }
 
-func parseDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice errorSlice) {
+func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice errorSlice) {
 	for _, n := range nodes {
 		key, err := parseMapKey(n.Key)
 		if err != nil {
 			errSlice.add(fmt.Errorf("%q: %w", n.Key, err))
 			continue
 		}
-		errs := parseDocNodeIntoDefinition(&def, key, n)
-		errSlice.add(errs...)
+		switch key.Value {
+		case propEnvironments:
+			var errs errorSlice
+			def.Envs, errs = visitDocEnvironmentsNodes(n)
+			errSlice.add(errs...)
+		case propInput:
+			// TODO: support inputs
+			errSlice.add(errors.New("does not support input vars yet"))
+		default:
+			stage, errs := visitDocStageNode(key, n)
+			def.Stages = append(def.Stages, stage)
+			errSlice.add(errs...)
+		}
 	}
 	return
 }
 
-func parseDocNodeIntoDefinition(def *Definition, key *ast.StringNode, node *ast.MappingValueNode) errorSlice {
-	switch key.Value {
-	case propEnvironments:
-		var errs errorSlice
-		def.Envs, errs = parseDocEnvironmentsNode(node)
-		return errs
-	case propInput:
-		// TODO: support inputs
-		return errorSlice{errors.New("does not support input vars yet")}
-	default:
-		stage, errs := parseDocStageNode(key, node)
-		def.Stages = append(def.Stages, stage)
-		return errs
-	}
-}
-
-func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, errorSlice) {
-	envs, errs := parseDefEnvironments(node.Value)
+func visitDocEnvironmentsNodes(node *ast.MappingValueNode) (map[string]Env, errorSlice) {
+	envs, errs := visitEnvironmentMapsNode(node.Value)
 	errs.fmtErrorfAll("environments: %w", fmtErrorfPlaceholder)
 	return envs, errs
 }
 
-func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, errorSlice) {
-	stage, errs := parseStage2(key, node.Value)
+func visitDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, errorSlice) {
+	stage, errs := visitStageNode(key, node.Value)
 	errs.fmtErrorfAll("stage %q: %w", key.Value, fmtErrorfPlaceholder)
 	return stage, errs
 }

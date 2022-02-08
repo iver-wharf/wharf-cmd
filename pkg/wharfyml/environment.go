@@ -21,11 +21,11 @@ type Env struct {
 	Vars map[string]interface{}
 }
 
-func parseDefEnvironments(node ast.Node) (map[string]Env, errorSlice) {
+func visitEnvironmentMapsNode(node ast.Node) (map[string]Env, errorSlice) {
 	return nil, nil
 }
 
-func parseStageEnvironments2(node ast.Node) (envs []string, errSlice errorSlice) {
+func visitEnvironmentStringsNode(node ast.Node) (envs []string, errSlice errorSlice) {
 	if node.Type() != ast.SequenceType {
 		return nil, errorSlice{newParseErrorNode(ErrStageEnvsNotArray, node)}
 	}
