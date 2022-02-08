@@ -14,6 +14,15 @@ func (s *errorSlice) add(errs ...error) {
 	*s = append(*s, errs...)
 }
 
+func (s *errorSlice) addNonNils(errs ...error) {
+	for _, err := range errs {
+		if err == nil {
+			continue
+		}
+		*s = append(*s, err)
+	}
+}
+
 var fmtErrorfPlaceholder = errors.New("placeholder")
 
 func (s errorSlice) fmtErrorfAll(format string, args ...interface{}) {

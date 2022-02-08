@@ -10,8 +10,8 @@ import (
 )
 
 var (
+	ErrStepTypeNotMap          = errors.New("step type should be a YAML map")
 	ErrStepTypeUnknown         = errors.New("unknown step type")
-	ErrStepTypeInvalidField    = errors.New("invalid field type")
 	ErrStepTypeMissingRequired = errors.New("missing required field")
 )
 
@@ -58,40 +58,63 @@ type StepType2 interface {
 	Validate() errorSlice
 }
 
+type stepTypePrep interface {
+	StepType2
+
+	resetDefaults() errorSlice
+	unmarshalNodes(nodes nodeMapUnmarshaller) errorSlice
+}
+
 func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, errorSlice) {
-	stepType, err := unmarshalStepTypeNode(key, node)
+	nodes, err := stepTypeBodyAsNodes(node)
 	if err != nil {
 		return nil, errorSlice{err}
 	}
-	// TODO: unmarshal explicitly to keep node references in validation errors
+	stepType, errs := unmarshalStepTypeNode(key, nodes)
+	if len(errs) > 0 {
+		return stepType, errs
+	}
 	return stepType, stepType.Validate()
 }
 
-func unmarshalStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
-	var stepType StepType2
-	var err error
+func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType2, errorSlice) {
+	stepType, err := getStepTypeUnmarshaller(key)
+	if err != nil {
+		return nil, errorSlice{err}
+	}
+	var errSlice errorSlice
+	errSlice.add(stepType.resetDefaults()...)
+
+	m, errs := mappingValueNodeSliceToMap(nodes)
+	errSlice.add(errs...)
+	if m != nil {
+		errSlice.add(stepType.unmarshalNodes(nodeMapUnmarshaller(m))...)
+	}
+	return stepType, errSlice
+}
+
+func getStepTypeUnmarshaller(key *ast.StringNode) (stepTypePrep, error) {
 	switch key.Value {
 	case "container":
-		container := DefaultStepContainer
-		err = yamlUnmarshalNodeWithValidator(node, &container)
-		stepType = container
+		return &StepContainer{}, nil
 	case "docker":
-		docker := DefaultStepDocker
-		err = yamlUnmarshalNodeWithValidator(node, &docker)
-		stepType = docker
+		return &StepDocker{}, nil
 	case "helm-package":
-		helmPackage := DefaultStepHelmPackage
-		err = yamlUnmarshalNodeWithValidator(node, &helmPackage)
-		stepType = helmPackage
+		return &StepHelmPackage{}, nil
 	case "helm", "kubectl", "nuget-package":
-		return nil, errors.New("not yet implemented")
+		return nil, newParseErrorNode(errors.New("not yet implemented"), key)
 	default:
 		return nil, newParseErrorNode(ErrStepTypeUnknown, key)
 	}
-	if err != nil {
-		return nil, newParseErrorNode(fmt.Errorf("%w: %v", ErrStepTypeInvalidField, err), node)
+}
+
+func stepTypeBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
+	n, ok := getMappingValueNodes(body)
+	if !ok {
+		return nil, newParseErrorNode(fmt.Errorf("step type type: %s: %w",
+			body.Type(), ErrStepTypeNotMap), body)
 	}
-	return stepType, nil
+	return n, nil
 }
 
 func yamlUnmarshalNodeWithValidator(node ast.Node, valuePtr interface{}) error {
@@ -100,20 +123,16 @@ func yamlUnmarshalNodeWithValidator(node ast.Node, valuePtr interface{}) error {
 }
 
 type StepContainer struct {
-	Image string   `yaml:"image"`
-	Cmds  []string `yaml:"cmds"`
+	// Required fields
+	Image string
+	Cmds  []string
 
-	OS                    string `yaml:"os"`
-	Shell                 string `yaml:"shell"`
-	SecretName            string `yaml:"secretName"`
-	ServiceAccount        string `yaml:"serviceAccount"`
-	CertificatesMountPath string `yaml:"certificatesMountPath"`
-}
-
-var DefaultStepContainer = StepContainer{
-	OS:             "linux",
-	Shell:          "/bin/sh",
-	ServiceAccount: "default",
+	// Optional fields
+	OS                    string
+	Shell                 string
+	SecretName            string
+	ServiceAccount        string
+	CertificatesMountPath string
 }
 
 func (StepContainer) StepTypeName() string { return "container" }
@@ -128,28 +147,41 @@ func (s StepContainer) Validate() (errSlice errorSlice) {
 	return
 }
 
-type StepDocker struct {
-	File string `yaml:"file"`
-	Tag  string `yaml:"tag"`
-
-	Destination string   `yaml:"destination"`
-	Name        string   `yaml:"name"`
-	Group       string   `yaml:"group"`
-	Context     string   `yaml:"context"`
-	Secret      string   `yaml:"secret"`
-	Registry    string   `yaml:"registry"`
-	AppendCert  bool     `yaml:"append-cert"`
-	Push        bool     `yaml:"push"`
-	Args        []string `yaml:"args"`
+func (s *StepContainer) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+	errSlice.addNonNils(
+		nodes.unmarshalString("image", &s.Image),
+		nodes.unmarshalString("os", &s.OS),
+		nodes.unmarshalString("shell", &s.Shell),
+		nodes.unmarshalString("secretName", &s.SecretName),
+		nodes.unmarshalString("serviceAccount", &s.ServiceAccount),
+		nodes.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
+	)
+	errSlice.add(nodes.unmarshalStringSlice("cmds", &s.Cmds)...)
+	return
 }
 
-var DefaultStepDocker = StepDocker{
-	Destination: "",   // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
-	Name:        "",   // TODO: default to "${step_name}"
-	Group:       "",   // TODO: default to "${REPO_GROUP}"
-	Registry:    "",   // TODO: default to "${REG_URL}"
-	AppendCert:  true, // TODO: default to true if REPO_GROUP starts with "default", case insensitive
-	Push:        true,
+func (s *StepContainer) resetDefaults() errorSlice {
+	s.OS = "linux"
+	s.Shell = "/bin/sh"
+	s.ServiceAccount = "default"
+	return nil
+}
+
+type StepDocker struct {
+	// Required fields
+	File string
+	Tag  string
+
+	// Optional fields
+	Destination string
+	Name        string
+	Group       string
+	Context     string
+	Secret      string
+	Registry    string
+	AppendCert  bool
+	Push        bool
+	Args        []string
 }
 
 func (StepDocker) StepTypeName() string { return "docker" }
@@ -164,24 +196,63 @@ func (s StepDocker) Validate() (errSlice errorSlice) {
 	return
 }
 
+func (s *StepDocker) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+	errSlice.addNonNils(
+		nodes.unmarshalString("file", &s.File),
+		nodes.unmarshalString("tag", &s.Tag),
+		nodes.unmarshalString("destination", &s.Destination),
+		nodes.unmarshalString("name", &s.Name),
+		nodes.unmarshalString("group", &s.Group),
+		nodes.unmarshalString("context", &s.Context),
+		nodes.unmarshalString("secret", &s.Secret),
+		nodes.unmarshalString("registry", &s.Registry),
+		nodes.unmarshalBool("append-cert", &s.AppendCert),
+		nodes.unmarshalBool("push", &s.Push),
+	)
+	errSlice.add(nodes.unmarshalStringSlice("args", &s.Args)...)
+	return
+}
+
+func (s *StepDocker) resetDefaults() errorSlice {
+	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
+	s.Name = ""         // TODO: default to "${step_name}"
+	s.Group = ""        // TODO: default to "${REPO_GROUP}"
+	s.Registry = ""     // TODO: default to "${REG_URL}"
+	s.AppendCert = true // TODO: default to true if REPO_GROUP starts with "default", case insensitive
+
+	s.Push = true
+	return nil
+}
+
 type StepHelm struct{}
 
 func (StepHelm) StepTypeName() string { return "helm" }
 
 type StepHelmPackage struct {
-	Version     string `yaml:"version"`
-	ChartPath   string `yaml:"chart-path"`
-	Destination string `yaml:"destination"`
-}
-
-var DefaultStepHelmPackage = StepHelmPackage{
-	Destination: "", // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
+	// Optional fields
+	Version     string
+	ChartPath   string
+	Destination string
 }
 
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
 func (s StepHelmPackage) Validate() (errSlice errorSlice) {
 	return
+}
+
+func (s *StepHelmPackage) unmarshalNodes(nodes nodeMapUnmarshaller) (errSlice errorSlice) {
+	errSlice.addNonNils(
+		nodes.unmarshalString("version", &s.Version),
+		nodes.unmarshalString("chart-path", &s.ChartPath),
+		nodes.unmarshalString("destination", &s.Destination),
+	)
+	return
+}
+
+func (s *StepHelmPackage) resetDefaults() errorSlice {
+	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
+	return nil
 }
 
 type StepKubectl struct{}

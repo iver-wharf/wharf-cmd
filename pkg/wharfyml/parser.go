@@ -151,3 +151,17 @@ func getMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, bool) {
 		return nil, false
 	}
 }
+
+func mappingValueNodeSliceToMap(slice []*ast.MappingValueNode) (map[string]ast.Node, errorSlice) {
+	m := make(map[string]ast.Node, len(slice))
+	var errSlice errorSlice
+	for _, node := range slice {
+		key, err := parseMapKey(node.Key)
+		if err != nil {
+			errSlice.add(err)
+			continue
+		}
+		m[key.Value] = node.Value
+	}
+	return m, errSlice
+}
