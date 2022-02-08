@@ -20,6 +20,7 @@ var (
 
 // Definition is the .wharf-ci.yml build definition structure.
 type Definition struct {
+	Inputs []Input
 	Envs   map[string]Env
 	Stages []Stage
 }
@@ -100,9 +101,10 @@ func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Erro
 			var errs Errors
 			def.Envs, errs = visitDocEnvironmentsNodes(n.Value)
 			errSlice.add(errs...)
-		case propInput:
-			// TODO: support inputs
-			errSlice.add(errors.New("does not support input vars yet"))
+		case propInputs:
+			var errs Errors
+			def.Inputs, errs = visitDocInputsNode(n.Value)
+			errSlice.add(wrapPathErrorSlice(propInputs, errs)...)
 		default:
 			stage, errs := visitDocStageNode(key, n.Value)
 			def.Stages = append(def.Stages, stage)

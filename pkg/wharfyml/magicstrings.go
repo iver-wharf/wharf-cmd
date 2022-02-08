@@ -1,10 +1,6 @@
 package wharfyml
 
 const (
-	propInput        = "inputs"
+	propInputs       = "inputs"
 	propEnvironments = "environments"
-	inputName        = "name"
-	inputType        = "type"
-	inputValues      = "values"
-	inputDefault     = "default"
 )

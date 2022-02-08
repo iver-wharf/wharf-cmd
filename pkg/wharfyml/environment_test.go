@@ -7,9 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TODO: Test the following:
-// - error on invalid environment variable type
-
 func TestParseDefEnvironments_ErrIfNotMap(t *testing.T) {
 	_, errs := visitEnvironmentMapsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrEnvsNotMap)
