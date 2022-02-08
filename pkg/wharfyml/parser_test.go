@@ -4,6 +4,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/goccy/go-yaml/ast"
+	"github.com/goccy/go-yaml/parser"
+	"github.com/goccy/go-yaml/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -153,3 +156,11 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 // TODO: Create issue on using https://pkg.go.dev/github.com/goccy/go-yaml
 // instead to be able to annotate errors with line numbers, to be able
 // to add a `wharf-cmd lint` option
+
+func getKeyedNode(t *testing.T, key, content string) (*ast.StringNode, ast.Node) {
+	file, err := parser.ParseBytes([]byte(content), parser.Mode(0))
+	require.NoError(t, err, "parse keyed node")
+	require.Len(t, file.Docs, 1, "document count")
+	strNode := ast.String(token.String(key, key, &token.Position{}))
+	return strNode, file.Docs[0].Body
+}
