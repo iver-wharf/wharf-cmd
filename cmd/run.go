@@ -25,9 +25,9 @@ var runCmd = &cobra.Command{
 		}
 		stageRun := worker.NewStageRunner(stepRun)
 		b := worker.New(stageRun)
-		def, err := wharfyml.Parse(flagRunPath)
-		if err != nil {
-			return err
+		def, errs := wharfyml.ParseFile(flagRunPath)
+		if len(errs) > 0 {
+			return errs[0]
 		}
 		res, err := b.Build(context.Background(), def, worker.BuildOptions{
 			StageFilter: flagStage,

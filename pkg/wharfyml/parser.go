@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
@@ -19,10 +20,19 @@ var (
 
 type Definition struct {
 	Envs   map[string]Env
-	Stages []Stage2
+	Stages []Stage
 }
 
-func Parse2(reader io.Reader) (Definition, errorSlice) {
+func ParseFile(path string) (Definition, errorSlice) {
+	file, err := os.Open(path)
+	if err != nil {
+		return Definition{}, errorSlice{err}
+	}
+	defer file.Close()
+	return Parse(file)
+}
+
+func Parse(reader io.Reader) (Definition, errorSlice) {
 	def, errs := parse(reader)
 	if len(errs) == 0 {
 		return def, nil
@@ -112,7 +122,7 @@ func visitDocEnvironmentsNodes(node *ast.MappingValueNode) (map[string]Env, erro
 	return envs, errs
 }
 
-func visitDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, errorSlice) {
+func visitDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage, errorSlice) {
 	stage, errs := visitStageNode(key, node.Value)
 	errs.fmtErrorfAll("stage %q: %w", key.Value, fmtErrorfPlaceholder)
 	return stage, errs

@@ -14,12 +14,12 @@ var (
 	ErrStepMultipleStepTypes = errors.New("contains multiple step types")
 )
 
-type Step2 struct {
+type Step struct {
 	Name string
-	Type StepType2
+	Type StepType
 }
 
-func visitStepNode(key *ast.StringNode, node ast.Node) (step Step2, errSlice errorSlice) {
+func visitStepNode(key *ast.StringNode, node ast.Node) (step Step, errSlice errorSlice) {
 	step.Name = key.Value
 	if key.Value == "" {
 		errSlice.add(newParseErrorNode(ErrStepEmptyName, key))
@@ -51,7 +51,7 @@ func visitStepNode(key *ast.StringNode, node ast.Node) (step Step2, errSlice err
 	return
 }
 
-func visitStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType2, errorSlice) {
+func visitStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType, errorSlice) {
 	stepType, errs := visitStepTypeNode(key, node.Value)
 	errs.fmtErrorfAll("type %q: %w", key.Value, fmtErrorfPlaceholder)
 	return stepType, errs

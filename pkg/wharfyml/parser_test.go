@@ -50,7 +50,7 @@ C:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse2(strings.NewReader(tc.input))
+			got, errs := Parse(strings.NewReader(tc.input))
 			require.Empty(t, errs)
 			var gotOrder []string
 			for _, s := range got.Stages {
@@ -96,7 +96,7 @@ myStage:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse2(strings.NewReader(tc.input))
+			got, errs := Parse(strings.NewReader(tc.input))
 			require.Empty(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
@@ -109,7 +109,7 @@ myStage:
 }
 
 func TestParser_TooManyDocs(t *testing.T) {
-	_, errs := Parse2(strings.NewReader(`
+	_, errs := Parse(strings.NewReader(`
 a: 1
 ---
 b: 2
@@ -120,7 +120,7 @@ c: 3
 }
 
 func TestParser_OneDocWithDocSeparator(t *testing.T) {
-	_, errs := Parse2(strings.NewReader(`
+	_, errs := Parse(strings.NewReader(`
 ---
 c: 3
 `))
@@ -128,17 +128,17 @@ c: 3
 }
 
 func TestParser_MissingDoc(t *testing.T) {
-	_, errs := Parse2(strings.NewReader(``))
+	_, errs := Parse(strings.NewReader(``))
 	requireContainsErr(t, errs, ErrMissingDoc)
 }
 
 func TestParser_ErrIfDocNotMap(t *testing.T) {
-	_, errs := Parse2(strings.NewReader(`123`))
+	_, errs := Parse(strings.NewReader(`123`))
 	requireContainsErr(t, errs, ErrDocNotMap)
 }
 
 func TestParser_ErrIfNonStringKey(t *testing.T) {
-	_, errs := Parse2(strings.NewReader(`
+	_, errs := Parse(strings.NewReader(`
 123: {}
 `))
 	requireContainsErr(t, errs, ErrKeyNotString)

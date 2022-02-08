@@ -15,19 +15,19 @@ var (
 	ErrStepTypeMissingRequired = errors.New("missing required field")
 )
 
-type StepType2 interface {
+type StepType interface {
 	StepTypeName() string
 	Validate() errorSlice
 }
 
 type stepTypePrep interface {
-	StepType2
+	StepType
 
 	resetDefaults() errorSlice
 	unmarshalNodes(nodes nodeMapUnmarshaller) errorSlice
 }
 
-func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, errorSlice) {
+func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, errorSlice) {
 	nodes, err := stepTypeBodyAsNodes(node)
 	if err != nil {
 		return nil, errorSlice{err}
@@ -39,7 +39,7 @@ func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, errorSlic
 	return stepType, stepType.Validate()
 }
 
-func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType2, errorSlice) {
+func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType, errorSlice) {
 	stepType, err := getStepTypeUnmarshaller(key)
 	if err != nil {
 		return nil, errorSlice{err}

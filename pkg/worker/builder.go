@@ -20,7 +20,7 @@ func New(stageRun StageRunner) Builder {
 	}
 }
 
-func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition, opt BuildOptions) (Result, error) {
+func (b builder) Build(ctx context.Context, def wharfyml.Definition, opt BuildOptions) (Result, error) {
 	result := Result{Options: opt}
 	start := time.Now()
 	stages := b.filterStages(def.Stages, opt.StageFilter)
@@ -73,7 +73,7 @@ func (b builder) Build(ctx context.Context, def wharfyml.BuildDefinition, opt Bu
 	return result, nil
 }
 
-func (b builder) filterStages(stages map[string]wharfyml.Stage, nameFilter string) []wharfyml.Stage {
+func (b builder) filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {
 	var result []wharfyml.Stage
 	for _, stage := range stages {
 		if nameFilter == "" || stage.Name == nameFilter {

@@ -13,13 +13,13 @@ var (
 	ErrStageEmptyName = errors.New("stage name cannot be empty")
 )
 
-type Stage2 struct {
+type Stage struct {
 	Name         string
 	Environments []string
-	Steps        []Step2
+	Steps        []Step
 }
 
-func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice errorSlice) {
+func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice errorSlice) {
 	stage.Name = key.Value
 	if key.Value == "" {
 		errSlice.add(newParseErrorNode(ErrStageEmptyName, key))
@@ -60,7 +60,7 @@ func visitStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlic
 	return envs, errs
 }
 
-func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, errorSlice) {
+func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, errorSlice) {
 	step, errs := visitStepNode(key, node.Value)
 	errs.fmtErrorfAll("step %q: %w", key.Value, fmtErrorfPlaceholder)
 	return step, errs
