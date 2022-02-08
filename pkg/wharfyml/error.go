@@ -13,15 +13,15 @@ func (s *errorSlice) add(errs ...error) {
 	*s = append(*s, errs...)
 }
 
-func wrapParseErr(err error, pos *token.Position) error {
+func newParseError(err error, pos *token.Position) error {
 	return ParseError{
 		Inner:    err,
 		Position: pos,
 	}
 }
 
-func wrapParseErrNode(err error, node ast.Node) error {
-	return wrapParseErr(err, node.GetToken().Position)
+func newParseErrorNode(err error, node ast.Node) error {
+	return newParseError(err, node.GetToken().Position)
 }
 
 type ParseError struct {

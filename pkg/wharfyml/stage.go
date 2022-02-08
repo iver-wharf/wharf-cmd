@@ -80,7 +80,7 @@ type Stage2 struct {
 func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice errorSlice) {
 	stage.Name = key.Value
 	if key.Value == "" {
-		errSlice.add(wrapParseErrNode(ErrStageEmptyName, key))
+		errSlice.add(newParseErrorNode(ErrStageEmptyName, key))
 		// Continue, its not a fatal issue
 	}
 	nodes, err := stageBodyAsNodes(node)
@@ -89,7 +89,7 @@ func parseStage2(key *ast.StringNode, node ast.Node) (stage Stage2, errSlice err
 		return
 	}
 	if len(nodes) == 0 {
-		errSlice.add(wrapParseErrNode(ErrStageEmpty, node))
+		errSlice.add(newParseErrorNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {
@@ -136,7 +136,7 @@ func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2,
 func stageBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	n, ok := getMappingValueNodes(body)
 	if !ok {
-		return nil, wrapParseErrNode(fmt.Errorf("stage type: %s: %w", body.Type(), ErrStageNotMap), body)
+		return nil, newParseErrorNode(fmt.Errorf("stage type: %s: %w", body.Type(), ErrStageNotMap), body)
 	}
 	return n, nil
 }

@@ -45,7 +45,7 @@ type Step2 struct {
 func parseStep2(key *ast.StringNode, node ast.Node) (step Step2, errSlice errorSlice) {
 	step.Name = key.Value
 	if key.Value == "" {
-		errSlice.add(wrapParseErrNode(ErrStepEmptyName, key))
+		errSlice.add(newParseErrorNode(ErrStepEmptyName, key))
 		// Continue, its not a fatal issue
 	}
 	nodes, err := stepBodyAsNodes(node)
@@ -54,11 +54,11 @@ func parseStep2(key *ast.StringNode, node ast.Node) (step Step2, errSlice errorS
 		return
 	}
 	if len(nodes) == 0 {
-		errSlice.add(wrapParseErrNode(ErrStepEmpty, node))
+		errSlice.add(newParseErrorNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.add(wrapParseErrNode(ErrStepMultipleStepTypes, node))
+		errSlice.add(newParseErrorNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
@@ -85,7 +85,7 @@ func parseStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (Ste
 func stepBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
 	n, ok := getMappingValueNodes(body)
 	if !ok {
-		return nil, wrapParseErrNode(fmt.Errorf("step type: %s: %w", body.Type(), ErrStepNotMap), body)
+		return nil, newParseErrorNode(fmt.Errorf("step type: %s: %w", body.Type(), ErrStepNotMap), body)
 	}
 	return n, nil
 }

@@ -86,10 +86,10 @@ func parseStepTypeNode(key *ast.StringNode, node ast.Node) (StepType2, error) {
 	case "helm", "kubectl", "nuget-package":
 		return nil, errors.New("not yet implemented")
 	default:
-		return nil, wrapParseErrNode(ErrStepTypeUnknown, key)
+		return nil, newParseErrorNode(ErrStepTypeUnknown, key)
 	}
 	if err != nil {
-		return nil, wrapParseErrNode(fmt.Errorf("%w: %v", ErrStepTypeInvalidField, err), node)
+		return nil, newParseErrorNode(fmt.Errorf("%w: %v", ErrStepTypeInvalidField, err), node)
 	}
 	return stepType, nil
 }
