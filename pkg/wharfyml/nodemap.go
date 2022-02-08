@@ -96,7 +96,7 @@ func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
 	gotType := prettyNodeTypeName(node)
 	err := newParseErrorNode(fmt.Errorf("%w: expected %s, but found %s",
 		ErrInvalidFieldType, wantType, gotType), node)
-	return wrapErrorInKeyed(key, err)
+	return wrapPathError(key, err)
 }
 
 func prettyNodeTypeName(node ast.Node) string {

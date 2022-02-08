@@ -58,44 +58,44 @@ func (err ParseError) Unwrap() error {
 	return err.Inner
 }
 
-func wrapErrorInKeyed(key string, err error) error {
-	var keyed keyedError
+func wrapPathError(path string, err error) error {
+	var keyed pathError
 	if !errors.As(err, &keyed) {
-		return keyedError{
-			key:   key,
+		return pathError{
+			path:  path,
 			inner: err,
 		}
 	}
-	return keyedError{
-		key:   fmt.Sprintf("%s/%s", key, keyed.key),
+	return pathError{
+		path:  fmt.Sprintf("%s/%s", path, keyed.path),
 		inner: keyed.inner,
 	}
 }
 
-func wrapErrorSliceInKeyed(key string, errs errorSlice) errorSlice {
+func wrapPathErrorSlice(path string, errs errorSlice) errorSlice {
 	result := make(errorSlice, len(errs))
 	for i, err := range errs {
-		result[i] = wrapErrorInKeyed(key, err)
+		result[i] = wrapPathError(path, err)
 	}
 	return result
 }
 
-type keyedError struct {
-	key   string
+type pathError struct {
+	path  string
 	inner error
 }
 
-func (err keyedError) Error() string {
+func (err pathError) Error() string {
 	if err.inner == nil {
-		return err.key
+		return err.path
 	}
-	return fmt.Sprintf("%s: %s", err.key, err.inner)
+	return fmt.Sprintf("%s: %s", err.path, err.inner)
 }
 
-func (err keyedError) Is(target error) bool {
+func (err pathError) Is(target error) bool {
 	return errors.Is(err.inner, target)
 }
 
-func (err keyedError) Unwrap() error {
+func (err pathError) Unwrap() error {
 	return err.inner
 }
