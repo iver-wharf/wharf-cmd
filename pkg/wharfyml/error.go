@@ -2,6 +2,7 @@ package wharfyml
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/token"
@@ -11,6 +12,21 @@ type errorSlice []error
 
 func (s *errorSlice) add(errs ...error) {
 	*s = append(*s, errs...)
+}
+
+var fmtErrorfPlaceholder = errors.New("placeholder")
+
+func (s errorSlice) fmtErrorfAll(format string, args ...interface{}) {
+	newArgs := make([]interface{}, len(args))
+	copy(newArgs, args)
+	for i, err := range s {
+		for j, arg := range args {
+			if arg == fmtErrorfPlaceholder {
+				newArgs[j] = err
+			}
+		}
+		s[i] = fmt.Errorf(format, newArgs)
+	}
 }
 
 func newParseError(err error, pos *token.Position) error {

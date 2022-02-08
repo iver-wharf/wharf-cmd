@@ -76,9 +76,7 @@ func parseStep2(key *ast.StringNode, node ast.Node) (step Step2, errSlice errorS
 
 func parseStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType2, errorSlice) {
 	stepType, errs := parseStepType(key, node.Value)
-	for i, err := range errs {
-		errs[i] = fmt.Errorf("type %q: %w", key.Value, err)
-	}
+	errs.fmtErrorfAll("type %q: %w", key.Value, fmtErrorfPlaceholder)
 	return stepType, errs
 }
 

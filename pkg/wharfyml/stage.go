@@ -119,17 +119,13 @@ func parseStepNodeIntoStage(stage *Stage2, key *ast.StringNode, node *ast.Mappin
 
 func parseStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlice) {
 	envs, errs := parseStageEnvironments2(node.Value)
-	for i, err := range errs {
-		errs[i] = fmt.Errorf("environments: %w", err)
-	}
+	errs.fmtErrorfAll("environments: %w", fmtErrorfPlaceholder)
 	return envs, errs
 }
 
 func parseStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step2, errorSlice) {
 	step, errs := parseStep2(key, node.Value)
-	for i, err := range errs {
-		errs[i] = fmt.Errorf("step %q: %w", key.Value, err)
-	}
+	errs.fmtErrorfAll("step %q: %w", key.Value, fmtErrorfPlaceholder)
 	return step, errs
 }
 

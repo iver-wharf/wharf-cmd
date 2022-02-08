@@ -36,7 +36,8 @@ func Parse2(reader io.Reader) (Definition, errorSlice) {
 	for i, err := range errs {
 		var parseErr ParseError
 		if errors.As(err, &parseErr) {
-			errs[i] = fmt.Errorf("%d:%d: %w", parseErr.Position.Line, parseErr.Position.Column, err)
+			errs[i] = fmt.Errorf("%d:%d: %w",
+				parseErr.Position.Line, parseErr.Position.Column, err)
 		}
 	}
 	return Definition{}, errs
@@ -118,17 +119,13 @@ func parseDocNodeIntoDefinition(def *Definition, key *ast.StringNode, node *ast.
 
 func parseDocEnvironmentsNode(node *ast.MappingValueNode) (map[string]Env, errorSlice) {
 	envs, errs := parseDefEnvironments(node.Value)
-	for i, err := range errs {
-		errs[i] = fmt.Errorf("environments: %w", err)
-	}
+	errs.fmtErrorfAll("environments: %w", fmtErrorfPlaceholder)
 	return envs, errs
 }
 
 func parseDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage2, errorSlice) {
 	stage, errs := parseStage2(key, node.Value)
-	for i, err := range errs {
-		errs[i] = fmt.Errorf("stage %q: %w", key.Value, err)
-	}
+	errs.fmtErrorfAll("stage %q: %w", key.Value, fmtErrorfPlaceholder)
 	return stage, errs
 }
 
