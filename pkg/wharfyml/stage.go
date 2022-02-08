@@ -56,13 +56,13 @@ func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice e
 
 func visitStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, errorSlice) {
 	envs, errs := visitEnvironmentStringsNode(node.Value)
-	errs.fmtErrorfAll("environments: %w", fmtErrorfPlaceholder)
+	errs = wrapErrorSliceInKeyed(propEnvironments, errs)
 	return envs, errs
 }
 
 func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, errorSlice) {
 	step, errs := visitStepNode(key, node.Value)
-	errs.fmtErrorfAll("step %q: %w", key.Value, fmtErrorfPlaceholder)
+	errs = wrapErrorSliceInKeyed(key.Value, errs)
 	return step, errs
 }
 

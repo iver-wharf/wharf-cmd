@@ -53,7 +53,7 @@ func visitStepNode(key *ast.StringNode, node ast.Node) (step Step, errSlice erro
 
 func visitStepStepTypeNode(key *ast.StringNode, node *ast.MappingValueNode) (StepType, errorSlice) {
 	stepType, errs := visitStepTypeNode(key, node.Value)
-	errs.fmtErrorfAll("type %q: %w", key.Value, fmtErrorfPlaceholder)
+	errs = wrapErrorSliceInKeyed(key.Value, errs)
 	return stepType, errs
 }
 

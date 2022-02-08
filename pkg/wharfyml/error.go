@@ -25,19 +25,6 @@ func (s *errorSlice) addNonNils(errs ...error) {
 
 var fmtErrorfPlaceholder = errors.New("placeholder")
 
-func (s errorSlice) fmtErrorfAll(format string, args ...interface{}) {
-	newArgs := make([]interface{}, len(args))
-	copy(newArgs, args)
-	for i, err := range s {
-		for j, arg := range args {
-			if arg == fmtErrorfPlaceholder {
-				newArgs[j] = err
-			}
-		}
-		s[i] = fmt.Errorf(format, newArgs...)
-	}
-}
-
 func newParseError(err error, pos *token.Position) error {
 	return ParseError{
 		Inner:    err,
@@ -58,9 +45,6 @@ func (err ParseError) Error() string {
 	if err.Inner == nil {
 		return ""
 	}
-	if err.Position == nil {
-		return err.Inner.Error()
-	}
 	return err.Inner.Error()
 }
 
@@ -70,4 +54,46 @@ func (err ParseError) Is(target error) bool {
 
 func (err ParseError) Unwrap() error {
 	return err.Inner
+}
+
+func wrapErrorInKeyed(key string, err error) error {
+	var keyed keyedError
+	if !errors.As(err, &keyed) {
+		return keyedError{
+			key:   key,
+			inner: err,
+		}
+	}
+	return keyedError{
+		key:   fmt.Sprintf("%s/%s", key, keyed.key),
+		inner: keyed.inner,
+	}
+}
+
+func wrapErrorSliceInKeyed(key string, errs errorSlice) errorSlice {
+	result := make(errorSlice, len(errs))
+	for i, err := range errs {
+		result[i] = wrapErrorInKeyed(key, err)
+	}
+	return result
+}
+
+type keyedError struct {
+	key   string
+	inner error
+}
+
+func (err keyedError) Error() string {
+	if err.inner == nil {
+		return err.key
+	}
+	return fmt.Sprintf("%s: %s", err.key, err.inner)
+}
+
+func (err keyedError) Is(target error) bool {
+	return errors.Is(err.inner, target)
+}
+
+func (err keyedError) Unwrap() error {
+	return err.inner
 }

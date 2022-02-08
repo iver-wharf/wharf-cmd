@@ -103,13 +103,13 @@ func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice erro
 
 func visitDocEnvironmentsNodes(node *ast.MappingValueNode) (map[string]Env, errorSlice) {
 	envs, errs := visitEnvironmentMapsNode(node.Value)
-	errs.fmtErrorfAll("environments: %w", fmtErrorfPlaceholder)
+	errs = wrapErrorSliceInKeyed(propEnvironments, errs)
 	return envs, errs
 }
 
 func visitDocStageNode(key *ast.StringNode, node *ast.MappingValueNode) (Stage, errorSlice) {
 	stage, errs := visitStageNode(key, node.Value)
-	errs.fmtErrorfAll("stage %q: %w", key.Value, fmtErrorfPlaceholder)
+	errs = wrapErrorSliceInKeyed(key.Value, errs)
 	return stage, errs
 }
 

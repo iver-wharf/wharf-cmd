@@ -94,8 +94,9 @@ func (m nodeMapUnmarshaller) unmarshalBool(key string, target *bool) error {
 
 func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
 	gotType := prettyNodeTypeName(node)
-	return newParseErrorNode(fmt.Errorf("field %q: expected %s, but found %s: %w",
-		key, wantType, gotType, ErrInvalidFieldType), node)
+	err := newParseErrorNode(fmt.Errorf("%w: expected %s, but found %s",
+		ErrInvalidFieldType, wantType, gotType), node)
+	return wrapErrorInKeyed(key, err)
 }
 
 func prettyNodeTypeName(node ast.Node) string {
