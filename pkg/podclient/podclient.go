@@ -6,7 +6,8 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-// Client is used to interact with k8s.
+// Client contains the method set we expect from things dealing with
+// pods.
 type Client interface {
 	// WaitForPodModifiedFunc waits until the pod fulfills the requirements
 	// defined in the passed in function.
