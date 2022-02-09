@@ -31,7 +31,7 @@ type k8sProvisioner struct {
 	events     corev1.EventInterface
 }
 
-// NewK8sProvisioner returns a new step runner implementation that targets
+// NewK8sProvisioner returns a new provisioner implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
 func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
