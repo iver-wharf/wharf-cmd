@@ -6,7 +6,6 @@ import (
 
 	"github.com/goccy/go-yaml/ast"
 	"github.com/goccy/go-yaml/parser"
-	"github.com/goccy/go-yaml/token"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,7 +133,7 @@ func TestParser_MissingDoc(t *testing.T) {
 
 func TestParser_ErrIfDocNotMap(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`123`))
-	requireContainsErr(t, errs, ErrDocNotMap)
+	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParser_ErrIfNonStringKey(t *testing.T) {
@@ -142,6 +141,13 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 123: {}
 `))
 	requireContainsErr(t, errs, ErrKeyNotString)
+}
+
+func TestParser_ErrIfEmptyStageName(t *testing.T) {
+	_, errs := Parse(strings.NewReader(`
+"": {}
+`))
+	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
 // TODO: Test the following:
@@ -157,9 +163,10 @@ func TestParser_ErrIfNonStringKey(t *testing.T) {
 // instead to be able to annotate errors with line numbers, to be able
 // to add a `wharf-cmd lint` option
 
-func getKeyedNode(t *testing.T, key, content string) (*ast.StringNode, ast.Node) {
-	strNode := ast.String(token.String(key, key, &token.Position{}))
-	return strNode, getNode(t, content)
+func getKeyedNode(t *testing.T, content string) *ast.MappingValueNode {
+	mapValNode, ok := getNode(t, content).(*ast.MappingValueNode)
+	require.True(t, ok, "testing content did not parse as a MappingValueNode")
+	return mapValNode
 }
 
 func getNode(t *testing.T, content string) ast.Node {

@@ -9,12 +9,17 @@ import (
 
 func TestParseDefEnvironments_ErrIfNotMap(t *testing.T) {
 	_, errs := visitEnvironmentMapsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrEnvsNotMap)
+	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParseDefEnvironments_ErrIfKeyNotString(t *testing.T) {
 	_, errs := visitEnvironmentMapsNode(getNode(t, `123: {}`))
 	requireContainsErr(t, errs, ErrKeyNotString)
+}
+
+func TestParseDefEnvironments_ErrIfKeyEmpty(t *testing.T) {
+	_, errs := visitEnvironmentMapsNode(getNode(t, `"": {}`))
+	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
 func TestParseDefEnvironments_ValidMapOfEnvs(t *testing.T) {
@@ -32,30 +37,25 @@ myEnv3: {}
 	assert.True(t, hasEnv3, "has myEnv3")
 }
 
-func TestParseEnvironment_ErrIfEmptyName(t *testing.T) {
-	_, errs := visitEnvironmentNode(getKeyedNode(t, "", `{}`))
-	requireContainsErr(t, errs, ErrEnvEmptyName)
-}
-
-func TestParseEnvironment_ValidName(t *testing.T) {
-	env, _ := visitEnvironmentNode(getKeyedNode(t, "myEnv", `{}`))
+func TestParseEnvironment_SetsName(t *testing.T) {
+	env, _ := visitEnvironmentNode("myEnv", getNode(t, `{}`))
 	assert.Equal(t, "myEnv", env.Name)
 }
 
 func TestParseEnvironment_ErrIfEnvNotMap(t *testing.T) {
-	_, errs := visitEnvironmentNode(getKeyedNode(t, "myEnv", `123`))
-	requireContainsErr(t, errs, ErrEnvNotMap)
+	_, errs := visitEnvironmentNode("myEnv", getNode(t, `123`))
+	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParseEnvironment_ErrIfInvalidVarType(t *testing.T) {
-	_, errs := visitEnvironmentNode(getKeyedNode(t, "myEnv", `
+	_, errs := visitEnvironmentNode("myEnv", getNode(t, `
 myVar: [123]
 `))
 	requireContainsErr(t, errs, ErrEnvInvalidVarType)
 }
 
 func TestParseEnvironment_ValidVarTypes(t *testing.T) {
-	env, errs := visitEnvironmentNode(getKeyedNode(t, "myEnv", `
+	env, errs := visitEnvironmentNode("myEnv", getNode(t, `
 myInt: -123
 myUint: 123
 myFloat: 456.789

@@ -7,22 +7,17 @@ import (
 )
 
 func TestParseStage_ErrIfNotMap(t *testing.T) {
-	_, errs := visitStageNode(getKeyedNode(t, "myStage", `123`))
-	requireContainsErr(t, errs, ErrStageNotMap)
-}
-
-func TestParseStage_ErrIfEmptyKey(t *testing.T) {
-	_, errs := visitStageNode(getKeyedNode(t, "", `{}`))
-	requireContainsErr(t, errs, ErrStageEmptyName)
+	_, errs := visitStageNode("myStage", getNode(t, `123`))
+	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParseStage_ErrIfEmptyMap(t *testing.T) {
-	_, errs := visitStageNode(getKeyedNode(t, "myStage", `{}`))
+	_, errs := visitStageNode("myStage", getNode(t, `{}`))
 	requireContainsErr(t, errs, ErrStageEmpty)
 }
 
 func TestParseStage_Name(t *testing.T) {
-	stage, errs := visitStageNode(getKeyedNode(t, "myStage", `{}`))
+	stage, errs := visitStageNode("myStage", getNode(t, `{}`))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
 	}

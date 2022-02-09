@@ -17,7 +17,7 @@ type StepKubectl struct {
 // StepTypeName returns the name of this step type.
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
-func (s StepKubectl) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
+func (s StepKubectl) visitStepTypeNode(nodes stepTypeParser) (StepType, Errors) {
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 

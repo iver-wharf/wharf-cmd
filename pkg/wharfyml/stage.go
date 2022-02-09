@@ -2,16 +2,13 @@ package wharfyml
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/goccy/go-yaml/ast"
 )
 
 // Errors related to parsing stages.
 var (
-	ErrStageNotMap    = errors.New("stage should be a YAML map")
-	ErrStageEmpty     = errors.New("stage is missing steps")
-	ErrStageEmptyName = errors.New("stage name cannot be empty")
+	ErrStageEmpty = errors.New("stage is missing steps")
 )
 
 // Stage holds the name, environment filter, and list of steps for this Wharf
@@ -22,13 +19,9 @@ type Stage struct {
 	Steps        []Step
 }
 
-func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice Errors) {
-	stage.Name = key.Value
-	if key.Value == "" {
-		errSlice.add(newPositionedErrorNode(ErrStageEmptyName, key))
-		// Continue, its not a fatal issue
-	}
-	nodes, err := stageBodyAsNodes(node)
+func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
+	stage.Name = name
+	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
 		errSlice.add(err)
 		return
@@ -38,42 +31,21 @@ func visitStageNode(key *ast.StringNode, node ast.Node) (stage Stage, errSlice E
 		return
 	}
 	for _, stepNode := range nodes {
-		key, err := parseMapKey(stepNode.Key)
+		key, err := parseMapKeyNonEmpty(stepNode.Key)
 		if err != nil {
 			errSlice.add(err)
-			continue
+			// non-fatal error
 		}
-		switch key.Value {
+		switch key {
 		case propEnvironments:
-			envs, errs := visitStageEnvironmentsNode(stepNode)
+			envs, errs := visitEnvironmentStringsNode(stepNode.Value)
 			stage.Environments = envs
-			errSlice.add(errs...)
+			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
 		default:
-			step, errs := visitStageStepNode(key, stepNode)
+			step, errs := visitStepNode(key, stepNode.Value)
 			stage.Steps = append(stage.Steps, step)
-			errSlice.add(errs...)
+			errSlice.add(wrapPathErrorSlice(key, errs)...)
 		}
 	}
 	return
-}
-
-func visitStageEnvironmentsNode(node *ast.MappingValueNode) ([]string, Errors) {
-	envs, errs := visitEnvironmentStringsNode(node.Value)
-	errs = wrapPathErrorSlice(propEnvironments, errs)
-	return envs, errs
-}
-
-func visitStageStepNode(key *ast.StringNode, node *ast.MappingValueNode) (Step, Errors) {
-	step, errs := visitStepNode(key, node.Value)
-	errs = wrapPathErrorSlice(key.Value, errs)
-	return step, errs
-}
-
-func stageBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
-	n, ok := getMappingValueNodes(body)
-	if !ok {
-		return nil, newPositionedErrorNode(fmt.Errorf("stage type: %s: %w",
-			body.Type(), ErrStageNotMap), body)
-	}
-	return n, nil
 }

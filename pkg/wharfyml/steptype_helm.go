@@ -20,7 +20,7 @@ type StepHelm struct {
 // StepTypeName returns the name of this step type.
 func (StepHelm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
+func (s StepHelm) visitStepTypeNode(nodes stepTypeParser) (StepType, Errors) {
 	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"

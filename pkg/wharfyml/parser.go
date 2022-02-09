@@ -12,10 +12,11 @@ import (
 
 // Generic errors related to parsing.
 var (
+	ErrNotMap       = errors.New("not a map")
 	ErrKeyNotString = errors.New("map key must be string")
+	ErrKeyEmpty     = errors.New("map key must not be empty")
 	ErrMissingDoc   = errors.New("empty document")
 	ErrTooManyDocs  = errors.New("only 1 document is allowed")
-	ErrDocNotMap    = errors.New("document must be a map")
 )
 
 // Definition is the .wharf-ci.yml build definition structure.
@@ -52,7 +53,7 @@ func parse(reader io.Reader) (def Definition, errSlice Errors) {
 	if doc == nil {
 		return
 	}
-	nodes, err := docBodyAsNodes(doc.Body)
+	nodes, err := parseMappingValueNodes(doc.Body)
 	if err != nil {
 		errSlice.add(err)
 		return
@@ -91,12 +92,12 @@ func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
 
 func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Errors) {
 	for _, n := range nodes {
-		key, err := parseMapKey(n.Key)
+		key, err := parseMapKeyNonEmpty(n.Key)
 		if err != nil {
 			errSlice.add(fmt.Errorf("%q: %w", n.Key, err))
-			continue
+			// non-fatal error
 		}
-		switch key.Value {
+		switch key {
 		case propEnvironments:
 			var errs Errors
 			def.Envs, errs = visitDocEnvironmentsNodes(n.Value)
@@ -120,38 +121,41 @@ func visitDocEnvironmentsNodes(node ast.Node) (map[string]Env, Errors) {
 	return envs, errs
 }
 
-func visitDocStageNode(key *ast.StringNode, node ast.Node) (Stage, Errors) {
+func visitDocStageNode(key string, node ast.Node) (Stage, Errors) {
 	stage, errs := visitStageNode(key, node)
-	errs = wrapPathErrorSlice(key.Value, errs)
+	errs = wrapPathErrorSlice(key, errs)
 	return stage, errs
 }
 
-func parseMapKey(keyNode ast.Node) (*ast.StringNode, error) {
-	switch key := keyNode.(type) {
+func parseMapKeyNonEmpty(node ast.Node) (string, error) {
+	key, err := parseMapKey(node)
+	if err != nil {
+		return "", err
+	}
+	if key.Value == "" {
+		return "", newPositionedErrorNode(ErrKeyEmpty, node)
+	}
+	return key.Value, nil
+}
+
+func parseMapKey(node ast.Node) (*ast.StringNode, error) {
+	switch key := node.(type) {
 	case *ast.StringNode:
 		return key, nil
 	default:
-		return nil, newPositionedErrorNode(ErrKeyNotString, keyNode)
+		return nil, newPositionedErrorNode(ErrKeyNotString, node)
 	}
 }
 
-func docBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
-	n, ok := getMappingValueNodes(body)
-	if !ok {
-		return nil, newPositionedErrorNode(fmt.Errorf("document type: %s: %w", body.Type(), ErrDocNotMap), body)
-	}
-	return n, nil
-}
-
-// TODO: return err instead and only have 1 error type for non-map errors
-func getMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, bool) {
+func parseMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, error) {
 	switch n := node.(type) {
 	case *ast.MappingValueNode:
-		return []*ast.MappingValueNode{n}, true
+		return []*ast.MappingValueNode{n}, nil
 	case *ast.MappingNode:
-		return n.Values, true
+		return n.Values, nil
 	default:
-		return nil, false
+		return nil, newPositionedErrorNode(fmt.Errorf(
+			"%w: expected map, but was %s", ErrNotMap, prettyNodeTypeName(node)), node)
 	}
 }
 
@@ -159,12 +163,12 @@ func mappingValueNodeSliceToMap(slice []*ast.MappingValueNode) (map[string]ast.N
 	m := make(map[string]ast.Node, len(slice))
 	var errSlice Errors
 	for _, node := range slice {
-		key, err := parseMapKey(node.Key)
+		key, err := parseMapKeyNonEmpty(node.Key)
 		if err != nil {
 			errSlice.add(err)
 			continue
 		}
-		m[key.Value] = node.Value
+		m[key] = node.Value
 	}
 	return m, errSlice
 }

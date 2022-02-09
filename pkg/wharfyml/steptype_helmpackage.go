@@ -12,7 +12,7 @@ type StepHelmPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s StepHelmPackage) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
+func (s StepHelmPackage) visitStepTypeNode(nodes stepTypeParser) (StepType, Errors) {
 	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 
 	var errSlice Errors

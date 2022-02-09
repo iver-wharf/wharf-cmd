@@ -10,9 +10,6 @@ import (
 
 // Errors related to parsing environments.
 var (
-	ErrEnvsNotMap        = errors.New("environments should be a YAML map")
-	ErrEnvNotMap         = errors.New("environment should be a YAML map")
-	ErrEnvEmptyName      = errors.New("name cannot be empty")
 	ErrEnvInvalidVarType = errors.New("invalid environment variable type")
 	ErrStageEnvsNotArray = errors.New("stage environments should be a YAML array")
 	ErrStageEnvNotString = errors.New("stage environment element should be a YAML string")
@@ -26,60 +23,50 @@ type Env struct {
 }
 
 func visitEnvironmentMapsNode(node ast.Node) (map[string]Env, Errors) {
-	nodes, err := envsBodyAsNodes(node)
+	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
 		return nil, Errors{err}
 	}
 	envs := make(map[string]Env, len(nodes))
 	var errSlice Errors
 	for _, n := range nodes {
-		key, err := parseMapKey(n.Key)
+		key, err := parseMapKeyNonEmpty(n.Key)
 		if err != nil {
 			errSlice.add(err)
 			continue
 		}
 		env, errs := visitEnvironmentNode(key, n.Value)
-		envs[key.Value] = env
-		errSlice.add(wrapPathErrorSlice(key.Value, errs)...)
+		envs[key] = env
+		errSlice.add(wrapPathErrorSlice(key, errs)...)
 	}
 	return envs, errSlice
 }
 
-func visitEnvironmentNode(key *ast.StringNode, node ast.Node) (env Env, errSlice Errors) {
-	if key.Value == "" {
-		// TODO: reuse same error for all empty key strings
-		// Could be wise to inject that into parseMapKey instead
-		errSlice.add(newPositionedErrorNode(ErrEnvEmptyName, key))
-		// Continue, it's not a fatal issue
-	}
+func visitEnvironmentNode(name string, node ast.Node) (env Env, errSlice Errors) {
 	env = Env{
-		Name: key.Value,
+		Name: name,
 		Vars: make(map[string]interface{}),
 	}
-	nodes, err := envBodyAsNodes(node)
+	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
 		errSlice.add(err)
 		return
 	}
 	for _, n := range nodes {
-		key, err := parseMapKey(n.Key)
+		key, err := parseMapKeyNonEmpty(n.Key)
 		if err != nil {
 			errSlice.add(err)
 			continue
 		}
-		val, errs := visitEnvironmentVariableNode(key, n.Value)
-		errSlice.add(wrapPathErrorSlice(key.Value, errs)...)
-		env.Vars[key.Value] = val
+		val, errs := visitEnvironmentVariableNode(n.Value)
+		errSlice.add(wrapPathErrorSlice(key, errs)...)
+		env.Vars[key] = val
 	}
 	return
 }
 
-func visitEnvironmentVariableNode(key *ast.StringNode, node ast.Node) (interface{}, Errors) {
+func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 	var errSlice Errors
-	if key.Value == "" {
-		errSlice.add(newPositionedErrorNode(ErrEnvEmptyName, key))
-		// Continue, it's not a fatal issue
-	}
 	switch n := node.(type) {
 	case *ast.BoolNode:
 		return n.Value, errSlice
@@ -120,20 +107,4 @@ func visitEnvironmentStringsNode(node ast.Node) (envs []string, errSlice Errors)
 		envs = append(envs, envStrNode.Value)
 	}
 	return
-}
-
-func envsBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
-	n, ok := getMappingValueNodes(body)
-	if !ok {
-		return nil, newPositionedErrorNode(fmt.Errorf("%s: %w", body.Type(), ErrEnvsNotMap), body)
-	}
-	return n, nil
-}
-
-func envBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
-	n, ok := getMappingValueNodes(body)
-	if !ok {
-		return nil, newPositionedErrorNode(fmt.Errorf("%s: %w", body.Type(), ErrEnvNotMap), body)
-	}
-	return n, nil
 }

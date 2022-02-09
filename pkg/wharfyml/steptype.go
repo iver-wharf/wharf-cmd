@@ -1,17 +1,14 @@
 package wharfyml
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
-	"github.com/goccy/go-yaml"
 	"github.com/goccy/go-yaml/ast"
 )
 
 // Errors related to parsing step types.
 var (
-	ErrStepTypeNotMap          = errors.New("step type should be a YAML map")
 	ErrStepTypeUnknown         = errors.New("unknown step type")
 	ErrStepTypeMissingRequired = errors.New("missing required field")
 )
@@ -21,55 +18,60 @@ type StepType interface {
 	StepTypeName() string
 }
 
-func visitStepTypeNode(key *ast.StringNode, node ast.Node) (StepType, Errors) {
-	nodes, err := stepTypeBodyAsNodes(node)
+func visitStepTypeNode(node *ast.MappingValueNode) (StepType, Errors) {
+	visitor, err := visitStepTypeKeyNode(node.Key)
 	if err != nil {
 		return nil, Errors{err}
 	}
-	return unmarshalStepTypeNode(key, nodes)
+	return visitor.visitStepTypeValueNode(node.Value)
 }
 
-func unmarshalStepTypeNode(key *ast.StringNode, nodes []*ast.MappingValueNode) (StepType, Errors) {
+func visitStepTypeKeyNode(node ast.Node) (stepTypeVisitor, error) {
+	keyNode, err := parseMapKey(node)
+	if err != nil {
+		return stepTypeVisitor{}, err
+	}
+	visitor := stepTypeVisitor{
+		keyNode: keyNode,
+	}
+	switch keyNode.Value {
+	case "container":
+		visitor.visitNode = StepContainer{}.visitStepTypeNode
+	case "docker":
+		visitor.visitNode = StepDocker{}.visitStepTypeNode
+	case "helm":
+		visitor.visitNode = StepHelm{}.visitStepTypeNode
+	case "helm-package":
+		visitor.visitNode = StepHelmPackage{}.visitStepTypeNode
+	case "kubectl":
+		visitor.visitNode = StepKubectl{}.visitStepTypeNode
+	case "nuget-package":
+		visitor.visitNode = StepNuGetPackage{}.visitStepTypeNode
+	default:
+		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, keyNode.Value)
+		return stepTypeVisitor{}, newPositionedErrorNode(err, keyNode)
+	}
+	return visitor, nil
+}
+
+type stepTypeVisitor struct {
+	keyNode   *ast.StringNode
+	visitNode func(stepTypeParser) (StepType, Errors)
+}
+
+func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors) {
+	nodes, err := parseMappingValueNodes(node)
+	if err != nil {
+		return nil, Errors{err}
+	}
 	var errSlice Errors
 	m, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	stepType, errs := getStepTypeUnmarshalled(key, stepTypeParser{
-		parent: key,
+	parser := stepTypeParser{
+		parent: v.keyNode,
 		nodes:  m,
-	})
+	}
+	stepType, errs := v.visitNode(parser)
 	errSlice.add(errs...)
 	return stepType, errSlice
-}
-
-func getStepTypeUnmarshalled(key *ast.StringNode, nodes stepTypeParser) (StepType, Errors) {
-	switch key.Value {
-	case "container":
-		return StepContainer{}.unmarshalNodes(nodes)
-	case "docker":
-		return StepDocker{}.unmarshalNodes(nodes)
-	case "helm":
-		return StepHelm{}.unmarshalNodes(nodes)
-	case "helm-package":
-		return StepHelmPackage{}.unmarshalNodes(nodes)
-	case "kubectl":
-		return StepKubectl{}.unmarshalNodes(nodes)
-	case "nuget-package":
-		return StepNuGetPackage{}.unmarshalNodes(nodes)
-	default:
-		return nil, Errors{newPositionedErrorNode(ErrStepTypeUnknown, key)}
-	}
-}
-
-func stepTypeBodyAsNodes(body ast.Node) ([]*ast.MappingValueNode, error) {
-	n, ok := getMappingValueNodes(body)
-	if !ok {
-		return nil, newPositionedErrorNode(fmt.Errorf("step type type: %s: %w",
-			body.Type(), ErrStepTypeNotMap), body)
-	}
-	return n, nil
-}
-
-func yamlUnmarshalNodeWithValidator(node ast.Node, valuePtr interface{}) error {
-	var buf bytes.Buffer
-	return yaml.NewDecoder(&buf).DecodeFromNode(node, valuePtr)
 }

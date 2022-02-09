@@ -59,25 +59,25 @@ func (p stepTypeParser) unmarshalStringStringMap(key string, target *map[string]
 	if !ok {
 		return nil
 	}
-	nodes, ok := getMappingValueNodes(node)
-	if !ok {
-		return Errors{newInvalidFieldTypeErr(key, "string to string map", node)}
+	nodes, err := parseMappingValueNodes(node)
+	if err != nil {
+		return Errors{err}
 	}
 	strMap := make(map[string]string, len(nodes))
 	var errSlice Errors
 	for _, n := range nodes {
-		keyNode, err := parseMapKey(n.Key)
+		mapKey, err := parseMapKeyNonEmpty(n.Key)
 		if err != nil {
 			errSlice.add(err)
 			continue
 		}
 		valNode, ok := n.Value.(*ast.StringNode)
 		if !ok {
-			errSlice.add(newInvalidFieldTypeErr(fmt.Sprintf("%s.%s", key, keyNode.Value),
+			errSlice.add(newInvalidFieldTypeErr(fmt.Sprintf("%s.%s", key, mapKey),
 				"string", n.Value))
 			continue
 		}
-		strMap[keyNode.Value] = valNode.Value
+		strMap[mapKey] = valNode.Value
 	}
 	*target = strMap
 	return errSlice

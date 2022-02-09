@@ -21,7 +21,7 @@ type StepDocker struct {
 // StepTypeName returns the name of this step type.
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
+func (s StepDocker) visitStepTypeNode(nodes stepTypeParser) (StepType, Errors) {
 	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
 	s.Name = ""         // TODO: default to "${step_name}"
 	s.Group = ""        // TODO: default to "${REPO_GROUP}"

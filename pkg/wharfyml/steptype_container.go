@@ -18,7 +18,7 @@ type StepContainer struct {
 // StepTypeName returns the name of this step type.
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) unmarshalNodes(nodes stepTypeParser) (StepType, Errors) {
+func (s StepContainer) visitStepTypeNode(nodes stepTypeParser) (StepType, Errors) {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
