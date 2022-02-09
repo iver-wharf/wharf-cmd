@@ -53,7 +53,10 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 
 func (p k8sProvisioner) ListPods(ctx context.Context) error {
 	podList, err := p.Pods.List(ctx, metav1.ListOptions{
-		LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker,app.kubernetes.io/managed-by=wharf-cmd-provisioner,wharf.iver.com/instance=prod",
+		LabelSelector:
+			"app.kubernetes.io/name=wharf-cmd-worker,"+
+			"app.kubernetes.io/managed-by=wharf-cmd-provisioner,"+
+			"wharf.iver.com/instance=prod",
 	})
 	if err != nil {
 		return err
