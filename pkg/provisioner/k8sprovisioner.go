@@ -1,11 +1,9 @@
 package provisioner
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 
-	"github.com/iver-wharf/wharf-core/pkg/logger"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -85,8 +83,6 @@ func (p k8sProvisioner) CreateWorker(ctx context.Context) (*v1.Pod, error) {
 	}
 
 	log.Debug().Message("App Container running.")
-
-	err = p.streamLogsUntilCompleted(ctx, newPod.Name)
 	return newPod, err
 }
 
@@ -223,21 +219,4 @@ func (p k8sProvisioner) waitForPodModifiedFunc(ctx context.Context, podMeta meta
 		}
 	}
 	return fmt.Errorf("got no more events when watching pod: %v", podMeta.Name)
-}
-
-func (p k8sProvisioner) streamLogsUntilCompleted(ctx context.Context, podName string) error {
-	req := p.Pods.GetLogs(podName, &v1.PodLogOptions{
-		Follow: true,
-	})
-	readCloser, err := req.Stream(ctx)
-	if err != nil {
-		return err
-	}
-	defer readCloser.Close()
-	podLog := logger.NewScoped(podName)
-	scanner := bufio.NewScanner(readCloser)
-	for scanner.Scan() {
-		podLog.Info().Message(scanner.Text())
-	}
-	return scanner.Err()
 }
