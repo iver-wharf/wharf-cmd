@@ -23,8 +23,8 @@ var podContainerListArgs = []string{"/bin/sh", "-c", "ls -alh"}
 // for a provisioner.
 type Provisioner interface {
 	Serve(ctx context.Context) error
-	ListPods(ctx context.Context) error
-	DeletePod(ctx context.Context, UID string) error
+	ListWorkers(ctx context.Context) error
+	DeleteWorker(ctx context.Context, workerID string) error
 }
 
 type k8sProvisioner struct {
@@ -51,7 +51,7 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 	}, nil
 }
 
-func (p k8sProvisioner) ListPods(ctx context.Context) error {
+func (p k8sProvisioner) ListWorkers(ctx context.Context) error {
 	podList, err := p.Pods.List(ctx, metav1.ListOptions{
 		LabelSelector:
 			"app.kubernetes.io/name=wharf-cmd-worker,"+
@@ -63,30 +63,19 @@ func (p k8sProvisioner) ListPods(ctx context.Context) error {
 	}
 	pods := podList.Items
 
-	printPod := func(pod metav1.ObjectMeta, i int) func(logger.Event) logger.Event {
-		return func(ev logger.Event) logger.Event {
-			ev = ev.WithInt("index", i).
-				WithString("UID", string(pod.UID)).
-				WithString("name", pod.Name).
-				WithString("namespace", pod.Namespace)
-
-			for k, v := range pod.Labels {
-				ev = ev.WithString(k, v)
-			}
-
-			return ev
-		}
-	}
-
 	log.Info().WithInt("count", len(pods)).Message("Fetched pods with matching labels.")
 	for i, pod := range pods {
-		log.Info().WithFunc(printPod(pod.ObjectMeta, i)).Message("Pod")
+		log.Info().WithInt("index", i).
+			WithString("workerID", string(pod.UID)).
+			WithString("name", pod.Name).
+			WithString("namespace", pod.Namespace).
+			Message("Pod")
 	}
 
 	return nil
 }
 
-func (p k8sProvisioner) DeletePod(ctx context.Context, UID string) error {
+func (p k8sProvisioner) DeleteWorker(ctx context.Context, workerID string) error {
 	podList, err := p.Pods.List(ctx, metav1.ListOptions{
 		LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker,app.kubernetes.io/managed-by=wharf-cmd-provisioner,wharf.iver.com/instance=prod",
 	})
@@ -96,14 +85,14 @@ func (p k8sProvisioner) DeletePod(ctx context.Context, UID string) error {
 
 	var matchingPod *v1.Pod
 	for _, pod := range podList.Items {
-		if string(pod.ObjectMeta.UID) == UID {
+		if string(pod.ObjectMeta.UID) == workerID {
 			matchingPod = &pod
 			break
 		}
 	}
 
 	if matchingPod == nil {
-		return fmt.Errorf("found no pod with appropriate labels matching UID: %s", UID)
+		return fmt.Errorf("found no pod with appropriate labels matching workerID: %s", workerID)
 	}
 
 	return p.Pods.Delete(ctx, matchingPod.Name, metav1.DeleteOptions{})
