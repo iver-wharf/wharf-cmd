@@ -19,7 +19,11 @@ var provisionerDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		return p.DeleteWorker(context.Background(), deleteWorkerID)
+		if err := p.DeleteWorker(context.Background(), deleteWorkerID); err == nil {
+			log.Info().Message("Successfully deleted worker.")
+		}
+
+		return err
 	},
 }
 

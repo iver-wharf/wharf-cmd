@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var provisionerListCmd = &cobra.Command{
-	Use:   "list",
+var provisionerCreateCmd = &cobra.Command{
+	Use:   "create",
 	Short: "A brief description of your command",
 	Long: `A longer description that spans multiple lines and likely contains examples
 `,
@@ -18,19 +18,15 @@ var provisionerListCmd = &cobra.Command{
 			return err
 		}
 
-		workers, err := p.ListWorkers(context.Background())
+		worker, err := p.CreateWorker(context.Background())
 		if err != nil {
 			return err
 		}
 
-		log.Info().WithInt("count", len(workers)).Message("Fetched workers with matching labels.")
-		for i, pod := range workers {
-			log.Info().WithInt("index", i).
-				WithString("workerID", string(pod.UID)).
-				WithString("name", pod.Name).
-				WithString("namespace", pod.Namespace).
-				Message("Pod")
-		}
+		log.Info().WithString("name", worker.Name).
+			WithString("namespace", worker.Namespace).
+			WithString("id", string(worker.UID)).
+			Message("Created worker")
 
 		return nil
 	},
