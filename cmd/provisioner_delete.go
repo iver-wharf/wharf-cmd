@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var deletePodUID string
+var deleteWorkerID string
 var provisionerDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "A brief description of your command",
@@ -19,10 +19,10 @@ var provisionerDeleteCmd = &cobra.Command{
 			return err
 		}
 
-		return p.DeletePod(context.Background(), deletePodUID)
+		return p.DeleteWorker(context.Background(), deleteWorkerID)
 	},
 }
 
 func init() {
-	provisionerDeleteCmd.PersistentFlags().StringVar(&deletePodUID, "uid", "", "UID of the pod to delete")
+	provisionerDeleteCmd.PersistentFlags().StringVar(&deleteWorkerID, "id", "", "ID of the worker to delete")
 }

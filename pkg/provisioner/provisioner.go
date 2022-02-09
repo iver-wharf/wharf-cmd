@@ -22,7 +22,7 @@ var podContainerListArgs = []string{"/bin/sh", "-c", "ls -alh"}
 // Provisioner is an interface declaring what methods are required
 // for a provisioner.
 type Provisioner interface {
-	Serve(ctx context.Context) error
+	CreateWorker(ctx context.Context) error
 	ListWorkers(ctx context.Context) error
 	DeleteWorker(ctx context.Context, workerID string) error
 }
@@ -53,9 +53,8 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 
 func (p k8sProvisioner) ListWorkers(ctx context.Context) error {
 	podList, err := p.Pods.List(ctx, metav1.ListOptions{
-		LabelSelector:
-			"app.kubernetes.io/name=wharf-cmd-worker,"+
-			"app.kubernetes.io/managed-by=wharf-cmd-provisioner,"+
+		LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+			"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
 			"wharf.iver.com/instance=prod",
 	})
 	if err != nil {
@@ -98,7 +97,7 @@ func (p k8sProvisioner) DeleteWorker(ctx context.Context, workerID string) error
 	return p.Pods.Delete(ctx, matchingPod.Name, metav1.DeleteOptions{})
 }
 
-func (p k8sProvisioner) Serve(ctx context.Context) error {
+func (p k8sProvisioner) CreateWorker(ctx context.Context) error {
 	podMeta := createPodMeta()
 
 	newPod, err := p.Pods.Create(ctx, &podMeta, metav1.CreateOptions{})

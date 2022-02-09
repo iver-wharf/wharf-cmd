@@ -17,6 +17,6 @@ var provisionerListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return p.ListPods(context.Background())
+		return p.ListWorkers(context.Background())
 	},
 }
