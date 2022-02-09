@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/utils"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"sigs.k8s.io/yaml"
 )
 
@@ -43,14 +42,14 @@ func (b BuildDefinition) GetStageWithReplacement(stageName string, environmentNa
 		for i, v := range step.Variables {
 			variable, ok := v.(string)
 			if ok {
-				step.Variables[i] = utils.ReplaceVariables(variable, envs.Variables)
+				step.Variables[i] = varsub.ReplaceVariables(variable, envs.Variables)
 				continue
 			}
 
 			varSlice, ok := v.([]string)
 			if ok {
 				for j, el := range varSlice {
-					varSlice[j] = utils.ReplaceVariables(el, envs.Variables)
+					varSlice[j] = varsub.ReplaceVariables(el, envs.Variables)
 				}
 				step.Variables[i] = varSlice
 			}
@@ -60,13 +59,13 @@ func (b BuildDefinition) GetStageWithReplacement(stageName string, environmentNa
 	return stage, nil
 }
 
-func Parse(path string, builtinVars map[containercreator.BuiltinVar]string) (BuildDefinition, error) {
+func Parse(path string) (BuildDefinition, error) {
 	data, err := ioutil.ReadFile(path)
 	if err != nil {
 		return BuildDefinition{}, err
 	}
 
-	after := utils.ReplaceVariables(string(data), containercreator.ConvertToParams(builtinVars))
+	after := varsub.ReplaceVariables(string(data), map[string]interface{}{})
 
 	return parseContent(after)
 }

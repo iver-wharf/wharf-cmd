@@ -5,8 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/core/containercreator"
-	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +25,7 @@ var runCmd = &cobra.Command{
 		}
 		stageRun := worker.NewStageRunner(stepRun)
 		b := worker.New(stageRun)
-		def, err := wharfyml.Parse(flagRunPath, make(map[containercreator.BuiltinVar]string))
+		def, err := wharfyml.Parse(flagRunPath)
 		if err != nil {
 			return err
 		}
