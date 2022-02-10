@@ -25,7 +25,7 @@ var provisionerCreateCmd = &cobra.Command{
 
 		log.Info().WithString("name", worker.Name).
 			WithString("namespace", worker.Namespace).
-			WithString("id", string(worker.UID)).
+			WithString("workerID", string(worker.UID)).
 			Message("Created worker")
 
 		return nil
