@@ -8,12 +8,12 @@ import (
 )
 
 func TestParseDocInputs_ErrIfNotArray(t *testing.T) {
-	_, errs := visitDocInputsNode(getNode(t, `123`))
+	_, errs := visitInputsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrNotArray)
 }
 
 func TestParseDocInputs_ErrIfNameCollision(t *testing.T) {
-	_, errs := visitDocInputsNode(getNode(t, `
+	_, errs := visitInputsNode(getNode(t, `
 - name: myVar
   type: string
 - name: myVar

@@ -20,13 +20,6 @@ var (
 	ErrTooManyDocs  = errors.New("only 1 document is allowed")
 )
 
-// Definition is the .wharf-ci.yml build definition structure.
-type Definition struct {
-	Inputs map[string]Input
-	Envs   map[string]Env
-	Stages []Stage
-}
-
 // ParseFile will parse the file at the given path.
 // Multiple errors may be returned, one for each validation or parsing error.
 func ParseFile(path string) (Definition, Errors) {
@@ -60,7 +53,7 @@ func parse(reader io.Reader) (def Definition, errSlice Errors) {
 		return
 	}
 	var errs Errors
-	def, errs = visitDocNodes(nodes)
+	def, errs = visitDefNodes(nodes)
 	if len(errs) > 0 {
 		errSlice.add(errs...)
 	}
@@ -89,43 +82,6 @@ func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
 		return doc, err
 	}
 	return doc, nil
-}
-
-func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Errors) {
-	for _, n := range nodes {
-		key, err := parseMapKeyNonEmpty(n.Key)
-		if err != nil {
-			errSlice.add(fmt.Errorf("%q: %w", n.Key, err))
-			// non-fatal error
-		}
-		switch key {
-		case propEnvironments:
-			var errs Errors
-			def.Envs, errs = visitDocEnvironmentsNodes(n.Value)
-			errSlice.add(errs...)
-		case propInputs:
-			var errs Errors
-			def.Inputs, errs = visitDocInputsNode(n.Value)
-			errSlice.add(wrapPathErrorSlice(propInputs, errs)...)
-		default:
-			stage, errs := visitDocStageNode(key, n.Value)
-			def.Stages = append(def.Stages, stage)
-			errSlice.add(errs...)
-		}
-	}
-	return
-}
-
-func visitDocEnvironmentsNodes(node ast.Node) (map[string]Env, Errors) {
-	envs, errs := visitDocEnvironmentsNode(node)
-	errs = wrapPathErrorSlice(propEnvironments, errs)
-	return envs, errs
-}
-
-func visitDocStageNode(key string, node ast.Node) (Stage, Errors) {
-	stage, errs := visitStageNode(key, node)
-	errs = wrapPathErrorSlice(key, errs)
-	return stage, errs
 }
 
 func parseMapKeyNonEmpty(node ast.Node) (string, error) {

@@ -15,7 +15,7 @@ var (
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
 
-func visitDocInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
+func visitInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
 	seqNode, err := parseSequenceNode(node)
 	if err != nil {
 		errSlice.add(err)

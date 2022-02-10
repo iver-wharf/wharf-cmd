@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: rename tests to use "visit" names
 func TestParse_AcceptanceTest(t *testing.T) {
 	got, errs := Parse(strings.NewReader(`
 inputs:
