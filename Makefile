@@ -1,6 +1,6 @@
 .PHONY: install tidy deps \
 	lint lint-md lint-go \
-	lint-fix lint-md-fix
+	lint-fix lint-fix-md lint-fix-go
 
 ifeq ($(OS),Windows_NT)
 wharf.exe:
