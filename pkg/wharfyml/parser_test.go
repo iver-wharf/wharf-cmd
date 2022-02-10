@@ -60,20 +60,20 @@ myStage2:
 	assertNoErr(t, errs)
 
 	want := Definition{
-		Inputs: []Input{
-			InputString{
+		Inputs: map[string]Input{
+			"myStringVar": InputString{
 				Name:    "myStringVar",
 				Default: "foo bar",
 			},
-			InputPassword{
+			"myPasswordVar": InputPassword{
 				Name:    "myPasswordVar",
 				Default: "supersecret",
 			},
-			InputNumber{
+			"myNumberVar": InputNumber{
 				Name:    "myNumberVar",
 				Default: 123,
 			},
-			InputChoice{
+			"myChoiceVar": InputChoice{
 				Name:    "myChoiceVar",
 				Default: "A",
 				Values:  []string{"A", "B", "C"},
@@ -293,7 +293,6 @@ func TestParser_ErrIfEmptyStageName(t *testing.T) {
 // - error on unused environment
 // - error on use of undeclared environment
 // - error on use of undeclared variable
-// - error on multiple YAML documents (sep by three dashes)
 // - can use aliases and anchors on stages
 // - can use aliases and anchors on steps
 

@@ -12,7 +12,15 @@ func TestParseDocInputs_ErrIfNotArray(t *testing.T) {
 	requireContainsErr(t, errs, ErrNotArray)
 }
 
-// TODO: Test if colliding input vars
+func TestParseDocInputs_ErrIfNameCollision(t *testing.T) {
+	_, errs := visitDocInputsNode(getNode(t, `
+- name: myVar
+  type: string
+- name: myVar
+  type: string
+`))
+	requireContainsErr(t, errs, ErrInputNameCollision)
+}
 
 func TestParseInputType_ErrIfUnknownType(t *testing.T) {
 	_, errs := visitInputTypeNode(getNode(t, `

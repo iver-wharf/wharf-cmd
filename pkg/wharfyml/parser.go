@@ -22,7 +22,7 @@ var (
 
 // Definition is the .wharf-ci.yml build definition structure.
 type Definition struct {
-	Inputs []Input
+	Inputs map[string]Input
 	Envs   map[string]Env
 	Stages []Stage
 }

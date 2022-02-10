@@ -2,6 +2,7 @@ package wharfyml
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/goccy/go-yaml/ast"
@@ -9,23 +10,30 @@ import (
 
 // Errors related to parsing environments.
 var (
+	ErrInputNameCollision      = errors.New("input variable name is already used")
 	ErrInputUnknownType        = errors.New("unknown input type")
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
 
-func visitDocInputsNode(node ast.Node) (inputs []Input, errSlice Errors) {
+func visitDocInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
 	seqNode, err := parseSequenceNode(node)
 	if err != nil {
 		errSlice.add(err)
 		return
 	}
+	inputs = make(map[string]Input, len(seqNode.Values))
 	for i, inputNode := range seqNode.Values {
 		input, errs := visitInputTypeNode(inputNode)
 		if len(errs) > 0 {
 			errSlice.add(wrapPathErrorSlice(strconv.Itoa(i), errs)...)
 		}
 		if input != nil {
-			inputs = append(inputs, input)
+			name := input.InputVarName()
+			if _, ok := inputs[name]; ok {
+				err := wrapPosErrorNode(fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
+				errSlice.add(wrapPathError(strconv.Itoa(i), err))
+			}
+			inputs[name] = input
 		}
 	}
 	return
@@ -86,6 +94,7 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 // Input is an interface that is implemented by all input types.
 type Input interface {
 	InputTypeName() string
+	InputVarName() string
 }
 
 // InputString represents a string (text) input value.
@@ -97,6 +106,11 @@ type InputString struct {
 // InputTypeName returns the name of this input type.
 func (InputString) InputTypeName() string {
 	return "string"
+}
+
+// InputVarName returns the name of this input variable.
+func (i InputString) InputVarName() string {
+	return i.Name
 }
 
 // InputPassword represents a string (text) input value, but where the value
@@ -111,6 +125,11 @@ func (InputPassword) InputTypeName() string {
 	return "password"
 }
 
+// InputVarName returns the name of this input variable.
+func (i InputPassword) InputVarName() string {
+	return i.Name
+}
+
 // InputNumber represents a number (integer or float) input value.
 type InputNumber struct {
 	Name    string
@@ -120,6 +139,11 @@ type InputNumber struct {
 // InputTypeName returns the name of this input type.
 func (InputNumber) InputTypeName() string {
 	return "number"
+}
+
+// InputVarName returns the name of this input variable.
+func (i InputNumber) InputVarName() string {
+	return i.Name
 }
 
 // InputChoice represents a choice of multiple string inputs.
@@ -132,6 +156,11 @@ type InputChoice struct {
 // InputTypeName returns the name of this input type.
 func (InputChoice) InputTypeName() string {
 	return "choice"
+}
+
+// InputVarName returns the name of this input variable.
+func (i InputChoice) InputVarName() string {
+	return i.Name
 }
 
 func (i InputChoice) validate() error {
