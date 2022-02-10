@@ -51,7 +51,7 @@ func TestParseEnvironment_ErrIfInvalidVarType(t *testing.T) {
 	_, errs := visitEnvironmentNode("myEnv", getNode(t, `
 myVar: [123]
 `))
-	requireContainsErr(t, errs, ErrEnvInvalidVarType)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseEnvironment_ValidVarTypes(t *testing.T) {
@@ -62,7 +62,7 @@ myFloat: 456.789
 myString: foo bar
 myBool: true
 `))
-	requireNotContainsErr(t, errs, ErrEnvInvalidVarType)
+	requireNotContainsErr(t, errs, ErrInvalidFieldType)
 	want := map[string]interface{}{
 		"myInt":    int64(-123),
 		"myUint":   uint64(123),

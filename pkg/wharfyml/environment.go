@@ -10,7 +10,6 @@ import (
 
 // Errors related to parsing environments.
 var (
-	ErrEnvInvalidVarType = errors.New("invalid environment variable type")
 	ErrStageEnvNotString = errors.New("stage environment element should be a YAML string")
 	ErrStageEnvEmpty     = errors.New("environment name cannot be empty")
 )
@@ -82,7 +81,7 @@ func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 	default:
 		errSlice.add(wrapPosErrorNode(fmt.Errorf(
 			"%w: expected string, boolean, or number, but found %s",
-			ErrEnvInvalidVarType, prettyNodeTypeName(node)), node))
+			ErrInvalidFieldType, prettyNodeTypeName(node)), node))
 		return nil, errSlice
 	}
 }
