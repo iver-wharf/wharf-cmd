@@ -120,12 +120,12 @@ func (p stepTypeParser) validateRequiredSlice(key string) error {
 
 func (p stepTypeParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrStepTypeMissingRequired, key)
-	return wrapPositionedErrorNode(inner, p.parent)
+	return wrapPosErrorNode(inner, p.parent)
 }
 
 func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
 	gotType := prettyNodeTypeName(node)
-	err := wrapPositionedErrorNode(fmt.Errorf("%w: expected %s, but found %s",
+	err := wrapPosErrorNode(fmt.Errorf("%w: expected %s, but found %s",
 		ErrStepTypeInvalidFieldType, wantType, gotType), node)
 	return wrapPathError(key, err)
 }

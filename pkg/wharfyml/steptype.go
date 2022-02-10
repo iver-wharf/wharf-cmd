@@ -49,7 +49,7 @@ func visitStepTypeKeyNode(node ast.Node) (stepTypeVisitor, error) {
 		visitor.visitNode = StepNuGetPackage{}.visitStepTypeNode
 	default:
 		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, keyNode.Value)
-		return stepTypeVisitor{}, wrapPositionedErrorNode(err, keyNode)
+		return stepTypeVisitor{}, wrapPosErrorNode(err, keyNode)
 	}
 	return visitor, nil
 }

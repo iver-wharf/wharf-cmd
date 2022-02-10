@@ -24,29 +24,29 @@ func (s *Errors) addNonNils(errs ...error) {
 	}
 }
 
-func wrapPositionedError(err error, line, column int) error {
-	return PositionedError{
+func wrapPosError(err error, line, column int) error {
+	return PosError{
 		Inner:  err,
 		Line:   line,
 		Column: column,
 	}
 }
 
-func wrapPositionedErrorNode(err error, node ast.Node) error {
+func wrapPosErrorNode(err error, node ast.Node) error {
 	pos := node.GetToken().Position
-	return wrapPositionedError(err, pos.Line, pos.Column)
+	return wrapPosError(err, pos.Line, pos.Column)
 }
 
-// PositionedError is an error type that holds metadata about where the error
+// PosError is an error type that holds metadata about where the error
 // occurred (line and column).
-type PositionedError struct {
+type PosError struct {
 	Inner  error
 	Line   int
 	Column int
 }
 
 // Error implements the error interface.
-func (err PositionedError) Error() string {
+func (err PosError) Error() string {
 	if err.Inner == nil {
 		return ""
 	}
@@ -54,17 +54,17 @@ func (err PositionedError) Error() string {
 }
 
 // Is implements the interface to support errors.Is.
-func (err PositionedError) Is(target error) bool {
+func (err PosError) Is(target error) bool {
 	return errors.Is(err.Inner, target)
 }
 
 // Unwrap implements the interface to support errors.Unwrap.
-func (err PositionedError) Unwrap() error {
+func (err PosError) Unwrap() error {
 	return err.Inner
 }
 
 func positionedErrorLineColumn(err error) (int, int) {
-	var parseErr PositionedError
+	var parseErr PosError
 	if !errors.As(err, &parseErr) {
 		return 0, 0
 	}

@@ -133,7 +133,7 @@ func parseMapKeyNonEmpty(node ast.Node) (string, error) {
 		return "", err
 	}
 	if key.Value == "" {
-		return "", wrapPositionedErrorNode(ErrKeyEmpty, node)
+		return "", wrapPosErrorNode(ErrKeyEmpty, node)
 	}
 	return key.Value, nil
 }
@@ -143,7 +143,7 @@ func parseMapKey(node ast.Node) (*ast.StringNode, error) {
 	case *ast.StringNode:
 		return key, nil
 	default:
-		return nil, wrapPositionedErrorNode(ErrKeyNotString, node)
+		return nil, wrapPosErrorNode(ErrKeyNotString, node)
 	}
 }
 
@@ -154,7 +154,7 @@ func parseMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, error) {
 	case *ast.MappingNode:
 		return n.Values, nil
 	default:
-		return nil, wrapPositionedErrorNode(fmt.Errorf(
+		return nil, wrapPosErrorNode(fmt.Errorf(
 			"%w: expected map, but was %s", ErrNotMap, prettyNodeTypeName(node)), node)
 	}
 }

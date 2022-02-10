@@ -81,7 +81,7 @@ func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 	case *ast.StringNode:
 		return n.Value, errSlice
 	default:
-		errSlice.add(wrapPositionedErrorNode(fmt.Errorf(
+		errSlice.add(wrapPosErrorNode(fmt.Errorf(
 			"%w: expected string, boolean, or number, but found %s",
 			ErrEnvInvalidVarType, prettyNodeTypeName(node)), node))
 		return nil, errSlice
@@ -90,18 +90,18 @@ func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 
 func visitStageEnvironmentsNode(node ast.Node) (envs []string, errSlice Errors) {
 	if node.Type() != ast.SequenceType {
-		return nil, Errors{wrapPositionedErrorNode(ErrStageEnvsNotArray, node)}
+		return nil, Errors{wrapPosErrorNode(ErrStageEnvsNotArray, node)}
 	}
 	seq := node.(*ast.SequenceNode)
 	envs = make([]string, 0, len(seq.Values))
 	for _, envNode := range seq.Values {
 		envStrNode, ok := envNode.(*ast.StringNode)
 		if !ok {
-			errSlice.add(wrapPositionedErrorNode(ErrStageEnvNotString, envNode))
+			errSlice.add(wrapPosErrorNode(ErrStageEnvNotString, envNode))
 			continue
 		}
 		if envStrNode.Value == "" {
-			errSlice.add(wrapPositionedErrorNode(ErrStageEnvEmpty, envNode))
+			errSlice.add(wrapPosErrorNode(ErrStageEnvEmpty, envNode))
 			continue
 		}
 		envs = append(envs, envStrNode.Value)
