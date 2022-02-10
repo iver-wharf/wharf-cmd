@@ -14,9 +14,18 @@ var (
 	ErrMissingRequired  = errors.New("missing required field")
 )
 
+func newNodeMapParser(parent ast.Node, nodes map[string]ast.Node) nodeMapParser {
+	return nodeMapParser{
+		parent:    parent,
+		nodes:     nodes,
+		positions: make(map[string]Pos),
+	}
+}
+
 type nodeMapParser struct {
-	parent ast.Node
-	nodes  map[string]ast.Node
+	parent    ast.Node
+	nodes     map[string]ast.Node
+	positions map[string]Pos
 }
 
 func (p nodeMapParser) parentPos() Pos {
@@ -28,6 +37,7 @@ func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 	if !ok {
 		return nil
 	}
+	p.positions[key] = newPosNode(node)
 	switch n := node.(type) {
 	case *ast.NanNode:
 		*target = math.NaN()
@@ -55,6 +65,7 @@ func (p nodeMapParser) unmarshalString(key string, target *string) error {
 	if !ok {
 		return nil
 	}
+	p.positions[key] = newPosNode(node)
 	strNode, ok := node.(*ast.StringNode)
 	if !ok {
 		return newInvalidFieldTypeErr(key, "string", node)
@@ -68,6 +79,7 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	if !ok {
 		return nil
 	}
+	p.positions[key] = newPosNode(node)
 	arrayNode, ok := node.(*ast.SequenceNode)
 	if !ok {
 		return Errors{newInvalidFieldTypeErr(key, "string array", node)}
@@ -92,6 +104,7 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	if !ok {
 		return nil
 	}
+	p.positions[key] = newPosNode(node)
 	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
 		return Errors{err}
@@ -121,6 +134,7 @@ func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	if !ok {
 		return nil
 	}
+	p.positions[key] = newPosNode(node)
 	strNode, ok := node.(*ast.BoolNode)
 	if !ok {
 		return newInvalidFieldTypeErr(key, "boolean", node)

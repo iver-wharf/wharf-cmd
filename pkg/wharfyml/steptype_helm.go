@@ -4,7 +4,7 @@ package wharfyml
 // cluster.
 type StepHelm struct {
 	// Step type metadata
-	Pos Pos
+	Meta StepTypeMeta
 
 	// Required fields
 	Chart     string
@@ -23,8 +23,8 @@ type StepHelm struct {
 // StepTypeName returns the name of this step type.
 func (StepHelm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
-	s.Pos = nodes.parentPos()
+func (s StepHelm) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p)
 
 	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 	s.Cluster = "kubectl-config"
@@ -34,25 +34,25 @@ func (s StepHelm) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
 
 	// Unmarshalling
 	errSlice.addNonNils(
-		nodes.unmarshalString("chart", &s.Chart),
-		nodes.unmarshalString("name", &s.Name),
-		nodes.unmarshalString("namespace", &s.Namespace),
-		nodes.unmarshalString("repo", &s.Repo),
-		nodes.unmarshalString("chartVersion", &s.ChartVersion),
-		nodes.unmarshalString("helmVersion", &s.HelmVersion),
-		nodes.unmarshalString("cluster", &s.Cluster),
+		p.unmarshalString("chart", &s.Chart),
+		p.unmarshalString("name", &s.Name),
+		p.unmarshalString("namespace", &s.Namespace),
+		p.unmarshalString("repo", &s.Repo),
+		p.unmarshalString("chartVersion", &s.ChartVersion),
+		p.unmarshalString("helmVersion", &s.HelmVersion),
+		p.unmarshalString("cluster", &s.Cluster),
 	)
-	errSlice.add(nodes.unmarshalStringStringMap("set", &s.Set)...)
-	errSlice.add(nodes.unmarshalStringSlice("files", &s.Files)...)
+	errSlice.add(p.unmarshalStringStringMap("set", &s.Set)...)
+	errSlice.add(p.unmarshalStringSlice("files", &s.Files)...)
 	if s.Repo == "stage" {
 		s.Repo = "https://kubernetes-charts.storage.googleapis.com"
 	}
 
 	// Validation
 	errSlice.addNonNils(
-		nodes.validateRequiredString("chart"),
-		nodes.validateRequiredString("name"),
-		nodes.validateRequiredString("namespace"),
+		p.validateRequiredString("chart"),
+		p.validateRequiredString("name"),
+		p.validateRequiredString("namespace"),
 	)
 	return s, errSlice
 }

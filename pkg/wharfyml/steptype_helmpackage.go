@@ -4,7 +4,7 @@ package wharfyml
 // chart to a chart registry.
 type StepHelmPackage struct {
 	// Step type metadata
-	Pos Pos
+	Meta StepTypeMeta
 
 	// Optional fields
 	Version     string
@@ -15,8 +15,8 @@ type StepHelmPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s StepHelmPackage) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
-	s.Pos = nodes.parentPos()
+func (s StepHelmPackage) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p)
 
 	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 
@@ -24,9 +24,9 @@ func (s StepHelmPackage) visitStepTypeNode(nodes nodeMapParser) (StepType, Error
 
 	// Unmarshalling
 	errSlice.addNonNils(
-		nodes.unmarshalString("version", &s.Version),
-		nodes.unmarshalString("chart-path", &s.ChartPath),
-		nodes.unmarshalString("destination", &s.Destination),
+		p.unmarshalString("version", &s.Version),
+		p.unmarshalString("chart-path", &s.ChartPath),
+		p.unmarshalString("destination", &s.Destination),
 	)
 
 	return s, errSlice

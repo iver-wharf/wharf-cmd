@@ -4,7 +4,7 @@ package wharfyml
 // container.
 type StepContainer struct {
 	// Step type metadata
-	Pos Pos
+	Meta StepTypeMeta
 
 	// Required fields
 	Image string
@@ -21,8 +21,9 @@ type StepContainer struct {
 // StepTypeName returns the name of this step type.
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
-	s.Pos = nodes.parentPos()
+func (s StepContainer) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p)
+
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
@@ -31,19 +32,19 @@ func (s StepContainer) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors)
 
 	// Unmarshalling
 	errSlice.addNonNils(
-		nodes.unmarshalString("image", &s.Image),
-		nodes.unmarshalString("os", &s.OS),
-		nodes.unmarshalString("shell", &s.Shell),
-		nodes.unmarshalString("secretName", &s.SecretName),
-		nodes.unmarshalString("serviceAccount", &s.ServiceAccount),
-		nodes.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
+		p.unmarshalString("image", &s.Image),
+		p.unmarshalString("os", &s.OS),
+		p.unmarshalString("shell", &s.Shell),
+		p.unmarshalString("secretName", &s.SecretName),
+		p.unmarshalString("serviceAccount", &s.ServiceAccount),
+		p.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
 	)
-	errSlice.add(nodes.unmarshalStringSlice("cmds", &s.Cmds)...)
+	errSlice.add(p.unmarshalStringSlice("cmds", &s.Cmds)...)
 
 	// Validation
 	errSlice.addNonNils(
-		nodes.validateRequiredString("image"),
-		nodes.validateRequiredSlice("cmds"),
+		p.validateRequiredString("image"),
+		p.validateRequiredSlice("cmds"),
 	)
 	return s, errSlice
 }

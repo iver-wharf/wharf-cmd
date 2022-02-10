@@ -9,12 +9,18 @@ import (
 
 // Errors related to parsing step types.
 var (
-	ErrStepTypeUnknown         = errors.New("unknown step type")
+	ErrStepTypeUnknown = errors.New("unknown step type")
 )
 
 // StepType is an interface that is implemented by all step types.
 type StepType interface {
 	StepTypeName() string
+}
+
+// StepTypeMeta contains metadata about a step type.
+type StepTypeMeta struct {
+	Pos      Pos
+	FieldPos map[string]Pos
 }
 
 func visitStepTypeNode(node *ast.MappingValueNode) (StepType, Errors) {
@@ -66,11 +72,15 @@ func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors
 	var errSlice Errors
 	m, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	parser := nodeMapParser{
-		parent: v.keyNode,
-		nodes:  m,
-	}
+	parser := newNodeMapParser(v.keyNode, m)
 	stepType, errs := v.visitNode(parser)
 	errSlice.add(errs...)
 	return stepType, errSlice
+}
+
+func getStepTypeMeta(p nodeMapParser) StepTypeMeta {
+	return StepTypeMeta{
+		Pos:      p.parentPos(),
+		FieldPos: p.positions,
+	}
 }

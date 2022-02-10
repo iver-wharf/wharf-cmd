@@ -4,7 +4,7 @@ package wharfyml
 // packages.
 type StepNuGetPackage struct {
 	// Step type metadata
-	Pos Pos
+	Meta StepTypeMeta
 
 	// Required fields
 	Version     string
@@ -19,25 +19,25 @@ type StepNuGetPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s StepNuGetPackage) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
-	s.Pos = nodes.parentPos()
+func (s StepNuGetPackage) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p)
 
 	var errSlice Errors
 
 	// Unmarshalling
 	errSlice.addNonNils(
-		nodes.unmarshalString("version", &s.Version),
-		nodes.unmarshalString("project-path", &s.ProjectPath),
-		nodes.unmarshalString("repo", &s.Repo),
-		nodes.unmarshalBool("skip-duplicate", &s.SkipDuplicate),
-		nodes.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
+		p.unmarshalString("version", &s.Version),
+		p.unmarshalString("project-path", &s.ProjectPath),
+		p.unmarshalString("repo", &s.Repo),
+		p.unmarshalBool("skip-duplicate", &s.SkipDuplicate),
+		p.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
 	)
 
 	// Validation
 	errSlice.addNonNils(
-		nodes.validateRequiredString("version"),
-		nodes.validateRequiredString("project-path"),
-		nodes.validateRequiredString("repo"),
+		p.validateRequiredString("version"),
+		p.validateRequiredString("project-path"),
+		p.validateRequiredString("repo"),
 	)
 	return s, errSlice
 }

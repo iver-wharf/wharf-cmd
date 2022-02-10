@@ -3,7 +3,7 @@ package wharfyml
 // StepDocker represents a step type for building and pushing Docker images.
 type StepDocker struct {
 	// Step type metadata
-	Pos Pos
+	Meta StepTypeMeta
 
 	// Required fields
 	File string
@@ -24,8 +24,8 @@ type StepDocker struct {
 // StepTypeName returns the name of this step type.
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
-	s.Pos = nodes.parentPos()
+func (s StepDocker) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p)
 
 	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
 	s.Name = ""         // TODO: default to "${step_name}"
@@ -40,23 +40,23 @@ func (s StepDocker) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
 
 	// Unmarshalling
 	errSlice.addNonNils(
-		nodes.unmarshalString("file", &s.File),
-		nodes.unmarshalString("tag", &s.Tag),
-		nodes.unmarshalString("destination", &s.Destination),
-		nodes.unmarshalString("name", &s.Name),
-		nodes.unmarshalString("group", &s.Group),
-		nodes.unmarshalString("context", &s.Context),
-		nodes.unmarshalString("secret", &s.Secret),
-		nodes.unmarshalString("registry", &s.Registry),
-		nodes.unmarshalBool("append-cert", &s.AppendCert),
-		nodes.unmarshalBool("push", &s.Push),
+		p.unmarshalString("file", &s.File),
+		p.unmarshalString("tag", &s.Tag),
+		p.unmarshalString("destination", &s.Destination),
+		p.unmarshalString("name", &s.Name),
+		p.unmarshalString("group", &s.Group),
+		p.unmarshalString("context", &s.Context),
+		p.unmarshalString("secret", &s.Secret),
+		p.unmarshalString("registry", &s.Registry),
+		p.unmarshalBool("append-cert", &s.AppendCert),
+		p.unmarshalBool("push", &s.Push),
 	)
-	errSlice.add(nodes.unmarshalStringSlice("args", &s.Args)...)
+	errSlice.add(p.unmarshalStringSlice("args", &s.Args)...)
 
 	// Validation
 	errSlice.addNonNils(
-		nodes.validateRequiredString("file"),
-		nodes.validateRequiredString("tag"),
+		p.validateRequiredString("file"),
+		p.validateRequiredString("tag"),
 	)
 	return s, errSlice
 }

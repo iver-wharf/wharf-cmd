@@ -4,7 +4,7 @@ package wharfyml
 // Kubernetes manifest files.
 type StepKubectl struct {
 	// Step type metadata
-	Pos Pos
+	Meta StepTypeMeta
 
 	// Required fields
 	File  string
@@ -20,8 +20,8 @@ type StepKubectl struct {
 // StepTypeName returns the name of this step type.
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
-func (s StepKubectl) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
-	s.Pos = nodes.parentPos()
+func (s StepKubectl) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p)
 
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
@@ -30,18 +30,18 @@ func (s StepKubectl) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
 
 	// Unmarshalling
 	errSlice.addNonNils(
-		nodes.unmarshalString("file", &s.File),
-		nodes.unmarshalString("namespace", &s.Namespace),
-		nodes.unmarshalString("action", &s.Action),
-		nodes.unmarshalBool("force", &s.Force),
-		nodes.unmarshalString("cluster", &s.Cluster),
+		p.unmarshalString("file", &s.File),
+		p.unmarshalString("namespace", &s.Namespace),
+		p.unmarshalString("action", &s.Action),
+		p.unmarshalBool("force", &s.Force),
+		p.unmarshalString("cluster", &s.Cluster),
 	)
-	errSlice.add(nodes.unmarshalStringSlice("files", &s.Files)...)
+	errSlice.add(p.unmarshalStringSlice("files", &s.Files)...)
 
 	// Validation
 	if len(s.Files) == 0 {
 		// Only either file or files is required
-		errSlice.addNonNils(nodes.validateRequiredString("file"))
+		errSlice.addNonNils(p.validateRequiredString("file"))
 	}
 	return s, errSlice
 }

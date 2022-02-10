@@ -47,10 +47,7 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 	}
 	nodeMap, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	p := nodeMapParser{
-		parent: node,
-		nodes:  nodeMap,
-	}
+	p := newNodeMapParser(node, nodeMap)
 	var inputName string
 	var inputType string
 	errSlice.addNonNils(
