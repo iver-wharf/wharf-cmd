@@ -27,6 +27,14 @@ func requireNotContainsErr(t *testing.T, errs Errors, err error) {
 	}
 }
 
+func assertNoErr(t *testing.T, errs Errors) {
+	if len(errs) == 0 {
+		return
+	}
+	t.Fatalf("\nexpected no errors\nactual: (len=%d)\n%s",
+		len(errs), formatErrorSlice("  - ", errs))
+}
+
 func formatErrorSlice(prefix string, errs Errors) string {
 	var sb strings.Builder
 	for i, err := range errs {

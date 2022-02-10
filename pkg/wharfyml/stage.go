@@ -14,9 +14,9 @@ var (
 // Stage holds the name, environment filter, and list of steps for this Wharf
 // build stage.
 type Stage struct {
-	Name         string
-	Environments []string
-	Steps        []Step
+	Name  string
+	Envs  []string
+	Steps []Step
 }
 
 func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
@@ -39,7 +39,7 @@ func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
 		switch key {
 		case propEnvironments:
 			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
-			stage.Environments = envs
+			stage.Envs = envs
 			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
 		default:
 			step, errs := visitStepNode(key, stepNode.Value)
