@@ -38,7 +38,7 @@ func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
 		}
 		switch key {
 		case propEnvironments:
-			envs, errs := visitEnvironmentStringsNode(stepNode.Value)
+			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
 			stage.Environments = envs
 			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
 		default:

@@ -8,22 +8,22 @@ import (
 )
 
 func TestParseDefEnvironments_ErrIfNotMap(t *testing.T) {
-	_, errs := visitEnvironmentMapsNode(getNode(t, `123`))
+	_, errs := visitDocEnvironmentsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParseDefEnvironments_ErrIfKeyNotString(t *testing.T) {
-	_, errs := visitEnvironmentMapsNode(getNode(t, `123: {}`))
+	_, errs := visitDocEnvironmentsNode(getNode(t, `123: {}`))
 	requireContainsErr(t, errs, ErrKeyNotString)
 }
 
 func TestParseDefEnvironments_ErrIfKeyEmpty(t *testing.T) {
-	_, errs := visitEnvironmentMapsNode(getNode(t, `"": {}`))
+	_, errs := visitDocEnvironmentsNode(getNode(t, `"": {}`))
 	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
 func TestParseDefEnvironments_ValidMapOfEnvs(t *testing.T) {
-	envs, _ := visitEnvironmentMapsNode(getNode(t, `
+	envs, _ := visitDocEnvironmentsNode(getNode(t, `
 myEnv1: {}
 myEnv2: {}
 myEnv3: {}
@@ -74,12 +74,12 @@ myBool: true
 }
 
 func TestParseStageEnvironments_ErrIfNotArray(t *testing.T) {
-	_, errs := visitEnvironmentStringsNode(getNode(t, `123`))
+	_, errs := visitStageEnvironmentsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrStageEnvsNotArray)
 }
 
 func TestParseStageEnvironments_Valid(t *testing.T) {
-	envs, errs := visitEnvironmentStringsNode(getNode(t, `[a, b, c]`))
+	envs, errs := visitStageEnvironmentsNode(getNode(t, `[a, b, c]`))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
 	}

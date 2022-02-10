@@ -116,7 +116,7 @@ func visitDocNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Erro
 }
 
 func visitDocEnvironmentsNodes(node ast.Node) (map[string]Env, Errors) {
-	envs, errs := visitEnvironmentMapsNode(node)
+	envs, errs := visitDocEnvironmentsNode(node)
 	errs = wrapPathErrorSlice(propEnvironments, errs)
 	return envs, errs
 }

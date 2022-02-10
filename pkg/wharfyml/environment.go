@@ -22,7 +22,7 @@ type Env struct {
 	Vars map[string]interface{}
 }
 
-func visitEnvironmentMapsNode(node ast.Node) (map[string]Env, Errors) {
+func visitDocEnvironmentsNode(node ast.Node) (map[string]Env, Errors) {
 	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
 		return nil, Errors{err}
@@ -88,7 +88,7 @@ func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 	}
 }
 
-func visitEnvironmentStringsNode(node ast.Node) (envs []string, errSlice Errors) {
+func visitStageEnvironmentsNode(node ast.Node) (envs []string, errSlice Errors) {
 	if node.Type() != ast.SequenceType {
 		return nil, Errors{newPositionedErrorNode(ErrStageEnvsNotArray, node)}
 	}
