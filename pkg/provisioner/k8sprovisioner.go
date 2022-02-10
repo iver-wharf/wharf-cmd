@@ -120,7 +120,7 @@ func createPodMeta() v1.Pod {
 
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "wharf-provisioner",
+			GenerateName: "wharf-provisioner-",
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
