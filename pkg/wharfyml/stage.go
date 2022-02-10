@@ -27,7 +27,7 @@ func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
 		return
 	}
 	if len(nodes) == 0 {
-		errSlice.add(newPositionedErrorNode(ErrStageEmpty, node))
+		errSlice.add(wrapPositionedErrorNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {

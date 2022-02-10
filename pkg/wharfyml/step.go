@@ -26,11 +26,11 @@ func visitStepNode(name string, node ast.Node) (step Step, errSlice Errors) {
 		return
 	}
 	if len(nodes) == 0 {
-		errSlice.add(newPositionedErrorNode(ErrStepEmpty, node))
+		errSlice.add(wrapPositionedErrorNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.add(newPositionedErrorNode(ErrStepMultipleStepTypes, node))
+		errSlice.add(wrapPositionedErrorNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {

@@ -24,7 +24,7 @@ func (s *Errors) addNonNils(errs ...error) {
 	}
 }
 
-func newPositionedError(err error, line, column int) error {
+func wrapPositionedError(err error, line, column int) error {
 	return PositionedError{
 		Inner:  err,
 		Line:   line,
@@ -32,9 +32,9 @@ func newPositionedError(err error, line, column int) error {
 	}
 }
 
-func newPositionedErrorNode(err error, node ast.Node) error {
+func wrapPositionedErrorNode(err error, node ast.Node) error {
 	pos := node.GetToken().Position
-	return newPositionedError(err, pos.Line, pos.Column)
+	return wrapPositionedError(err, pos.Line, pos.Column)
 }
 
 // PositionedError is an error type that holds metadata about where the error

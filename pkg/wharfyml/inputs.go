@@ -15,6 +15,10 @@ var (
 )
 
 func visitDocInputsNode(node ast.Node) ([]Input, Errors) {
+	seqNode, ok := node.(*ast.SequenceNode)
+	if !ok {
+		return nil, Errors{wrapPositionedErrorNode(ErrInputsNotArray, node)}
+	}
 	// TODO:
 	return nil, nil
 }

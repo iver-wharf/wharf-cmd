@@ -160,5 +160,3 @@ values: [optionA, optionB, optionC]
 `))
 	requireContainsErr(t, errs, ErrInputChoiceUnknownValue)
 }
-
-// TODO: more tests
