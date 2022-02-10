@@ -18,6 +18,7 @@ var (
 type Env struct {
 	Name string
 	Vars map[string]interface{}
+	Pos  Pos
 }
 
 func visitDocEnvironmentsNode(node ast.Node) (map[string]Env, Errors) {

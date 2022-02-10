@@ -28,10 +28,10 @@ var runCmd = &cobra.Command{
 		def, errs := wharfyml.ParseFile(flagRunPath)
 		if len(errs) > 0 {
 			for _, err := range errs {
-				var parseErr wharfyml.PosError
-				if errors.As(err, &parseErr) {
+				var posErr wharfyml.PosError
+				if errors.As(err, &posErr) {
 					log.Warn().Messagef("%4d:%-4d%s",
-						parseErr.Line, parseErr.Column, err.Error())
+						posErr.Pos.Line, posErr.Pos.Column, err.Error())
 				} else {
 					log.Warn().Messagef("   -:-   %s", err.Error())
 				}

@@ -3,9 +3,6 @@ package wharfyml
 import (
 	"errors"
 	"fmt"
-	"sort"
-
-	"github.com/goccy/go-yaml/ast"
 )
 
 // Errors is a slice of errors.
@@ -22,67 +19,6 @@ func (s *Errors) addNonNils(errs ...error) {
 		}
 		*s = append(*s, err)
 	}
-}
-
-func wrapPosError(err error, line, column int) error {
-	return PosError{
-		Inner:  err,
-		Line:   line,
-		Column: column,
-	}
-}
-
-func wrapPosErrorNode(err error, node ast.Node) error {
-	pos := node.GetToken().Position
-	return wrapPosError(err, pos.Line, pos.Column)
-}
-
-// PosError is an error type that holds metadata about where the error
-// occurred (line and column).
-type PosError struct {
-	Inner  error
-	Line   int
-	Column int
-}
-
-// Error implements the error interface.
-func (err PosError) Error() string {
-	if err.Inner == nil {
-		return ""
-	}
-	return err.Inner.Error()
-}
-
-// Is implements the interface to support errors.Is.
-func (err PosError) Is(target error) bool {
-	return errors.Is(err.Inner, target)
-}
-
-// Unwrap implements the interface to support errors.Unwrap.
-func (err PosError) Unwrap() error {
-	return err.Inner
-}
-
-func positionedErrorLineColumn(err error) (int, int) {
-	var parseErr PosError
-	if !errors.As(err, &parseErr) {
-		return 0, 0
-	}
-	return parseErr.Line, parseErr.Column
-}
-
-func sortErrorsByPosition(errs Errors) {
-	if len(errs) == 0 {
-		return
-	}
-	sort.Slice(errs, func(i, j int) bool {
-		aLine, aCol := positionedErrorLineColumn(errs[i])
-		bLine, bCol := positionedErrorLineColumn(errs[j])
-		if aLine == bLine {
-			return aCol < bCol
-		}
-		return aLine < bLine
-	})
 }
 
 func wrapPathError(path string, err error) error {
