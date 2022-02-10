@@ -8,11 +8,18 @@ import (
 
 // Errors related to parsing environments.
 var (
-	ErrInputsNotArray = errors.New("inputs should be a YAML array")
+	ErrInputsNotArray            = errors.New("inputs should be a YAML array")
+	ErrInputTypeMissingRequired  = errors.New("missing required field")
+	ErrInputTypeInvalidFieldType = errors.New("invalid field type")
+	ErrInputChoiceUnknownValue   = errors.New("default value is missing from values array")
 )
 
 func visitDocInputsNode(node ast.Node) ([]Input, Errors) {
 	// TODO:
+	return nil, nil
+}
+
+func visitInputTypeNode(node ast.Node) (Input, Errors) {
 	return nil, nil
 }
 
@@ -24,7 +31,6 @@ type Input interface {
 // InputString represents a string (text) input value.
 type InputString struct {
 	Name    string
-	Type    Input
 	Default string
 }
 
@@ -37,7 +43,6 @@ func (InputString) InputTypeName() string {
 // should be concealed in user interfaces.
 type InputPassword struct {
 	Name    string
-	Type    Input
 	Default string
 }
 
@@ -49,7 +54,6 @@ func (InputPassword) InputTypeName() string {
 // InputNumber represents a number (integer or float) input value.
 type InputNumber struct {
 	Name    string
-	Type    Input
 	Default float64
 }
 
@@ -61,7 +65,6 @@ func (InputNumber) InputTypeName() string {
 // InputChoice represents a choice of multiple string inputs.
 type InputChoice struct {
 	Name    string
-	Type    Input
 	Values  []string
 	Default string
 }
