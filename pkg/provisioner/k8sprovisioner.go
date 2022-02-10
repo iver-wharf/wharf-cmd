@@ -96,9 +96,8 @@ func createPodMeta() v1.Pod {
 		labelWorkerBuildRef  = "123"
 		labelWorkerProjectID = "456"
 	)
-	var extraLabels = make(map[string]string)
-
-	var labels = map[string]string{
+	extraLabels := make(map[string]string)
+	labels := map[string]string{
 		"app":                          "wharf-cmd-worker",
 		"app.kubernetes.io/name":       "wharf-cmd-worker",
 		"app.kubernetes.io/part-of":    "wharf",
@@ -110,6 +109,13 @@ func createPodMeta() v1.Pod {
 	}
 	for k, v := range extraLabels {
 		labels[k] = v
+	}
+
+	volumeMounts := []v1.VolumeMount{
+		{
+			Name:      repoVolumeName,
+			MountPath: repoVolumeMountPath,
+		},
 	}
 
 	return v1.Pod{
@@ -126,12 +132,7 @@ func createPodMeta() v1.Pod {
 					Image:           gitCloneImage,
 					ImagePullPolicy: v1.PullIfNotPresent,
 					Args:            append(podInitCloneArgs, gitURL, repoVolumeMountPath),
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      repoVolumeName,
-							MountPath: repoVolumeMountPath,
-						},
-					},
+					VolumeMounts:    volumeMounts,
 				},
 			},
 			Containers: []v1.Container{
@@ -141,12 +142,7 @@ func createPodMeta() v1.Pod {
 					ImagePullPolicy: v1.PullAlways,
 					Command:         podContainerListArgs,
 					WorkingDir:      repoVolumeMountPath,
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      repoVolumeName,
-							MountPath: repoVolumeMountPath,
-						},
-					},
+					VolumeMounts:    volumeMounts,
 				},
 			},
 			Volumes: []v1.Volume{
