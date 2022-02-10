@@ -13,6 +13,7 @@ import (
 // Generic errors related to parsing.
 var (
 	ErrNotMap       = errors.New("not a map")
+	ErrNotArray     = errors.New("not an array")
 	ErrKeyNotString = errors.New("map key must be string")
 	ErrKeyEmpty     = errors.New("map key must not be empty")
 	ErrMissingDoc   = errors.New("empty document")
@@ -156,6 +157,16 @@ func parseMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, error) {
 	default:
 		return nil, wrapPosErrorNode(fmt.Errorf(
 			"%w: expected map, but was %s", ErrNotMap, prettyNodeTypeName(node)), node)
+	}
+}
+
+func parseSequenceNode(node ast.Node) (*ast.SequenceNode, error) {
+	switch n := node.(type) {
+	case *ast.SequenceNode:
+		return n, nil
+	default:
+		return nil, wrapPosErrorNode(fmt.Errorf(
+			"%w: expected array, but was %s", ErrNotArray, prettyNodeTypeName(node)), node)
 	}
 }
 

@@ -11,7 +11,6 @@ import (
 // Errors related to parsing environments.
 var (
 	ErrEnvInvalidVarType = errors.New("invalid environment variable type")
-	ErrStageEnvsNotArray = errors.New("stage environments should be a YAML array")
 	ErrStageEnvNotString = errors.New("stage environment element should be a YAML string")
 	ErrStageEnvEmpty     = errors.New("environment name cannot be empty")
 )
@@ -89,12 +88,12 @@ func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 }
 
 func visitStageEnvironmentsNode(node ast.Node) (envs []string, errSlice Errors) {
-	if node.Type() != ast.SequenceType {
-		return nil, Errors{wrapPosErrorNode(ErrStageEnvsNotArray, node)}
+	seqNode, err := parseSequenceNode(node)
+	if err != nil {
+		return nil, Errors{err}
 	}
-	seq := node.(*ast.SequenceNode)
-	envs = make([]string, 0, len(seq.Values))
-	for _, envNode := range seq.Values {
+	envs = make([]string, 0, len(seqNode.Values))
+	for _, envNode := range seqNode.Values {
 		envStrNode, ok := envNode.(*ast.StringNode)
 		if !ok {
 			errSlice.add(wrapPosErrorNode(ErrStageEnvNotString, envNode))

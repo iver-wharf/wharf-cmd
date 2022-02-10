@@ -75,7 +75,7 @@ myBool: true
 
 func TestParseStageEnvironments_ErrIfNotArray(t *testing.T) {
 	_, errs := visitStageEnvironmentsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrStageEnvsNotArray)
+	requireContainsErr(t, errs, ErrNotArray)
 }
 
 func TestParseStageEnvironments_Valid(t *testing.T) {

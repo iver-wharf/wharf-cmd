@@ -9,7 +9,7 @@ import (
 
 func TestParseDocInputs_ErrIfNotArray(t *testing.T) {
 	_, errs := visitDocInputsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrInputsNotArray)
+	requireContainsErr(t, errs, ErrNotArray)
 }
 
 func TestParseInputType_ErrIfUnknownType(t *testing.T) {

@@ -9,20 +9,21 @@ import (
 
 // Errors related to parsing environments.
 var (
-	ErrInputsNotArray          = errors.New("inputs should be a YAML array")
 	ErrInputUnknownType        = errors.New("unknown input type")
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
 
 func visitDocInputsNode(node ast.Node) (inputs []Input, errSlice Errors) {
-	seqNode, ok := node.(*ast.SequenceNode)
-	if !ok {
-		errSlice.add(wrapPosErrorNode(ErrInputsNotArray, node))
+	seqNode, err := parseSequenceNode(node)
+	if err != nil {
+		errSlice.add(err)
 		return
 	}
 	for i, inputNode := range seqNode.Values {
 		input, errs := visitInputTypeNode(inputNode)
-		errSlice.add(wrapPathErrorSlice(strconv.Itoa(i), errs)...)
+		if len(errs) > 0 {
+			errSlice.add(wrapPathErrorSlice(strconv.Itoa(i), errs)...)
+		}
 		if input != nil {
 			inputs = append(inputs, input)
 		}
