@@ -60,99 +60,73 @@ myStage2:
 `))
 	assertNoErr(t, errs)
 
-	// TODO: rewrite test to be more specific
-	want := Definition{
-		Inputs: map[string]Input{
-			"myStringVar": InputString{
-				Name:    "myStringVar",
-				Default: "foo bar",
-				Pos:     Pos{9, 9},
-			},
-			"myPasswordVar": InputPassword{
-				Name:    "myPasswordVar",
-				Default: "supersecret",
-				Pos:     Pos{12, 9},
-			},
-			"myNumberVar": InputNumber{
-				Name:    "myNumberVar",
-				Default: 123,
-				Pos:     Pos{12, 9},
-			},
-			"myChoiceVar": InputChoice{
-				Name:    "myChoiceVar",
-				Default: "A",
-				Values:  []string{"A", "B", "C"},
-				Pos:     Pos{12, 9},
-			},
-		},
-		Envs: map[string]Env{
-			"myEnvA": {
-				Name: "myEnvA",
-				Vars: map[string]interface{}{
-					"myString": "foo bar",
-					"myUint":   uint64(123),
-					"myInt":    int64(-123),
-					"myFloat":  123.45,
-					"myBool":   true,
-				},
-			},
-			"myEnvB": {
-				Name: "myEnvB",
-				Vars: map[string]interface{}{
-					"myString": "foo bar",
-					"myUint":   uint64(123),
-					"myInt":    int64(-123),
-					"myFloat":  123.45,
-					"myBool":   true,
-				},
-			},
-		},
-		Stages: []Stage{
-			{
-				Name: "myStage1",
-				Envs: []string{"myEnvA"},
-				Steps: []Step{
-					{
-						Name: "myDockerStep",
-						Type: StepDocker{
-							File: "Dockerfile",
-							Tag:  "latest",
-							// Values from defaults:
-							AppendCert: true,
-							Push:       true,
-							Secret:     "gitlab-registry",
-						},
-					},
-					{
-						Name: "myContainerStep",
-						Type: StepContainer{
-							Image: "alpine:latest",
-							Cmds:  []string{"echo hello"},
-							// Values from defaults:
-							OS:             "linux",
-							ServiceAccount: "default",
-							Shell:          "/bin/sh",
-						},
-					},
-				},
-			},
-			{
-				Name: "myStage2",
-				Steps: []Step{
-					{
-						Name: "myKubectlStep",
-						Type: StepKubectl{
-							File: "deploy/pod.yaml",
-							// Values from defaults:
-							Cluster: "kubectl-config",
-							Action:  "apply",
-						},
-					},
-				},
-			},
-		},
+	assert.Len(t, got.Inputs, 4)
+	if assert.IsType(t, InputString{}, got.Inputs["myStringVar"], `Inputs["myStringVar"]`) {
+		v := got.Inputs["myStringVar"].(InputString)
+		assert.Equal(t, "foo bar", v.Default, "myStringVar.Default")
 	}
-	assert.Equal(t, want, got)
+	if assert.IsType(t, InputPassword{}, got.Inputs["myPasswordVar"], `Inputs["myPasswordVar"]`) {
+		v := got.Inputs["myPasswordVar"].(InputPassword)
+		assert.Equal(t, "supersecret", v.Default, "myPasswordVar.Default")
+	}
+	if assert.IsType(t, InputNumber{}, got.Inputs["myNumberVar"], `Inputs["myNumberVar"]`) {
+		v := got.Inputs["myNumberVar"].(InputNumber)
+		assert.Equal(t, float64(123), v.Default, "myNumberVar.Default")
+	}
+	if assert.IsType(t, InputChoice{}, got.Inputs["myChoiceVar"], `Inputs["myChoiceVar"]`) {
+		v := got.Inputs["myChoiceVar"].(InputChoice)
+		assert.Equal(t, "A", v.Default, "myChoiceVar.Default")
+		assert.Equal(t, []string{"A", "B", "C"}, v.Values, "myChoiceVar.Values")
+	}
+
+	assert.Len(t, got.Envs, 2)
+	if myEnvA, ok := got.Envs["myEnvA"]; assert.True(t, ok, "myEnvA") {
+		assert.Equal(t, "foo bar", myEnvA.Vars["myString"], `myEnvA.Vars["myString"]`)
+		assert.Equal(t, uint64(123), myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
+		assert.Equal(t, int64(-123), myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
+		assert.Equal(t, 123.45, myEnvA.Vars["myFloat"], `myEnvA.Vars["myFloat"]`)
+		assert.Equal(t, true, myEnvA.Vars["myBool"], `myEnvA.Vars["myBool"]`)
+	}
+
+	if myEnvB, ok := got.Envs["myEnvB"]; assert.True(t, ok, "myEnvB") {
+		assert.Equal(t, "foo bar", myEnvB.Vars["myString"], `myEnvB.Vars["myString"]`)
+		assert.Equal(t, uint64(123), myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
+		assert.Equal(t, int64(-123), myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
+		assert.Equal(t, 123.45, myEnvB.Vars["myFloat"], `myEnvB.Vars["myFloat"]`)
+		assert.Equal(t, true, myEnvB.Vars["myBool"], `myEnvB.Vars["myBool"]`)
+	}
+
+	if assert.Len(t, got.Stages, 2) {
+		myStage1 := got.Stages[0]
+		assert.Equal(t, "myStage1", myStage1.Name, "myStage1.Name")
+		assert.Equal(t, []string{"myEnvA"}, myStage1.Envs, "myStage1.Envs")
+
+		if assert.Len(t, myStage1.Steps, 2, "myStage1.Steps") {
+			assert.Equal(t, "myDockerStep", myStage1.Steps[0].Name, "myStage1.myDockerStep.Name")
+			if assert.IsType(t, StepDocker{}, myStage1.Steps[0].Type, "myStage1.myDockerStep") {
+				s := myStage1.Steps[0].Type.(StepDocker)
+				assert.Equal(t, "Dockerfile", s.File)
+				assert.Equal(t, "latest", s.Tag)
+			}
+
+			assert.Equal(t, "myContainerStep", myStage1.Steps[1].Name, "myStage1.myContainerStep.Name")
+			if assert.IsType(t, StepContainer{}, myStage1.Steps[1].Type, "myStage1.myContainerStep") {
+				s := myStage1.Steps[1].Type.(StepContainer)
+				assert.Equal(t, "alpine:latest", s.Image)
+				assert.Equal(t, []string{"echo hello"}, s.Cmds)
+			}
+		}
+
+		myStage2 := got.Stages[1]
+		assert.Equal(t, "myStage2", myStage2.Name, "myStage2.Name")
+		if assert.Len(t, myStage2.Steps, 1, "myStage2.Steps") {
+			assert.Equal(t, "myKubectlStep", myStage2.Steps[0].Name, "myStage2.myKubectlStep.Name")
+			if assert.IsType(t, StepKubectl{}, myStage2.Steps[0].Type, "myStage2.myContainerStep") {
+				s := myStage2.Steps[0].Type.(StepKubectl)
+				assert.Equal(t, "deploy/pod.yaml", s.File)
+			}
+		}
+	}
 }
 
 func TestParse_PreservesStageOrder(t *testing.T) {

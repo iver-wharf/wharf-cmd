@@ -1,7 +1,6 @@
 package wharfyml
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -44,6 +43,7 @@ name: myVar
 type: string
 default: hello there`,
 			want: InputString{
+				Pos:     Pos{2, 5},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -55,6 +55,7 @@ name: myVar
 type: password
 default: hello there`,
 			want: InputPassword{
+				Pos:     Pos{2, 5},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -66,6 +67,7 @@ name: myVar
 type: number
 default: 12345`,
 			want: InputNumber{
+				Pos:     Pos{2, 5},
 				Name:    "myVar",
 				Default: 12345,
 			},
@@ -77,6 +79,7 @@ name: myVar
 type: number
 default: 123.45`,
 			want: InputNumber{
+				Pos:     Pos{2, 5},
 				Name:    "myVar",
 				Default: 123.45,
 			},
@@ -89,6 +92,7 @@ type: choice
 default: optionA
 values: [optionA, optionB, optionC]`,
 			want: InputChoice{
+				Pos:     Pos{2, 5},
 				Name:    "myVar",
 				Default: "optionA",
 				Values: []string{
@@ -99,11 +103,7 @@ values: [optionA, optionB, optionC]`,
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			node := getNode(t, fmt.Sprintf(`
-name: myVar
-type: %s
-default: %s
-`, tc.name, tc.content))
+			node := getNode(t, tc.content)
 			got, errs := visitInputTypeNode(node)
 			assert.Equal(t, tc.want, got)
 			requireNotContainsErr(t, errs, ErrInvalidFieldType)
