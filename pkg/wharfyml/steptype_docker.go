@@ -2,6 +2,9 @@ package wharfyml
 
 // StepDocker represents a step type for building and pushing Docker images.
 type StepDocker struct {
+	// Step type metadata
+	Pos Pos
+
 	// Required fields
 	File string
 	Tag  string
@@ -22,6 +25,8 @@ type StepDocker struct {
 func (StepDocker) StepTypeName() string { return "docker" }
 
 func (s StepDocker) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
+	s.Pos = nodes.parentPos()
+
 	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
 	s.Name = ""         // TODO: default to "${step_name}"
 	s.Group = ""        // TODO: default to "${REPO_GROUP}"

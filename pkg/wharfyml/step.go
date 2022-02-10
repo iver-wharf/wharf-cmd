@@ -14,11 +14,13 @@ var (
 
 // Step holds the step type and name of this Wharf build step.
 type Step struct {
+	Pos  Pos
 	Name string
 	Type StepType
 }
 
 func visitStepNode(name string, node ast.Node) (step Step, errSlice Errors) {
+	step.Pos = newPosNode(node)
 	step.Name = name
 	nodes, err := parseMappingValueNodes(node)
 	if err != nil {

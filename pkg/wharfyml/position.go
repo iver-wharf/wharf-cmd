@@ -9,7 +9,8 @@ import (
 )
 
 // Pos represents a position. Used to declare where an object was defined in
-// the .wharf-ci.yml file.
+// the .wharf-ci.yml file. The first line and column starts at 1.
+// The zero value is used to represent an undefined position.
 type Pos struct {
 	Line   int
 	Column int
@@ -18,6 +19,11 @@ type Pos struct {
 // String implements fmt.Stringer
 func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
+}
+
+// IsZero returns true if this type is its zero value.
+func (p Pos) IsZero() bool {
+	return p == Pos{}
 }
 
 func newPosNode(node ast.Node) Pos {

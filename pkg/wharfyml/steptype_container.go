@@ -3,6 +3,9 @@ package wharfyml
 // StepContainer represents a step type for running commands inside a Docker
 // container.
 type StepContainer struct {
+	// Step type metadata
+	Pos Pos
+
 	// Required fields
 	Image string
 	Cmds  []string
@@ -19,6 +22,7 @@ type StepContainer struct {
 func (StepContainer) StepTypeName() string { return "container" }
 
 func (s StepContainer) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
+	s.Pos = nodes.parentPos()
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"

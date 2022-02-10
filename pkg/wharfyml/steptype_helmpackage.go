@@ -3,6 +3,9 @@ package wharfyml
 // StepHelmPackage represents a step type for building and uploading a Helm
 // chart to a chart registry.
 type StepHelmPackage struct {
+	// Step type metadata
+	Pos Pos
+
 	// Optional fields
 	Version     string
 	ChartPath   string
@@ -13,6 +16,8 @@ type StepHelmPackage struct {
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
 func (s StepHelmPackage) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
+	s.Pos = nodes.parentPos()
+
 	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 
 	var errSlice Errors

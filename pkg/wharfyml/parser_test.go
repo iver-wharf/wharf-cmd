@@ -59,24 +59,29 @@ myStage2:
 `))
 	assertNoErr(t, errs)
 
+	// TODO: rewrite test to be more specific
 	want := Definition{
 		Inputs: map[string]Input{
 			"myStringVar": InputString{
 				Name:    "myStringVar",
 				Default: "foo bar",
+				Pos:     Pos{9, 9},
 			},
 			"myPasswordVar": InputPassword{
 				Name:    "myPasswordVar",
 				Default: "supersecret",
+				Pos:     Pos{12, 9},
 			},
 			"myNumberVar": InputNumber{
 				Name:    "myNumberVar",
 				Default: 123,
+				Pos:     Pos{12, 9},
 			},
 			"myChoiceVar": InputChoice{
 				Name:    "myChoiceVar",
 				Default: "A",
 				Values:  []string{"A", "B", "C"},
+				Pos:     Pos{12, 9},
 			},
 		},
 		Envs: map[string]Env{

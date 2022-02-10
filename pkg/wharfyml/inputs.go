@@ -59,24 +59,25 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 		p.validateRequiredString("name"),
 		p.validateRequiredString("type"),
 	)
+	pos := newPosNode(node)
 	switch inputType {
 	case "":
 		// validate required has already added error for it
 		return
 	case "string":
-		inputString := InputString{Name: inputName}
+		inputString := InputString{Name: inputName, Pos: pos}
 		p.unmarshalString("default", &inputString.Default)
 		input = inputString
 	case "password":
-		inputPassword := InputPassword{Name: inputName}
+		inputPassword := InputPassword{Name: inputName, Pos: pos}
 		p.unmarshalString("default", &inputPassword.Default)
 		input = inputPassword
 	case "number":
-		inputNumber := InputNumber{Name: inputName}
+		inputNumber := InputNumber{Name: inputName, Pos: pos}
 		p.unmarshalNumber("default", &inputNumber.Default)
 		input = inputNumber
 	case "choice":
-		inputChoice := InputChoice{Name: inputName}
+		inputChoice := InputChoice{Name: inputName, Pos: pos}
 		p.unmarshalString("default", &inputChoice.Default)
 		p.unmarshalStringSlice("values", &inputChoice.Values)
 		input = inputChoice
@@ -101,6 +102,7 @@ type Input interface {
 type InputString struct {
 	Name    string
 	Default string
+	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
@@ -118,6 +120,7 @@ func (i InputString) InputVarName() string {
 type InputPassword struct {
 	Name    string
 	Default string
+	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
@@ -134,6 +137,7 @@ func (i InputPassword) InputVarName() string {
 type InputNumber struct {
 	Name    string
 	Default float64
+	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
@@ -151,6 +155,7 @@ type InputChoice struct {
 	Name    string
 	Values  []string
 	Default string
+	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.

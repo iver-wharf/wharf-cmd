@@ -3,6 +3,9 @@ package wharfyml
 // StepNuGetPackage represents a step type used for building .NET NuGet
 // packages.
 type StepNuGetPackage struct {
+	// Step type metadata
+	Pos Pos
+
 	// Required fields
 	Version     string
 	ProjectPath string
@@ -17,6 +20,8 @@ type StepNuGetPackage struct {
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
 func (s StepNuGetPackage) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
+	s.Pos = nodes.parentPos()
+
 	var errSlice Errors
 
 	// Unmarshalling

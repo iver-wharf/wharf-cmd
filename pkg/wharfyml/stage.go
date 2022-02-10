@@ -14,12 +14,15 @@ var (
 // Stage holds the name, environment filter, and list of steps for this Wharf
 // build stage.
 type Stage struct {
-	Name  string
-	Envs  []string
-	Steps []Step
+	Pos     Pos
+	Name    string
+	Envs    []string
+	EnvsPos Pos
+	Steps   []Step
 }
 
 func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
+	stage.Pos = newPosNode(node)
 	stage.Name = name
 	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
@@ -38,6 +41,7 @@ func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
 		}
 		switch key {
 		case propEnvironments:
+			stage.EnvsPos = newPosNode(stepNode.Value)
 			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
 			stage.Envs = envs
 			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)

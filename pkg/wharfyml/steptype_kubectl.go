@@ -3,6 +3,9 @@ package wharfyml
 // StepKubectl represents a step type for running kubectl commands on some
 // Kubernetes manifest files.
 type StepKubectl struct {
+	// Step type metadata
+	Pos Pos
+
 	// Required fields
 	File  string
 	Files []string
@@ -18,6 +21,8 @@ type StepKubectl struct {
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
 func (s StepKubectl) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
+	s.Pos = nodes.parentPos()
+
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 

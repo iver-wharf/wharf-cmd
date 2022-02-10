@@ -19,6 +19,10 @@ type nodeMapParser struct {
 	nodes  map[string]ast.Node
 }
 
+func (p nodeMapParser) parentPos() Pos {
+	return newPosNode(p.parent)
+}
+
 func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 	node, ok := p.nodes[key]
 	if !ok {

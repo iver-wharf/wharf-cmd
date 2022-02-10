@@ -16,9 +16,9 @@ var (
 
 // Env is an environments definition.
 type Env struct {
+	Pos  Pos
 	Name string
 	Vars map[string]interface{}
-	Pos  Pos
 }
 
 func visitDocEnvironmentsNode(node ast.Node) (map[string]Env, Errors) {
@@ -45,6 +45,7 @@ func visitEnvironmentNode(name string, node ast.Node) (env Env, errSlice Errors)
 	env = Env{
 		Name: name,
 		Vars: make(map[string]interface{}),
+		Pos:  newPosNode(node),
 	}
 	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
