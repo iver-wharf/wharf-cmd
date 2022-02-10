@@ -15,6 +15,12 @@ var (
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
 
+// Input is an interface that is implemented by all input types.
+type Input interface {
+	InputTypeName() string
+	InputVarName() string
+}
+
 func visitInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
 	seqNode, err := parseSequenceNode(node)
 	if err != nil {
@@ -87,89 +93,4 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 		errSlice.add(ErrInputUnknownType)
 	}
 	return
-}
-
-// Input is an interface that is implemented by all input types.
-type Input interface {
-	InputTypeName() string
-	InputVarName() string
-}
-
-// InputString represents a string (text) input value.
-type InputString struct {
-	Name    string
-	Default string
-	Pos     Pos
-}
-
-// InputTypeName returns the name of this input type.
-func (InputString) InputTypeName() string {
-	return "string"
-}
-
-// InputVarName returns the name of this input variable.
-func (i InputString) InputVarName() string {
-	return i.Name
-}
-
-// InputPassword represents a string (text) input value, but where the value
-// should be concealed in user interfaces.
-type InputPassword struct {
-	Name    string
-	Default string
-	Pos     Pos
-}
-
-// InputTypeName returns the name of this input type.
-func (InputPassword) InputTypeName() string {
-	return "password"
-}
-
-// InputVarName returns the name of this input variable.
-func (i InputPassword) InputVarName() string {
-	return i.Name
-}
-
-// InputNumber represents a number (integer or float) input value.
-type InputNumber struct {
-	Name    string
-	Default float64
-	Pos     Pos
-}
-
-// InputTypeName returns the name of this input type.
-func (InputNumber) InputTypeName() string {
-	return "number"
-}
-
-// InputVarName returns the name of this input variable.
-func (i InputNumber) InputVarName() string {
-	return i.Name
-}
-
-// InputChoice represents a choice of multiple string inputs.
-type InputChoice struct {
-	Name    string
-	Values  []string
-	Default string
-	Pos     Pos
-}
-
-// InputTypeName returns the name of this input type.
-func (InputChoice) InputTypeName() string {
-	return "choice"
-}
-
-// InputVarName returns the name of this input variable.
-func (i InputChoice) InputVarName() string {
-	return i.Name
-}
-
-func (i InputChoice) validate() error {
-	for _, v := range i.Values {
-		if v == i.Default {
-			return nil
-		}
-	}
-	return ErrInputChoiceUnknownValue
 }
