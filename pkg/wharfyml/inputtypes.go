@@ -2,9 +2,9 @@ package wharfyml
 
 // InputString represents a string (text) input value.
 type InputString struct {
+	Pos     Pos
 	Name    string
 	Default string
-	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
@@ -20,9 +20,9 @@ func (i InputString) InputVarName() string {
 // InputPassword represents a string (text) input value, but where the value
 // should be concealed in user interfaces.
 type InputPassword struct {
+	Pos     Pos
 	Name    string
 	Default string
-	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
@@ -37,9 +37,9 @@ func (i InputPassword) InputVarName() string {
 
 // InputNumber represents a number (integer or float) input value.
 type InputNumber struct {
+	Pos     Pos
 	Name    string
 	Default float64
-	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
@@ -54,10 +54,10 @@ func (i InputNumber) InputVarName() string {
 
 // InputChoice represents a choice of multiple string inputs.
 type InputChoice struct {
+	Pos     Pos
 	Name    string
 	Values  []string
 	Default string
-	Pos     Pos
 }
 
 // InputTypeName returns the name of this input type.
