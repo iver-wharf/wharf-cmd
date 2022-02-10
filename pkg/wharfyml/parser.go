@@ -126,7 +126,7 @@ func parseSequenceNode(node ast.Node) (*ast.SequenceNode, error) {
 	}
 }
 
-func mappingValueNodeSliceToMap(slice []*ast.MappingValueNode) (map[string]ast.Node, Errors) {
+func parseMappingValueNodeSliceAsMap(slice []*ast.MappingValueNode) (map[string]ast.Node, Errors) {
 	m := make(map[string]ast.Node, len(slice))
 	var errSlice Errors
 	for _, node := range slice {

@@ -70,7 +70,7 @@ func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors
 		return nil, Errors{err}
 	}
 	var errSlice Errors
-	m, errs := mappingValueNodeSliceToMap(nodes)
+	m, errs := parseMappingValueNodeSliceAsMap(nodes)
 	errSlice.add(errs...)
 	parser := newNodeMapParser(v.keyNode, m)
 	stepType, errs := v.visitNode(parser)

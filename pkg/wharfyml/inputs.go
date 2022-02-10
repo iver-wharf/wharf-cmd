@@ -51,7 +51,7 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 		errSlice.add(err)
 		return
 	}
-	nodeMap, errs := mappingValueNodeSliceToMap(nodes)
+	nodeMap, errs := parseMappingValueNodeSliceAsMap(nodes)
 	errSlice.add(errs...)
 	p := newNodeMapParser(node, nodeMap)
 	var inputName string
