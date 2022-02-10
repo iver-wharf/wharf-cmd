@@ -10,7 +10,6 @@ import (
 // Errors related to parsing step types.
 var (
 	ErrStepTypeUnknown         = errors.New("unknown step type")
-	ErrStepTypeMissingRequired = errors.New("missing required field")
 )
 
 // StepType is an interface that is implemented by all step types.
@@ -56,7 +55,7 @@ func visitStepTypeKeyNode(node ast.Node) (stepTypeVisitor, error) {
 
 type stepTypeVisitor struct {
 	keyNode   *ast.StringNode
-	visitNode func(stepTypeParser) (StepType, Errors)
+	visitNode func(nodeMapParser) (StepType, Errors)
 }
 
 func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors) {
@@ -67,7 +66,7 @@ func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors
 	var errSlice Errors
 	m, errs := mappingValueNodeSliceToMap(nodes)
 	errSlice.add(errs...)
-	parser := stepTypeParser{
+	parser := nodeMapParser{
 		parent: v.keyNode,
 		nodes:  m,
 	}

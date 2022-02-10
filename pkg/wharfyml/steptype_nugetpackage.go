@@ -16,7 +16,7 @@ type StepNuGetPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s StepNuGetPackage) visitStepTypeNode(nodes stepTypeParser) (StepType, Errors) {
+func (s StepNuGetPackage) visitStepTypeNode(nodes nodeMapParser) (StepType, Errors) {
 	var errSlice Errors
 
 	// Unmarshalling

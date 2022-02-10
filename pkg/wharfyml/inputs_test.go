@@ -12,6 +12,15 @@ func TestParseDocInputs_ErrIfNotArray(t *testing.T) {
 	requireContainsErr(t, errs, ErrInputsNotArray)
 }
 
+func TestParseInputType_ErrIfUnknownType(t *testing.T) {
+	_, errs := visitInputTypeNode(getNode(t, `
+name: myVar
+type: unvariable
+default: foo bar
+`))
+	requireContainsErr(t, errs, ErrInputUnknownType)
+}
+
 func TestParseInputType_AllValid(t *testing.T) {
 	testCases := []struct {
 		name    string
@@ -85,9 +94,9 @@ name: myVar
 type: %s
 default: %s
 `, tc.name, tc.content))
-			inputType, errs := visitInputTypeNode(node)
-			assert.IsType(t, tc.want, inputType)
-			requireNotContainsErr(t, errs, ErrInputTypeInvalidFieldType)
+			got, errs := visitInputTypeNode(node)
+			assert.Equal(t, tc.want, got)
+			requireNotContainsErr(t, errs, ErrInvalidFieldType)
 		})
 	}
 }
@@ -146,7 +155,7 @@ default: [hello there]`,
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, errs := visitInputTypeNode(getNode(t, tc.content))
-			requireNotContainsErr(t, errs, ErrInputTypeMissingRequired)
+			requireContainsErr(t, errs, ErrMissingRequired)
 		})
 	}
 }
