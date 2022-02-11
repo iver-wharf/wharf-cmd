@@ -23,29 +23,17 @@ func visitDefNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Erro
 		switch key {
 		case propEnvironments:
 			var errs Errors
-			def.Envs, errs = visitDefEnvironmentsNodes(n.Value)
-			errSlice.add(errs...)
+			def.Envs, errs = visitDocEnvironmentsNode(n.Value)
+			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
 		case propInputs:
 			var errs Errors
 			def.Inputs, errs = visitInputsNode(n.Value)
 			errSlice.add(wrapPathErrorSlice(propInputs, errs)...)
 		default:
-			stage, errs := visitDefStageNode(key, n.Value)
+			stage, errs := visitStageNode(key, n.Value)
 			def.Stages = append(def.Stages, stage)
-			errSlice.add(errs...)
+			errSlice.add(wrapPathErrorSlice(key, errs)...)
 		}
 	}
 	return
-}
-
-func visitDefEnvironmentsNodes(node ast.Node) (map[string]Env, Errors) {
-	envs, errs := visitDocEnvironmentsNode(node)
-	errs = wrapPathErrorSlice(propEnvironments, errs)
-	return envs, errs
-}
-
-func visitDefStageNode(key string, node ast.Node) (Stage, Errors) {
-	stage, errs := visitStageNode(key, node)
-	errs = wrapPathErrorSlice(key, errs)
-	return stage, errs
 }
