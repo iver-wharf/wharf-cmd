@@ -19,7 +19,7 @@ type StepType interface {
 
 // StepTypeMeta contains metadata about a step type.
 type StepTypeMeta struct {
-	Pos      Pos
+	Source   Pos
 	FieldPos map[string]Pos
 }
 
@@ -80,7 +80,7 @@ func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors
 
 func getStepTypeMeta(p nodeMapParser) StepTypeMeta {
 	return StepTypeMeta{
-		Pos:      p.parentPos(),
+		Source:   p.parentPos(),
 		FieldPos: p.positions,
 	}
 }

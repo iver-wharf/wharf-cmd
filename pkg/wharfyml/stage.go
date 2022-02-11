@@ -16,7 +16,7 @@ var (
 type Stage struct {
 	Pos     Pos
 	Name    string
-	Envs    []string
+	Envs    []EnvRef
 	EnvsPos Pos
 	Steps   []Step
 }

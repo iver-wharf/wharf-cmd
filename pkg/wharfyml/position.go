@@ -21,11 +21,6 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
-// IsZero returns true if this type is its zero value.
-func (p Pos) IsZero() bool {
-	return p == Pos{}
-}
-
 func newPosNode(node ast.Node) Pos {
 	return Pos{
 		Line:   node.GetToken().Position.Line,
@@ -35,8 +30,8 @@ func newPosNode(node ast.Node) Pos {
 
 func wrapPosError(err error, pos Pos) error {
 	return PosError{
-		Err: err,
-		Pos: pos,
+		Err:    err,
+		Source: pos,
 	}
 }
 
@@ -47,8 +42,8 @@ func wrapPosErrorNode(err error, node ast.Node) error {
 // PosError is an error type that holds metadata about where the error
 // occurred (line and column).
 type PosError struct {
-	Err error
-	Pos Pos
+	Err    error
+	Source Pos
 }
 
 // Error implements the error interface.
@@ -74,7 +69,7 @@ func posFromError(err error) Pos {
 	if !errors.As(err, &posErr) {
 		return Pos{}
 	}
-	return posErr.Pos
+	return posErr.Source
 }
 
 func sortErrorsByPosition(errs Errors) {

@@ -84,5 +84,9 @@ func TestParseStageEnvironments_Valid(t *testing.T) {
 		t.Logf("errs: %v", errs)
 	}
 	want := []string{"a", "b", "c"}
-	assert.Equal(t, want, envs)
+	got := make([]string, len(envs))
+	for i, env := range envs {
+		got[i] = env.Name
+	}
+	assert.Equal(t, want, got)
 }

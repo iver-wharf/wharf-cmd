@@ -43,7 +43,7 @@ name: myVar
 type: string
 default: hello there`,
 			want: InputString{
-				Pos:     Pos{2, 5},
+				Source:  Pos{2, 5},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -55,7 +55,7 @@ name: myVar
 type: password
 default: hello there`,
 			want: InputPassword{
-				Pos:     Pos{2, 5},
+				Source:  Pos{2, 5},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -67,7 +67,7 @@ name: myVar
 type: number
 default: 12345`,
 			want: InputNumber{
-				Pos:     Pos{2, 5},
+				Source:  Pos{2, 5},
 				Name:    "myVar",
 				Default: 12345,
 			},
@@ -79,7 +79,7 @@ name: myVar
 type: number
 default: 123.45`,
 			want: InputNumber{
-				Pos:     Pos{2, 5},
+				Source:  Pos{2, 5},
 				Name:    "myVar",
 				Default: 123.45,
 			},
@@ -92,7 +92,7 @@ type: choice
 default: optionA
 values: [optionA, optionB, optionC]`,
 			want: InputChoice{
-				Pos:     Pos{2, 5},
+				Source:  Pos{2, 5},
 				Name:    "myVar",
 				Default: "optionA",
 				Values: []string{

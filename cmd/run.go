@@ -31,7 +31,7 @@ var runCmd = &cobra.Command{
 				var posErr wharfyml.PosError
 				if errors.As(err, &posErr) {
 					log.Warn().Messagef("%4d:%-4d%s",
-						posErr.Pos.Line, posErr.Pos.Column, err.Error())
+						posErr.Source.Line, posErr.Source.Column, err.Error())
 				} else {
 					log.Warn().Messagef("   -:-   %s", err.Error())
 				}

@@ -68,19 +68,19 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 		// validate required has already added error for it
 		return
 	case "string":
-		inputString := InputString{Name: inputName, Pos: pos}
+		inputString := InputString{Name: inputName, Source: pos}
 		p.unmarshalString("default", &inputString.Default)
 		input = inputString
 	case "password":
-		inputPassword := InputPassword{Name: inputName, Pos: pos}
+		inputPassword := InputPassword{Name: inputName, Source: pos}
 		p.unmarshalString("default", &inputPassword.Default)
 		input = inputPassword
 	case "number":
-		inputNumber := InputNumber{Name: inputName, Pos: pos}
+		inputNumber := InputNumber{Name: inputName, Source: pos}
 		p.unmarshalNumber("default", &inputNumber.Default)
 		input = inputNumber
 	case "choice":
-		inputChoice := InputChoice{Name: inputName, Pos: pos}
+		inputChoice := InputChoice{Name: inputName, Source: pos}
 		p.unmarshalString("default", &inputChoice.Default)
 		p.unmarshalStringSlice("values", &inputChoice.Values)
 		input = inputChoice

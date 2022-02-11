@@ -14,11 +14,17 @@ var (
 	ErrStageEnvEmpty     = errors.New("environment name cannot be empty")
 )
 
-// Env is an environments definition.
+// Env is an environments definition. Used in the root of the definition.
 type Env struct {
-	Pos  Pos
-	Name string
-	Vars map[string]interface{}
+	Source Pos
+	Name   string
+	Vars   map[string]interface{}
+}
+
+// EnvRef is a reference to an environments definition. Used in stages.
+type EnvRef struct {
+	Source Pos
+	Name   string
 }
 
 func visitDocEnvironmentsNode(node ast.Node) (map[string]Env, Errors) {
@@ -43,9 +49,9 @@ func visitDocEnvironmentsNode(node ast.Node) (map[string]Env, Errors) {
 
 func visitEnvironmentNode(name string, node ast.Node) (env Env, errSlice Errors) {
 	env = Env{
-		Name: name,
-		Vars: make(map[string]interface{}),
-		Pos:  newPosNode(node),
+		Name:   name,
+		Vars:   make(map[string]interface{}),
+		Source: newPosNode(node),
 	}
 	nodes, err := parseMappingValueNodes(node)
 	if err != nil {
@@ -88,12 +94,12 @@ func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
 	}
 }
 
-func visitStageEnvironmentsNode(node ast.Node) (envs []string, errSlice Errors) {
+func visitStageEnvironmentsNode(node ast.Node) (envs []EnvRef, errSlice Errors) {
 	seqNode, err := parseSequenceNode(node)
 	if err != nil {
 		return nil, Errors{err}
 	}
-	envs = make([]string, 0, len(seqNode.Values))
+	envs = make([]EnvRef, 0, len(seqNode.Values))
 	for _, envNode := range seqNode.Values {
 		envStrNode, ok := envNode.(*ast.StringNode)
 		if !ok {
@@ -104,7 +110,10 @@ func visitStageEnvironmentsNode(node ast.Node) (envs []string, errSlice Errors) 
 			errSlice.add(wrapPosErrorNode(ErrStageEnvEmpty, envNode))
 			continue
 		}
-		envs = append(envs, envStrNode.Value)
+		envs = append(envs, EnvRef{
+			Source: newPosNode(envNode),
+			Name:   envStrNode.Value,
+		})
 	}
 	return
 }

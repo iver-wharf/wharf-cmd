@@ -99,7 +99,9 @@ myStage2:
 	if assert.Len(t, got.Stages, 2) {
 		myStage1 := got.Stages[0]
 		assert.Equal(t, "myStage1", myStage1.Name, "myStage1.Name")
-		assert.Equal(t, []string{"myEnvA"}, myStage1.Envs, "myStage1.Envs")
+		if assert.Len(t, myStage1.Envs, 1, "myStage1.Envs") {
+			assert.Equal(t, "myEnvA", myStage1.Envs[0].Name, "myStage1.Envs[0].Name")
+		}
 
 		if assert.Len(t, myStage1.Steps, 2, "myStage1.Steps") {
 			assert.Equal(t, "myDockerStep", myStage1.Steps[0].Name, "myStage1.myDockerStep.Name")
@@ -119,6 +121,8 @@ myStage2:
 
 		myStage2 := got.Stages[1]
 		assert.Equal(t, "myStage2", myStage2.Name, "myStage2.Name")
+		assert.Len(t, myStage2.Envs, 0, "myStage2.Envs")
+
 		if assert.Len(t, myStage2.Steps, 1, "myStage2.Steps") {
 			assert.Equal(t, "myKubectlStep", myStage2.Steps[0].Name, "myStage2.myKubectlStep.Name")
 			if assert.IsType(t, StepKubectl{}, myStage2.Steps[0].Type, "myStage2.myContainerStep") {
