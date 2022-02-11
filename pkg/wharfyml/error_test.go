@@ -38,7 +38,12 @@ func assertNoErr(t *testing.T, errs Errors) {
 func formatErrorSlice(prefix string, errs Errors) string {
 	var sb strings.Builder
 	for i, err := range errs {
-		fmt.Fprintf(&sb, "%s[i=%d] %s\n", prefix, i, err)
+		var posErr PosError
+		if errors.As(err, &posErr) {
+			fmt.Fprintf(&sb, "%s[i=%d, at %v] %s\n", prefix, i, posErr.Source, posErr.Err)
+		} else {
+			fmt.Fprintf(&sb, "%s[i=%d] %s\n", prefix, i, err)
+		}
 	}
 	return sb.String()
 }

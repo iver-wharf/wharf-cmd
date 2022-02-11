@@ -1,9 +1,14 @@
 package wharfyml
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/goccy/go-yaml/ast"
+)
+
+var (
+	ErrUseOfUndefinedEnv = errors.New("use of undefined environment")
 )
 
 // Definition is the .wharf-ci.yml build definition structure.
@@ -35,5 +40,19 @@ func visitDefNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Erro
 			errSlice.add(wrapPathErrorSlice(key, errs)...)
 		}
 	}
+	errSlice.add(validateDefEnvironmentUsage(def)...)
 	return
+}
+
+func validateDefEnvironmentUsage(def Definition) Errors {
+	var errSlice Errors
+	for _, stage := range def.Stages {
+		for _, env := range stage.Envs {
+			if _, ok := def.Envs[env.Name]; !ok {
+				err := fmt.Errorf("%w: %q", ErrUseOfUndefinedEnv, env.Name)
+				errSlice.add(wrapPosError(err, env.Source))
+			}
+		}
+	}
+	return errSlice
 }

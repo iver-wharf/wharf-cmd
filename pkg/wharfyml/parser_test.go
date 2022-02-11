@@ -273,6 +273,14 @@ func TestParser_ErrIfEmptyStageName(t *testing.T) {
 	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
+func TestParser_ErrIfUseOfUnknownEnv(t *testing.T) {
+	_, errs := Parse(strings.NewReader(`
+myStage:
+  environments: [myEnv]
+`))
+	requireContainsErr(t, errs, ErrUseOfUndefinedEnv)
+}
+
 // TODO: Test the following:
 // - error on unused environment
 // - error on use of undeclared environment
