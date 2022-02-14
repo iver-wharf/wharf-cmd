@@ -48,7 +48,9 @@ func validateDefEnvironmentUsage(def Definition) Errors {
 		for _, env := range stage.Envs {
 			if _, ok := def.Envs[env.Name]; !ok {
 				err := fmt.Errorf("%w: %q", ErrUseOfUndefinedEnv, env.Name)
-				errSlice.add(wrapPosError(err, env.Source))
+				err = wrapPosError(err, env.Source)
+				err = wrapPathError(err, stage.Name, propEnvironments)
+				errSlice.add(err)
 			}
 		}
 	}
