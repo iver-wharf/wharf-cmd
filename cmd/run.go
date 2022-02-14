@@ -27,6 +27,7 @@ var runCmd = &cobra.Command{
 		b := worker.New(stageRun)
 		def, errs := wharfyml.ParseFile(flagRunPath)
 		if len(errs) > 0 {
+			log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
 			for _, err := range errs {
 				var posErr wharfyml.PosError
 				if errors.As(err, &posErr) {
