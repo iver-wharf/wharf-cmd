@@ -147,10 +147,3 @@ func (p nodeMapParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
 	return wrapPosErrorNode(inner, p.parent)
 }
-
-func newInvalidFieldTypeErr(key string, wantType string, node *yaml.Node) error {
-	gotType := prettyNodeTypeName(node)
-	err := wrapPosErrorNode(fmt.Errorf("%w: expected %s, but found %s",
-		ErrInvalidFieldType, wantType, gotType), node)
-	return wrapPathError(key, err)
-}
