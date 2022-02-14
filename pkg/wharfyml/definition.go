@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Errors specific to parsing definitions.
 var (
 	ErrUseOfUndefinedEnv = errors.New("use of undefined environment")
 )

@@ -10,8 +10,14 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// Generic errors related to parsing.
 var (
 	ErrInvalidFieldType = errors.New("invalid field type")
+	ErrKeyCollision     = errors.New("map key appears more than once")
+	ErrKeyEmpty         = errors.New("map key must not be empty")
+	ErrKeyNotString     = errors.New("map key must be string")
+	ErrMissingDoc       = errors.New("empty document")
+	ErrTooManyDocs      = errors.New("only 1 document is allowed")
 )
 
 const (
@@ -25,10 +31,6 @@ const (
 	shortTagTimestamp = "!!timestamp"
 	shortTagMerge     = "!!merge"
 )
-
-type visitor struct {
-	errs Errors
-}
 
 func unwrapNode(node *yaml.Node) *yaml.Node {
 	for node.Alias != nil {
@@ -87,26 +89,6 @@ func parseInt(str string) (int, error) {
 		return 0, err
 	}
 	return int(num), nil
-}
-
-func visitUInt(node *yaml.Node) (uint, error) {
-	node = unwrapNode(node)
-	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagInt); err != nil {
-		return 0, err
-	}
-	num, err := parseUint(node.Value)
-	if err != nil {
-		return 0, wrapPosErrorNode(err, node)
-	}
-	return num, nil
-}
-
-func parseUint(str string) (uint, error) {
-	num, err := strconv.ParseUint(removeUnderscores(str), 0, 0)
-	if err != nil {
-		return 0, err
-	}
-	return uint(num), nil
 }
 
 func visitFloat64(node *yaml.Node) (float64, error) {

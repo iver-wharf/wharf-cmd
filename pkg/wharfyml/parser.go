@@ -1,20 +1,10 @@
 package wharfyml
 
 import (
-	"errors"
 	"io"
 	"os"
 
 	"gopkg.in/yaml.v3"
-)
-
-// Generic errors related to parsing.
-var (
-	ErrKeyNotString = errors.New("map key must be string")
-	ErrKeyEmpty     = errors.New("map key must not be empty")
-	ErrKeyCollision = errors.New("map key appears more than once")
-	ErrMissingDoc   = errors.New("empty document")
-	ErrTooManyDocs  = errors.New("only 1 document is allowed")
 )
 
 // ParseFile will parse the file at the given path.
