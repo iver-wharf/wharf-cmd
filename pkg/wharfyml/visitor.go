@@ -32,8 +32,8 @@ func unwrapNode(node *yaml.Node) *yaml.Node {
 }
 
 func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
-	if node.Kind != yaml.ScalarNode {
-		return wrapPosErrorNode2(fmt.Errorf("expected %s, got %s",
+	if node.Kind != wantKind {
+		return wrapPosErrorNode2(fmt.Errorf("expected %s, but was %s",
 			wantStr, yamlKindString(node.Kind)), node)
 	}
 	return nil
@@ -42,7 +42,7 @@ func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 func verifyTag(node *yaml.Node, wantStr string, wantTag string) error {
 	gotTag := node.ShortTag()
 	if gotTag != wantTag {
-		return wrapPosErrorNode2(fmt.Errorf("expected %s, got %s",
+		return wrapPosErrorNode2(fmt.Errorf("expected %s, but was %s",
 			wantStr, yamlShortTagName(gotTag)), node)
 	}
 	return nil
@@ -71,9 +71,17 @@ func visitInt(node *yaml.Node) (int, error) {
 	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagInt); err != nil {
 		return 0, err
 	}
-	num, err := strconv.ParseInt(removeUnderscores(node.Value), 0, 0)
+	num, err := parseInt(node.Value)
 	if err != nil {
 		return 0, wrapPosErrorNode2(err, node)
+	}
+	return num, nil
+}
+
+func parseInt(str string) (int, error) {
+	num, err := strconv.ParseInt(removeUnderscores(str), 0, 0)
+	if err != nil {
+		return 0, err
 	}
 	return int(num), nil
 }
@@ -83,9 +91,17 @@ func visitUInt(node *yaml.Node) (uint, error) {
 	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagInt); err != nil {
 		return 0, err
 	}
-	num, err := strconv.ParseUint(removeUnderscores(node.Value), 0, 0)
+	num, err := parseUint(node.Value)
 	if err != nil {
 		return 0, wrapPosErrorNode2(err, node)
+	}
+	return num, nil
+}
+
+func parseUint(str string) (uint, error) {
+	num, err := strconv.ParseUint(removeUnderscores(str), 0, 0)
+	if err != nil {
+		return 0, err
 	}
 	return uint(num), nil
 }
@@ -95,7 +111,15 @@ func visitFloat64(node *yaml.Node) (float64, error) {
 	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagFloat); err != nil {
 		return 0, err
 	}
-	switch node.Value {
+	num, err := parseFloat64(node.Value)
+	if err != nil {
+		return 0, wrapPosErrorNode2(err, node)
+	}
+	return num, nil
+}
+
+func parseFloat64(str string) (float64, error) {
+	switch str {
 	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF":
 		return math.Inf(1), nil
 	case "-.inf", "-.Inf", "-.INF":
@@ -103,10 +127,9 @@ func visitFloat64(node *yaml.Node) (float64, error) {
 	case ".nan", ".NaN", ".NAN":
 		return math.NaN(), nil
 	}
-	str := strings.ReplaceAll(removeUnderscores(node.Value), "_", "")
-	num, err := strconv.ParseFloat(str, 64)
+	num, err := strconv.ParseFloat(removeUnderscores(str), 64)
 	if err != nil {
-		return 0, wrapPosErrorNode2(err, node)
+		return 0, err
 	}
 	return num, nil
 }
@@ -199,6 +222,7 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 }
 
 func visitSequence(node *yaml.Node) ([]*yaml.Node, error) {
+	node = unwrapNode(node)
 	if err := verifyKind(node, "sequence", yaml.SequenceNode); err != nil {
 		return nil, err
 	}
