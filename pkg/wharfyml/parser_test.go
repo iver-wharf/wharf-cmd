@@ -58,7 +58,7 @@ myStage2:
     kubectl:
       file: deploy/pod.yaml
 `))
-	assertNoErr(t, errs)
+	requireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
 	if assert.IsType(t, InputString{}, got.Inputs["myStringVar"], `Inputs["myStringVar"]`) {
@@ -131,6 +131,28 @@ myStage2:
 			}
 		}
 	}
+}
+
+func TestParse_SupportsAnchoringStages(t *testing.T) {
+	def, errs := Parse(strings.NewReader(`
+myStage1: &reused
+  environments:
+    - !!str hello
+    - !!str world
+  myStep:
+    helm-package: {}
+
+myStage2: *reused
+`))
+	requireNoErr(t, errs)
+	require.Len(t, def.Stages, 2)
+	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
+	assert.Equal(t, "myStage2", def.Stages[1].Name, "stage 2 name")
+
+	require.Len(t, def.Stages[0].Steps, 1, "stage 1 steps")
+	require.Len(t, def.Stages[1].Steps, 1, "stage 2 steps")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[0].Steps[0], "stage 1 step 1")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[1].Steps[0], "stage 2 step 1")
 }
 
 func TestParse_PreservesStageOrder(t *testing.T) {
@@ -219,7 +241,7 @@ myStage:
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, errs := Parse(strings.NewReader(tc.input))
-			assertNoErr(t, errs)
+			requireNoErr(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
 			for _, s := range got.Stages[0].Steps {

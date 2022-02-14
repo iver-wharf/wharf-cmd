@@ -27,7 +27,7 @@ func requireNotContainsErr(t *testing.T, errs Errors, err error) {
 	}
 }
 
-func assertNoErr(t *testing.T, errs Errors) {
+func requireNoErr(t *testing.T, errs Errors) {
 	if len(errs) == 0 {
 		return
 	}
@@ -40,7 +40,7 @@ func formatErrorSlice(prefix string, errs Errors) string {
 	for i, err := range errs {
 		var posErr PosError
 		if errors.As(err, &posErr) {
-			fmt.Fprintf(&sb, "%s[i=%d, at %v] %s\n", prefix, i, posErr.Source, posErr.Err)
+			fmt.Fprintf(&sb, "%s[i=%d, at %v] %s\n", prefix, i, posErr.Source, err)
 		} else {
 			fmt.Fprintf(&sb, "%s[i=%d] %s\n", prefix, i, err)
 		}

@@ -57,9 +57,6 @@ func parse(reader io.Reader) (def Definition, errSlice Errors) {
 	if len(errs) > 0 {
 		errSlice.add(errs...)
 	}
-	// TODO: second pass to validate environment usage:
-	// - error on unused environment
-	// - error on use of undeclared environment
 	return
 }
 
@@ -106,6 +103,10 @@ func parseMapKey(node ast.Node) (*ast.StringNode, error) {
 
 func parseMappingValueNodes(node ast.Node) ([]*ast.MappingValueNode, error) {
 	switch n := node.(type) {
+	case *ast.AnchorNode:
+		return parseMappingValueNodes(n.Value)
+	case *ast.AliasNode:
+		return parseMappingValueNodes(n.Value)
 	case *ast.MappingValueNode:
 		return []*ast.MappingValueNode{n}, nil
 	case *ast.MappingNode:
@@ -138,4 +139,39 @@ func parseMappingValueNodeSliceAsMap(slice []*ast.MappingValueNode) (map[string]
 		m[key] = node.Value
 	}
 	return m, errSlice
+}
+
+func prettyNodeTypeName(node ast.Node) string {
+	switch node.Type() {
+	case ast.StringType:
+		return "string"
+	case ast.BoolType:
+		return "boolean"
+	case ast.FloatType:
+		return "float"
+	case ast.IntegerType:
+		return "integer"
+	case ast.NanType:
+		return "NaN"
+	case ast.InfinityType:
+		return "infinity"
+	case ast.MappingType:
+		return "map"
+	case ast.MappingKeyType:
+		return "map key"
+	case ast.MappingValueType:
+		return "map value"
+	case ast.NullType:
+		return "null"
+	case ast.SequenceType:
+		return "array"
+	case ast.AnchorType:
+		return "anchor"
+	case ast.AliasType:
+		return "alias"
+	case ast.TagType:
+		return "tag"
+	default:
+		return "unknown type"
+	}
 }

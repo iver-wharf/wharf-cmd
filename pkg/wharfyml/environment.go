@@ -4,14 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strconv"
 
 	"github.com/goccy/go-yaml/ast"
 )
 
 // Errors related to parsing environments.
 var (
-	ErrStageEnvNotString = errors.New("stage environment element should be a YAML string")
-	ErrStageEnvEmpty     = errors.New("environment name cannot be empty")
+	ErrStageEnvEmpty = errors.New("environment name cannot be empty")
 )
 
 // Env is an environments definition. Used in the root of the definition.
@@ -100,10 +100,10 @@ func visitStageEnvironmentsNode(node ast.Node) (envs []EnvRef, errSlice Errors) 
 		return nil, Errors{err}
 	}
 	envs = make([]EnvRef, 0, len(seqNode.Values))
-	for _, envNode := range seqNode.Values {
+	for i, envNode := range seqNode.Values {
 		envStrNode, ok := envNode.(*ast.StringNode)
 		if !ok {
-			errSlice.add(wrapPosErrorNode(ErrStageEnvNotString, envNode))
+			errSlice.add(newInvalidFieldTypeErr(strconv.Itoa(i), "string", envNode))
 			continue
 		}
 		if envStrNode.Value == "" {

@@ -176,32 +176,3 @@ func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
 		ErrInvalidFieldType, wantType, gotType), node)
 	return wrapPathError(key, err)
 }
-
-func prettyNodeTypeName(node ast.Node) string {
-	switch node.Type() {
-	case ast.StringType:
-		return "string"
-	case ast.BoolType:
-		return "boolean"
-	case ast.FloatType:
-		return "float"
-	case ast.IntegerType:
-		return "integer"
-	case ast.NanType:
-		return "NaN"
-	case ast.InfinityType:
-		return "infinity"
-	case ast.MappingType:
-		return "map"
-	case ast.MappingKeyType:
-		return "map key"
-	case ast.MappingValueType:
-		return "map value"
-	case ast.NullType:
-		return "null"
-	case ast.SequenceType:
-		return "array"
-	default:
-		return "unknown type"
-	}
-}
