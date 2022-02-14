@@ -6,12 +6,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseDocInputs_ErrIfNotArray(t *testing.T) {
+func TestVisitDocInputs_ErrIfNotArray(t *testing.T) {
 	_, errs := visitInputsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseDocInputs_ErrIfNameCollision(t *testing.T) {
+func TestVisitDocInputs_ErrIfNameCollision(t *testing.T) {
 	_, errs := visitInputsNode(getNode(t, `
 - name: myVar
   type: string
@@ -21,7 +21,7 @@ func TestParseDocInputs_ErrIfNameCollision(t *testing.T) {
 	requireContainsErr(t, errs, ErrInputNameCollision)
 }
 
-func TestParseInputType_ErrIfUnknownType(t *testing.T) {
+func TestVisitInputType_ErrIfUnknownType(t *testing.T) {
 	_, errs := visitInputTypeNode(getNode(t, `
 name: myVar
 type: unvariable
@@ -30,7 +30,7 @@ default: foo bar
 	requireContainsErr(t, errs, ErrInputUnknownType)
 }
 
-func TestParseInputType_AllValid(t *testing.T) {
+func TestVisitInputType_AllValid(t *testing.T) {
 	testCases := []struct {
 		name    string
 		content string
@@ -111,7 +111,7 @@ values: [optionA, optionB, optionC]`,
 	}
 }
 
-func TestParseInputType_ErrIfMissingRequiredFields(t *testing.T) {
+func TestVisitInputType_ErrIfMissingRequiredFields(t *testing.T) {
 	testCases := []struct {
 		name    string
 		content string
@@ -170,7 +170,7 @@ default: [hello there]`,
 	}
 }
 
-func TestParseInputChoice_ErrIfUndefinedDefaultValue(t *testing.T) {
+func TestVisitInputChoice_ErrIfUndefinedDefaultValue(t *testing.T) {
 	_, errs := visitInputTypeNode(getNode(t, `
 name: myVar
 type: choice

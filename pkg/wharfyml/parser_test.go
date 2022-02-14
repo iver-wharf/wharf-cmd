@@ -9,7 +9,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// TODO: rename tests to use "visit" names
 func TestParse_AcceptanceTest(t *testing.T) {
 	got, errs := Parse(strings.NewReader(`
 inputs:
@@ -286,7 +285,7 @@ myStage:
 	}
 }
 
-func TestParser_TooManyDocs(t *testing.T) {
+func TestParse_TooManyDocs(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 a: 1
 ---
@@ -297,7 +296,7 @@ c: 3
 	requireContainsErr(t, errs, ErrTooManyDocs)
 }
 
-func TestParser_OneDocWithDocSeparator(t *testing.T) {
+func TestParse_OneDocWithDocSeparator(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 ---
 c: 3
@@ -305,31 +304,31 @@ c: 3
 	requireNotContainsErr(t, errs, ErrTooManyDocs)
 }
 
-func TestParser_MissingDoc(t *testing.T) {
+func TestParse_MissingDoc(t *testing.T) {
 	_, errs := Parse(strings.NewReader(``))
 	requireContainsErr(t, errs, ErrMissingDoc)
 }
 
-func TestParser_ErrIfDocNotMap(t *testing.T) {
+func TestParse_ErrIfDocNotMap(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParser_ErrIfNonStringKey(t *testing.T) {
+func TestParse_ErrIfNonStringKey(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 123: {}
 `))
 	requireContainsErr(t, errs, ErrKeyNotString)
 }
 
-func TestParser_ErrIfEmptyStageName(t *testing.T) {
+func TestParse_ErrIfEmptyStageName(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 "": {}
 `))
 	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
-func TestParser_ErrIfUseOfUnknownEnv(t *testing.T) {
+func TestParse_ErrIfUseOfUnknownEnv(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 myStage:
   environments: [myEnv]

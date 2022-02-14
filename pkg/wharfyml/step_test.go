@@ -6,17 +6,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseStep_ErrIfNotMap(t *testing.T) {
+func TestVisitStep_ErrIfNotMap(t *testing.T) {
 	_, errs := visitStepNode(getKeyedNode(t, `myStep: 123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseStep_ErrIfEmpty(t *testing.T) {
+func TestVisitStep_ErrIfEmpty(t *testing.T) {
 	_, errs := visitStepNode(getKeyedNode(t, `myStep: {}`))
 	requireContainsErr(t, errs, ErrStepEmpty)
 }
 
-func TestParseStep_ErrIfMultipleStepTypes(t *testing.T) {
+func TestVisitStep_ErrIfMultipleStepTypes(t *testing.T) {
 	_, errs := visitStepNode(getKeyedNode(t, `
 myStep:
   container: {}
@@ -25,7 +25,7 @@ myStep:
 	requireContainsErr(t, errs, ErrStepMultipleStepTypes)
 }
 
-func TestParseStep_Name(t *testing.T) {
+func TestVisitStep_Name(t *testing.T) {
 	step, errs := visitStepNode(getKeyedNode(t, `
 myStep:
   helm-package: {}

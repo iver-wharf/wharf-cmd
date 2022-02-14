@@ -7,22 +7,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseDefEnvironments_ErrIfNotMap(t *testing.T) {
+func TestVisitDefEnvironments_ErrIfNotMap(t *testing.T) {
 	_, errs := visitDocEnvironmentsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseDefEnvironments_ErrIfKeyNotString(t *testing.T) {
+func TestVisitDefEnvironments_ErrIfKeyNotString(t *testing.T) {
 	_, errs := visitDocEnvironmentsNode(getNode(t, `123: {}`))
 	requireContainsErr(t, errs, ErrKeyNotString)
 }
 
-func TestParseDefEnvironments_ErrIfKeyEmpty(t *testing.T) {
+func TestVisitDefEnvironments_ErrIfKeyEmpty(t *testing.T) {
 	_, errs := visitDocEnvironmentsNode(getNode(t, `"": {}`))
 	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
-func TestParseDefEnvironments_ValidMapOfEnvs(t *testing.T) {
+func TestVisitDefEnvironments_ValidMapOfEnvs(t *testing.T) {
 	envs, _ := visitDocEnvironmentsNode(getNode(t, `
 myEnv1: {}
 myEnv2: {}
@@ -37,17 +37,17 @@ myEnv3: {}
 	assert.True(t, hasEnv3, "has myEnv3")
 }
 
-func TestParseEnvironment_SetsName(t *testing.T) {
+func TestVisitEnvironment_SetsName(t *testing.T) {
 	env, _ := visitEnvironmentNode(getKeyedNode(t, `myEnv: {}`))
 	assert.Equal(t, "myEnv", env.Name)
 }
 
-func TestParseEnvironment_ErrIfEnvNotMap(t *testing.T) {
+func TestVisitEnvironment_ErrIfEnvNotMap(t *testing.T) {
 	_, errs := visitEnvironmentNode(getKeyedNode(t, `myEnv: 123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseEnvironment_ErrIfInvalidVarType(t *testing.T) {
+func TestVisitEnvironment_ErrIfInvalidVarType(t *testing.T) {
 	_, errs := visitEnvironmentNode(getKeyedNode(t, `
 myEnv:
   myVar: [123]
@@ -55,7 +55,7 @@ myEnv:
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseEnvironment_ValidVarTypes(t *testing.T) {
+func TestVisitEnvironment_ValidVarTypes(t *testing.T) {
 	env, errs := visitEnvironmentNode(getKeyedNode(t, `
 myEnv:
   myIntNeg: -123
@@ -75,12 +75,12 @@ myEnv:
 	assert.Equal(t, want, env.Vars)
 }
 
-func TestParseStageEnvironments_ErrIfNotArray(t *testing.T) {
+func TestVisitStageEnvironments_ErrIfNotArray(t *testing.T) {
 	_, errs := visitStageEnvironmentsNode(getNode(t, `123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseStageEnvironments_Valid(t *testing.T) {
+func TestVisitStageEnvironments_Valid(t *testing.T) {
 	envs, errs := visitStageEnvironmentsNode(getNode(t, `[a, b, c]`))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)

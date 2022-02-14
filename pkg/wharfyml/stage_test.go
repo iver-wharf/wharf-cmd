@@ -6,17 +6,17 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseStage_ErrIfNotMap(t *testing.T) {
+func TestVisitStage_ErrIfNotMap(t *testing.T) {
 	_, errs := visitStageNode(getKeyedNode(t, `myStage: 123`))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
-func TestParseStage_ErrIfEmptyMap(t *testing.T) {
+func TestVisitStage_ErrIfEmptyMap(t *testing.T) {
 	_, errs := visitStageNode(getKeyedNode(t, `myStage: {}`))
 	requireContainsErr(t, errs, ErrStageEmpty)
 }
 
-func TestParseStage_Name(t *testing.T) {
+func TestVisitStage_Name(t *testing.T) {
 	stage, errs := visitStageNode(getKeyedNode(t, `myStage: {}`))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
