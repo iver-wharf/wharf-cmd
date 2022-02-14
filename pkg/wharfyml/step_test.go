@@ -7,26 +7,28 @@ import (
 )
 
 func TestParseStep_ErrIfNotMap(t *testing.T) {
-	_, errs := visitStepNode("myStep", getNode(t, `123`))
+	_, errs := visitStepNode(getKeyedNode(t, `myStep: 123`))
 	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParseStep_ErrIfEmpty(t *testing.T) {
-	_, errs := visitStepNode("myStep", getNode(t, `{}`))
+	_, errs := visitStepNode(getKeyedNode(t, `myStep: {}`))
 	requireContainsErr(t, errs, ErrStepEmpty)
 }
 
 func TestParseStep_ErrIfMultipleStepTypes(t *testing.T) {
-	_, errs := visitStepNode("myStep", getNode(t, `
-container: {}
-docker: {}
+	_, errs := visitStepNode(getKeyedNode(t, `
+myStep:
+  container: {}
+  docker: {}
 `))
 	requireContainsErr(t, errs, ErrStepMultipleStepTypes)
 }
 
 func TestParseStep_Name(t *testing.T) {
-	step, errs := visitStepNode("myStep", getNode(t, `
-helm-package: {}
+	step, errs := visitStepNode(getKeyedNode(t, `
+myStep:
+  helm-package: {}
 `))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)

@@ -4,10 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/parser"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
 )
 
 // TODO: rename tests to use "visit" names
@@ -310,15 +309,20 @@ myStage:
 // - can use aliases and anchors on stages
 // - can use aliases and anchors on steps
 
-func getKeyedNode(t *testing.T, content string) *ast.MappingValueNode {
-	mapValNode, ok := getNode(t, content).(*ast.MappingValueNode)
-	require.True(t, ok, "testing content did not parse as a MappingValueNode")
-	return mapValNode
+func getKeyedNode(t *testing.T, content string) (strNode, *yaml.Node) {
+	node := getNode(t, content)
+	require.Equal(t, yaml.MappingNode, node.Kind, "keyed node")
+	require.Len(t, node.Content, 2, "keyed node")
+	require.Equal(t, yaml.ScalarNode, node.Content[0], "key node kind in keyed node")
+	require.Equal(t, shortTagString, node.Content[0].ShortTag(), "key node tag in keyed node")
+	return strNode{node: node.Content[0], value: node.Content[0].Value}, node.Content[1]
 }
 
-func getNode(t *testing.T, content string) ast.Node {
-	file, err := parser.ParseBytes([]byte(content), parser.Mode(0))
-	require.NoError(t, err, "parse keyed node")
-	require.Len(t, file.Docs, 1, "document count")
-	return file.Docs[0].Body
+func getNode(t *testing.T, content string) *yaml.Node {
+	var doc yaml.Node
+	err := yaml.Unmarshal([]byte(content), &doc)
+	require.NoError(t, err, "parse node")
+	require.Equal(t, yaml.DocumentNode, doc.Kind, "document node")
+	require.Len(t, doc.Content, 1, "document node count")
+	return doc.Content[0]
 }

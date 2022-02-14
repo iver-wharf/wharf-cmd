@@ -38,34 +38,36 @@ myEnv3: {}
 }
 
 func TestParseEnvironment_SetsName(t *testing.T) {
-	env, _ := visitEnvironmentNode("myEnv", getNode(t, `{}`))
+	env, _ := visitEnvironmentNode(getKeyedNode(t, `myEnv: {}`))
 	assert.Equal(t, "myEnv", env.Name)
 }
 
 func TestParseEnvironment_ErrIfEnvNotMap(t *testing.T) {
-	_, errs := visitEnvironmentNode("myEnv", getNode(t, `123`))
+	_, errs := visitEnvironmentNode(getKeyedNode(t, `myEnv: 123`))
 	requireContainsErr(t, errs, ErrNotMap)
 }
 
 func TestParseEnvironment_ErrIfInvalidVarType(t *testing.T) {
-	_, errs := visitEnvironmentNode("myEnv", getNode(t, `
-myVar: [123]
+	_, errs := visitEnvironmentNode(getKeyedNode(t, `
+myEnv:
+  myVar: [123]
 `))
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseEnvironment_ValidVarTypes(t *testing.T) {
-	env, errs := visitEnvironmentNode("myEnv", getNode(t, `
-myInt: -123
-myUint: 123
-myFloat: 456.789
-myString: foo bar
-myBool: true
+	env, errs := visitEnvironmentNode(getKeyedNode(t, `
+myEnv:
+  myIntNeg: -123
+  myIntPos: 123
+  myFloat: 456.789
+  myString: foo bar
+  myBool: true
 `))
 	requireNotContainsErr(t, errs, ErrInvalidFieldType)
 	want := map[string]interface{}{
-		"myInt":    int64(-123),
-		"myUint":   uint64(123),
+		"myIntNeg": int64(-123),
+		"myIntPos": int64(123),
 		"myFloat":  456.789,
 		"myString": "foo bar",
 		"myBool":   true,
