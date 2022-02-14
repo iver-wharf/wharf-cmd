@@ -216,7 +216,6 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 			continue
 		}
 		keys[key] = struct{}{}
-		fmt.Printf("node %q value kind: %[2]T(%[2]d)\n", key, valueNode.Kind)
 		pairs = append(pairs, mapItem{strNode{keyNode, key}, valueNode})
 	}
 	return pairs, errSlice
