@@ -341,8 +341,6 @@ myStage:
 // - error on unused environment
 // - error on use of undeclared environment
 // - error on use of undeclared variable
-// - can use aliases and anchors on stages
-// - can use aliases and anchors on steps
 
 func getKeyedNode(t *testing.T, content string) (strNode, *yaml.Node) {
 	node := getNode(t, content)

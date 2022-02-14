@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/goccy/go-yaml/ast"
 	"gopkg.in/yaml.v3"
 )
 
@@ -22,13 +21,6 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
-func newPosNode(node ast.Node) Pos {
-	return Pos{
-		Line:   node.GetToken().Position.Line,
-		Column: node.GetToken().Position.Column,
-	}
-}
-
 func newPosNode2(node *yaml.Node) Pos {
 	return Pos{
 		Line:   node.Line,
@@ -41,10 +33,6 @@ func wrapPosError(err error, pos Pos) error {
 		Err:    err,
 		Source: pos,
 	}
-}
-
-func wrapPosErrorNode(err error, node ast.Node) error {
-	return wrapPosError(err, newPosNode(node))
 }
 
 func wrapPosErrorNode2(err error, node *yaml.Node) error {
