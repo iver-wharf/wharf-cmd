@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -18,26 +18,23 @@ type Definition struct {
 	Stages []Stage
 }
 
-func visitDefNodes(nodes []*ast.MappingValueNode) (def Definition, errSlice Errors) {
+func visitDefNode(node *yaml.Node) (def Definition, errSlice Errors) {
+	nodes, errs := visitMapSlice(node)
+	errSlice.add(errs...)
 	for _, n := range nodes {
-		key, err := parseMapKeyNonEmpty(n.Key)
-		if err != nil {
-			errSlice.add(fmt.Errorf("%q: %w", n.Key, err))
-			// non-fatal error
-		}
-		switch key {
+		switch n.key.value {
 		case propEnvironments:
 			var errs Errors
-			def.Envs, errs = visitDocEnvironmentsNode(n.Value)
+			def.Envs, errs = visitDocEnvironmentsNode(n.value)
 			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
 		case propInputs:
 			var errs Errors
-			def.Inputs, errs = visitInputsNode(n.Value)
+			def.Inputs, errs = visitInputsNode(n.value)
 			errSlice.add(wrapPathErrorSlice(propInputs, errs)...)
 		default:
-			stage, errs := visitStageNode(key, n.Value)
+			stage, errs := visitStageNode(n.key, n.value)
 			def.Stages = append(def.Stages, stage)
-			errSlice.add(wrapPathErrorSlice(key, errs)...)
+			errSlice.add(wrapPathErrorSlice(n.key.value, errs)...)
 		}
 	}
 	errSlice.add(validateDefEnvironmentUsage(def)...)

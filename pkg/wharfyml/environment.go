@@ -3,10 +3,8 @@ package wharfyml
 import (
 	"errors"
 	"fmt"
-	"math"
-	"strconv"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing environments.
@@ -27,92 +25,74 @@ type EnvRef struct {
 	Name   string
 }
 
-func visitDocEnvironmentsNode(node ast.Node) (map[string]Env, Errors) {
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		return nil, Errors{err}
-	}
-	envs := make(map[string]Env, len(nodes))
+func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, Errors) {
+	nodes, errs := visitMapSlice(node)
 	var errSlice Errors
+	errSlice.add(errs...)
+	envs := make(map[string]Env, len(nodes))
 	for _, n := range nodes {
-		key, err := parseMapKeyNonEmpty(n.Key)
-		if err != nil {
-			errSlice.add(err)
-			continue
-		}
-		env, errs := visitEnvironmentNode(key, n.Value)
-		envs[key] = env
-		errSlice.add(wrapPathErrorSlice(key, errs)...)
+		env, errs := visitEnvironmentNode(n.key, n.value)
+		envs[n.key.value] = env
+		errSlice.add(wrapPathErrorSlice(n.key.value, errs)...)
 	}
 	return envs, errSlice
 }
 
-func visitEnvironmentNode(name string, node ast.Node) (env Env, errSlice Errors) {
+func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice Errors) {
 	env = Env{
-		Name:   name,
+		Name:   nameNode.value,
 		Vars:   make(map[string]interface{}),
-		Source: newPosNode(node),
+		Source: newPosNode2(node),
 	}
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		errSlice.add(err)
-		return
-	}
+	nodes, errs := visitMapSlice(node)
+	errSlice.add(errs...)
 	for _, n := range nodes {
-		key, err := parseMapKeyNonEmpty(n.Key)
-		if err != nil {
-			errSlice.add(err)
-			continue
-		}
-		val, errs := visitEnvironmentVariableNode(n.Value)
-		errSlice.add(wrapPathErrorSlice(key, errs)...)
-		env.Vars[key] = val
+		val, err := visitEnvironmentVariableNode(n.value)
+		errSlice.add(wrapPathError(n.key.value, err))
+		env.Vars[n.key.value] = val
 	}
 	return
 }
 
-func visitEnvironmentVariableNode(node ast.Node) (interface{}, Errors) {
-	var errSlice Errors
-	switch n := node.(type) {
-	case *ast.BoolNode:
-		return n.Value, errSlice
-	case *ast.IntegerNode:
-		return n.Value, errSlice // int64 or uint64
-	case *ast.InfinityNode:
-		return n.Value, errSlice
-	case *ast.NanNode:
-		return math.NaN(), errSlice
-	case *ast.FloatNode:
-		return n.Value, errSlice
-	case *ast.StringNode:
-		return n.Value, errSlice
+func visitEnvironmentVariableNode(node *yaml.Node) (interface{}, error) {
+	if err := verifyKind(node, "string, boolean, or number", yaml.ScalarNode); err != nil {
+		return nil, err
+	}
+	switch node.ShortTag() {
+	case shortTagBool:
+		return visitBool(node)
+	case shortTagInt:
+		return visitInt(node)
+	case shortTagFloat:
+		return visitFloat64(node)
+	case shortTagString:
+		return visitString(node)
 	default:
-		errSlice.add(wrapPosErrorNode(fmt.Errorf(
+		return nil, wrapPosErrorNode2(fmt.Errorf(
 			"%w: expected string, boolean, or number, but found %s",
-			ErrInvalidFieldType, prettyNodeTypeName(node)), node))
-		return nil, errSlice
+			ErrInvalidFieldType, prettyNodeTypeName2(node)), node)
 	}
 }
 
-func visitStageEnvironmentsNode(node ast.Node) (envs []EnvRef, errSlice Errors) {
-	seqNode, err := parseSequenceNode(node)
+func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice Errors) {
+	nodes, err := visitSequence(node)
 	if err != nil {
 		return nil, Errors{err}
 	}
-	envs = make([]EnvRef, 0, len(seqNode.Values))
-	for i, envNode := range seqNode.Values {
-		envStrNode, ok := envNode.(*ast.StringNode)
-		if !ok {
-			errSlice.add(newInvalidFieldTypeErr(strconv.Itoa(i), "string", envNode))
+	envs = make([]EnvRef, 0, len(nodes))
+	for _, envNode := range nodes {
+		env, err := visitString(envNode)
+		if err != nil {
+			errSlice.add(err)
 			continue
 		}
-		if envStrNode.Value == "" {
-			errSlice.add(wrapPosErrorNode(ErrStageEnvEmpty, envNode))
+		if env == "" {
+			errSlice.add(wrapPosErrorNode2(ErrStageEnvEmpty, envNode))
 			continue
 		}
 		envs = append(envs, EnvRef{
-			Source: newPosNode(envNode),
-			Name:   envStrNode.Value,
+			Source: newPosNode2(envNode),
+			Name:   env,
 		})
 	}
 	return

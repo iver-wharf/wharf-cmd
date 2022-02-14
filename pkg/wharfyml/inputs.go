@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing environments.
@@ -21,14 +21,14 @@ type Input interface {
 	InputVarName() string
 }
 
-func visitInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
-	seqNode, err := parseSequenceNode(node)
+func visitInputsNode(node *yaml.Node) (inputs map[string]Input, errSlice Errors) {
+	nodes, err := visitSequence(node)
 	if err != nil {
 		errSlice.add(err)
 		return
 	}
-	inputs = make(map[string]Input, len(seqNode.Values))
-	for i, inputNode := range seqNode.Values {
+	inputs = make(map[string]Input, len(nodes))
+	for i, inputNode := range nodes {
 		input, errs := visitInputTypeNode(inputNode)
 		if len(errs) > 0 {
 			errSlice.add(wrapPathErrorSlice(strconv.Itoa(i), errs)...)
@@ -36,7 +36,8 @@ func visitInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
 		if input != nil {
 			name := input.InputVarName()
 			if _, ok := inputs[name]; ok {
-				err := wrapPosErrorNode(fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
+				err := wrapPosErrorNode2(
+					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
 				errSlice.add(wrapPathError(strconv.Itoa(i), err))
 			}
 			inputs[name] = input
@@ -45,13 +46,8 @@ func visitInputsNode(node ast.Node) (inputs map[string]Input, errSlice Errors) {
 	return
 }
 
-func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		errSlice.add(err)
-		return
-	}
-	nodeMap, errs := parseMappingValueNodeSliceAsMap(nodes)
+func visitInputTypeNode(node *yaml.Node) (input Input, errSlice Errors) {
+	nodeMap, errs := visitMap(node)
 	errSlice.add(errs...)
 	p := newNodeMapParser(node, nodeMap)
 	var inputName string
@@ -62,7 +58,7 @@ func visitInputTypeNode(node ast.Node) (input Input, errSlice Errors) {
 		p.validateRequiredString("name"),
 		p.validateRequiredString("type"),
 	)
-	pos := newPosNode(node)
+	pos := newPosNode2(node)
 	switch inputType {
 	case "":
 		// validate required has already added error for it

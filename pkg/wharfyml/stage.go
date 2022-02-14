@@ -3,7 +3,7 @@ package wharfyml
 import (
 	"errors"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing stages.
@@ -21,34 +21,26 @@ type Stage struct {
 	Steps   []Step
 }
 
-func visitStageNode(name string, node ast.Node) (stage Stage, errSlice Errors) {
-	stage.Pos = newPosNode(node)
-	stage.Name = name
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		errSlice.add(err)
-		return
-	}
+func visitStageNode(nameNode strNode, node *yaml.Node) (stage Stage, errSlice Errors) {
+	stage.Pos = newPosNode2(node)
+	stage.Name = nameNode.value
+	nodes, errs := visitMapSlice(node)
+	errSlice.add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode(ErrStageEmpty, node))
+		errSlice.add(wrapPosErrorNode2(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {
-		key, err := parseMapKeyNonEmpty(stepNode.Key)
-		if err != nil {
-			errSlice.add(err)
-			// non-fatal error
-		}
-		switch key {
+		switch stepNode.key.value {
 		case propEnvironments:
-			stage.EnvsPos = newPosNode(stepNode.Value)
-			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
+			stage.EnvsPos = newPosNode2(stepNode.value)
+			envs, errs := visitStageEnvironmentsNode(stepNode.value)
 			stage.Envs = envs
 			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
 		default:
-			step, errs := visitStepNode(key, stepNode.Value)
+			step, errs := visitStepNode(stepNode.key, stepNode.value)
 			stage.Steps = append(stage.Steps, step)
-			errSlice.add(wrapPathErrorSlice(key, errs)...)
+			errSlice.add(wrapPathErrorSlice(stepNode.key.value, errs)...)
 		}
 	}
 	return

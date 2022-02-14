@@ -3,7 +3,7 @@ package wharfyml
 import (
 	"errors"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing steps.
@@ -19,24 +19,21 @@ type Step struct {
 	Type StepType
 }
 
-func visitStepNode(name string, node ast.Node) (step Step, errSlice Errors) {
-	step.Pos = newPosNode(node)
-	step.Name = name
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		errSlice.add(err)
-		return
-	}
+func visitStepNode(name strNode, node *yaml.Node) (step Step, errSlice Errors) {
+	step.Pos = newPosNode2(node)
+	step.Name = name.value
+	nodes, errs := visitMapSlice(node)
+	errSlice.add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode(ErrStepEmpty, node))
+		errSlice.add(wrapPosErrorNode2(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.add(wrapPosErrorNode(ErrStepMultipleStepTypes, node))
+		errSlice.add(wrapPosErrorNode2(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
-		stepType, errs := visitStepTypeNode(stepTypeNode)
+		stepType, errs := visitStepTypeNode(stepTypeNode.key, stepTypeNode.value)
 		step.Type = stepType
 		if stepType != nil {
 			errSlice.add(wrapPathErrorSlice(stepType.StepTypeName(), errs)...)

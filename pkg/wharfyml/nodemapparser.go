@@ -3,9 +3,8 @@ package wharfyml
 import (
 	"errors"
 	"fmt"
-	"math"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing map of nodes.
@@ -14,7 +13,7 @@ var (
 	ErrMissingRequired  = errors.New("missing required field")
 )
 
-func newNodeMapParser(parent ast.Node, nodes map[string]ast.Node) nodeMapParser {
+func newNodeMapParser(parent *yaml.Node, nodes map[string]*yaml.Node) nodeMapParser {
 	return nodeMapParser{
 		parent:    parent,
 		nodes:     nodes,
@@ -23,13 +22,13 @@ func newNodeMapParser(parent ast.Node, nodes map[string]ast.Node) nodeMapParser 
 }
 
 type nodeMapParser struct {
-	parent    ast.Node
-	nodes     map[string]ast.Node
+	parent    *yaml.Node
+	nodes     map[string]*yaml.Node
 	positions map[string]Pos
 }
 
 func (p nodeMapParser) parentPos() Pos {
-	return newPosNode(p.parent)
+	return newPosNode2(p.parent)
 }
 
 func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
@@ -37,26 +36,12 @@ func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode(node)
-	switch n := node.(type) {
-	case *ast.NanNode:
-		*target = math.NaN()
-	case *ast.FloatNode:
-		*target = n.Value
-	case *ast.InfinityNode:
-		*target = n.Value
-	case *ast.IntegerNode:
-		// By documentation of ast.IntegerNode, it will only be
-		// either uint64 or int64
-		switch num := n.Value.(type) {
-		case uint64:
-			*target = float64(num)
-		case int64:
-			*target = float64(num)
-		}
-	default:
-		return newInvalidFieldTypeErr(key, "number", node)
+	p.positions[key] = newPosNode2(node)
+	num, err := visitFloat64(node)
+	if err != nil {
+		return wrapPathError(key, err)
 	}
+	*target = num
 	return nil
 }
 
@@ -65,12 +50,12 @@ func (p nodeMapParser) unmarshalString(key string, target *string) error {
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode(node)
-	strNode, ok := node.(*ast.StringNode)
-	if !ok {
-		return newInvalidFieldTypeErr(key, "string", node)
+	p.positions[key] = newPosNode2(node)
+	str, err := visitString(node)
+	if err != nil {
+		return wrapPathError(key, err)
 	}
-	*target = strNode.Value
+	*target = str
 	return nil
 }
 
@@ -79,21 +64,20 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode(node)
-	arrayNode, ok := node.(*ast.SequenceNode)
-	if !ok {
-		return Errors{newInvalidFieldTypeErr(key, "string array", node)}
+	p.positions[key] = newPosNode2(node)
+	seq, err := visitSequence(node)
+	if err != nil {
+		return Errors{err}
 	}
-	strs := make([]string, 0, len(arrayNode.Values))
+	strs := make([]string, 0, len(seq))
 	var errSlice Errors
-	for i, n := range arrayNode.Values {
-		strNode, ok := n.(*ast.StringNode)
-		if !ok {
-			errSlice.add(newInvalidFieldTypeErr(fmt.Sprintf("%s[%d]", key, i),
-				"string", n))
+	for i, n := range seq {
+		str, err := visitString(n)
+		if err != nil {
+			errSlice.add(wrapPathError(fmt.Sprintf("%s[%d]", key, i), err))
 			continue
 		}
-		strs = append(strs, strNode.Value)
+		strs = append(strs, str)
 	}
 	*target = strs
 	return errSlice
@@ -104,26 +88,19 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode(node)
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		return Errors{err}
-	}
-	strMap := make(map[string]string, len(nodes))
+	p.positions[key] = newPosNode2(node)
 	var errSlice Errors
+	nodes, errs := visitMapSlice(node)
+	errSlice.add(wrapPathErrorSlice(key, errs)...)
+
+	strMap := make(map[string]string, len(nodes))
 	for _, n := range nodes {
-		mapKey, err := parseMapKeyNonEmpty(n.Key)
+		val, err := visitString(n.value)
 		if err != nil {
-			errSlice.add(err)
+			errSlice.add(wrapPathError(fmt.Sprintf("%s.%s", key, n.key.value), err))
 			continue
 		}
-		valNode, ok := n.Value.(*ast.StringNode)
-		if !ok {
-			errSlice.add(newInvalidFieldTypeErr(fmt.Sprintf("%s.%s", key, mapKey),
-				"string", n.Value))
-			continue
-		}
-		strMap[mapKey] = valNode.Value
+		strMap[n.key.value] = val
 	}
 	*target = strMap
 	return errSlice
@@ -134,45 +111,47 @@ func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode(node)
-	strNode, ok := node.(*ast.BoolNode)
-	if !ok {
-		return newInvalidFieldTypeErr(key, "boolean", node)
+	p.positions[key] = newPosNode2(node)
+	b, err := visitBool(node)
+	if err != nil {
+		return wrapPathError(key, err)
 	}
-	*target = strNode.Value
+	*target = b
 	return nil
 }
 
 func (p nodeMapParser) validateRequiredString(key string) error {
 	node, ok := p.nodes[key]
-	if ok {
-		strNode, ok := node.(*ast.StringNode)
-		if !ok || strNode.Value != "" {
-			return nil
-		}
+	if !ok {
+		return p.newRequiredError(key)
 	}
-	return p.newRequiredError(key)
+	isStr := node.Kind == yaml.ScalarNode && node.ShortTag() == shortTagString
+	if !isStr && node.Value == "" {
+		return p.newRequiredError(key)
+	}
+	return nil
 }
 
 func (p nodeMapParser) validateRequiredSlice(key string) error {
 	node, ok := p.nodes[key]
 	if ok {
-		seqNode, ok := node.(*ast.SequenceNode)
-		if !ok || len(seqNode.Values) > 0 {
-			return nil
-		}
+		return p.newRequiredError(key)
 	}
-	return p.newRequiredError(key)
+	isSeq := node.Kind == yaml.SequenceNode
+	if isSeq && len(node.Content) == 0 {
+		return p.newRequiredError(key)
+	}
+	return nil
 }
 
 func (p nodeMapParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
-	return wrapPosErrorNode(inner, p.parent)
+	return wrapPosErrorNode2(inner, p.parent)
 }
 
-func newInvalidFieldTypeErr(key string, wantType string, node ast.Node) error {
-	gotType := prettyNodeTypeName(node)
-	err := wrapPosErrorNode(fmt.Errorf("%w: expected %s, but found %s",
+func newInvalidFieldTypeErr(key string, wantType string, node *yaml.Node) error {
+	gotType := prettyNodeTypeName2(node)
+	err := wrapPosErrorNode2(fmt.Errorf("%w: expected %s, but found %s",
 		ErrInvalidFieldType, wantType, gotType), node)
 	return wrapPathError(key, err)
 }

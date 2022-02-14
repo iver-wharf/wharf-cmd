@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing step types.
@@ -23,23 +23,19 @@ type StepTypeMeta struct {
 	FieldPos map[string]Pos
 }
 
-func visitStepTypeNode(node *ast.MappingValueNode) (StepType, Errors) {
-	visitor, err := visitStepTypeKeyNode(node.Key)
+func visitStepTypeNode(key strNode, node *yaml.Node) (StepType, Errors) {
+	visitor, err := visitStepTypeKeyNode(key)
 	if err != nil {
 		return nil, Errors{err}
 	}
-	return visitor.visitStepTypeValueNode(node.Value)
+	return visitor.visitStepTypeValueNode(node)
 }
 
-func visitStepTypeKeyNode(node ast.Node) (stepTypeVisitor, error) {
-	keyNode, err := parseMapKey(node)
-	if err != nil {
-		return stepTypeVisitor{}, err
-	}
+func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
 	visitor := stepTypeVisitor{
-		keyNode: keyNode,
+		keyNode: key.node,
 	}
-	switch keyNode.Value {
+	switch key.value {
 	case "container":
 		visitor.visitNode = StepContainer{}.visitStepTypeNode
 	case "docker":
@@ -53,28 +49,26 @@ func visitStepTypeKeyNode(node ast.Node) (stepTypeVisitor, error) {
 	case "nuget-package":
 		visitor.visitNode = StepNuGetPackage{}.visitStepTypeNode
 	default:
-		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, keyNode.Value)
-		return stepTypeVisitor{}, wrapPosErrorNode(err, keyNode)
+		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, key.value)
+		return stepTypeVisitor{}, wrapPosErrorNode2(err, key.node)
 	}
 	return visitor, nil
 }
 
 type stepTypeVisitor struct {
-	keyNode   *ast.StringNode
+	keyNode   *yaml.Node
 	visitNode func(nodeMapParser) (StepType, Errors)
 }
 
-func (v stepTypeVisitor) visitStepTypeValueNode(node ast.Node) (StepType, Errors) {
-	nodes, err := parseMappingValueNodes(node)
-	if err != nil {
-		return nil, Errors{err}
-	}
+func (v stepTypeVisitor) visitStepTypeValueNode(node *yaml.Node) (StepType, Errors) {
 	var errSlice Errors
-	m, errs := parseMappingValueNodeSliceAsMap(nodes)
+	m, errs := visitMap(node)
 	errSlice.add(errs...)
+
 	parser := newNodeMapParser(v.keyNode, m)
 	stepType, errs := v.visitNode(parser)
 	errSlice.add(errs...)
+
 	return stepType, errSlice
 }
 

@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/goccy/go-yaml/ast"
-	"github.com/goccy/go-yaml/parser"
+	"gopkg.in/yaml.v3"
 )
 
 // Generic errors related to parsing.
@@ -16,6 +16,7 @@ var (
 	ErrNotArray     = errors.New("not an array")
 	ErrKeyNotString = errors.New("map key must be string")
 	ErrKeyEmpty     = errors.New("map key must not be empty")
+	ErrKeyDuplicate = errors.New("map key appears more than once")
 	ErrMissingDoc   = errors.New("empty document")
 	ErrTooManyDocs  = errors.New("only 1 document is allowed")
 )
@@ -40,45 +41,39 @@ func Parse(reader io.Reader) (def Definition, errSlice Errors) {
 }
 
 func parse(reader io.Reader) (def Definition, errSlice Errors) {
-	doc, err := parseFirstDocAsDocNode(reader)
+	doc, err := decodeFirstDoc(reader)
 	if err != nil {
 		errSlice.add(err)
 	}
 	if doc == nil {
 		return
 	}
-	nodes, err := parseMappingValueNodes(doc.Body)
-	if err != nil {
-		errSlice.add(err)
-		return
-	}
 	var errs Errors
-	def, errs = visitDefNodes(nodes)
-	if len(errs) > 0 {
-		errSlice.add(errs...)
-	}
+	def, errs = visitDefNode(doc)
+	errSlice.add(errs...)
 	return
 }
 
-func parseFirstDocAsDocNode(reader io.Reader) (*ast.DocumentNode, error) {
-	bytes, err := io.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	file, err := parser.ParseBytes(bytes, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-	if len(file.Docs) == 0 {
+func decodeFirstDoc(reader io.Reader) (*yaml.Node, error) {
+	dec := yaml.NewDecoder(reader)
+	var doc yaml.Node
+	err := dec.Decode(&doc)
+	if err == io.EOF {
 		return nil, ErrMissingDoc
 	}
-	doc := file.Docs[0]
-	if len(file.Docs) > 1 {
-		err := fmt.Errorf("found %d documents: %w", len(file.Docs), ErrTooManyDocs)
-		// Continue, but only parse the first doc
-		return doc, err
+	if err != nil {
+		return nil, err
 	}
-	return doc, nil
+	body, err := visitDocument(&doc)
+	if err != nil {
+		return nil, err
+	}
+	var unusedNode yaml.Node
+	if err := dec.Decode(&unusedNode); err != io.EOF {
+		// Continue, but only parse the first doc
+		return body, ErrTooManyDocs
+	}
+	return body, nil
 }
 
 func parseMapKeyNonEmpty(node ast.Node) (string, error) {
@@ -173,5 +168,14 @@ func prettyNodeTypeName(node ast.Node) string {
 		return "tag"
 	default:
 		return "unknown type"
+	}
+}
+
+func prettyNodeTypeName2(node *yaml.Node) string {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return yamlShortTagName(node.ShortTag())
+	default:
+		return yamlKindString(node.Kind)
 	}
 }

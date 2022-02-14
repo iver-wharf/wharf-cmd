@@ -6,6 +6,7 @@ import (
 	"sort"
 
 	"github.com/goccy/go-yaml/ast"
+	"gopkg.in/yaml.v3"
 )
 
 // Pos represents a position. Used to declare where an object was defined in
@@ -28,6 +29,13 @@ func newPosNode(node ast.Node) Pos {
 	}
 }
 
+func newPosNode2(node *yaml.Node) Pos {
+	return Pos{
+		Line:   node.Line,
+		Column: node.Column,
+	}
+}
+
 func wrapPosError(err error, pos Pos) error {
 	return PosError{
 		Err:    err,
@@ -37,6 +45,10 @@ func wrapPosError(err error, pos Pos) error {
 
 func wrapPosErrorNode(err error, node ast.Node) error {
 	return wrapPosError(err, newPosNode(node))
+}
+
+func wrapPosErrorNode2(err error, node *yaml.Node) error {
+	return wrapPosError(err, newPosNode2(node))
 }
 
 // PosError is an error type that holds metadata about where the error
