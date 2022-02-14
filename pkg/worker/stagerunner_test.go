@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/core/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 )
 
 type builder struct {
