@@ -71,12 +71,3 @@ func decodeFirstDoc(reader io.Reader) (*yaml.Node, error) {
 	}
 	return body, nil
 }
-
-func prettyNodeTypeName2(node *yaml.Node) string {
-	switch node.Kind {
-	case yaml.ScalarNode:
-		return yamlShortTagName(node.ShortTag())
-	default:
-		return yamlKindString(node.Kind)
-	}
-}

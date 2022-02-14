@@ -42,7 +42,7 @@ func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice 
 	env = Env{
 		Name:   nameNode.value,
 		Vars:   make(map[string]interface{}),
-		Source: newPosNode2(node),
+		Source: newPosNode(node),
 	}
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)
@@ -70,9 +70,9 @@ func visitEnvironmentVariableNode(node *yaml.Node) (interface{}, error) {
 	case shortTagString:
 		return visitString(node)
 	default:
-		return nil, wrapPosErrorNode2(fmt.Errorf(
+		return nil, wrapPosErrorNode(fmt.Errorf(
 			"%w: expected string, boolean, or number, but found %s",
-			ErrInvalidFieldType, prettyNodeTypeName2(node)), node)
+			ErrInvalidFieldType, prettyNodeTypeName(node)), node)
 	}
 }
 
@@ -89,11 +89,11 @@ func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice Errors
 			continue
 		}
 		if env == "" {
-			errSlice.add(wrapPosErrorNode2(ErrStageEnvEmpty, envNode))
+			errSlice.add(wrapPosErrorNode(ErrStageEnvEmpty, envNode))
 			continue
 		}
 		envs = append(envs, EnvRef{
-			Source: newPosNode2(envNode),
+			Source: newPosNode(envNode),
 			Name:   env,
 		})
 	}

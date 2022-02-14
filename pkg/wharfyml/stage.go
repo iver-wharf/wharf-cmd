@@ -22,18 +22,18 @@ type Stage struct {
 }
 
 func visitStageNode(nameNode strNode, node *yaml.Node) (stage Stage, errSlice Errors) {
-	stage.Pos = newPosNode2(node)
+	stage.Pos = newPosNode(node)
 	stage.Name = nameNode.value
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode2(ErrStageEmpty, node))
+		errSlice.add(wrapPosErrorNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {
 		switch stepNode.key.value {
 		case propEnvironments:
-			stage.EnvsPos = newPosNode2(stepNode.value)
+			stage.EnvsPos = newPosNode(stepNode.value)
 			envs, errs := visitStageEnvironmentsNode(stepNode.value)
 			stage.Envs = envs
 			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)

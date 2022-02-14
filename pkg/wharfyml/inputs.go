@@ -36,7 +36,7 @@ func visitInputsNode(node *yaml.Node) (inputs map[string]Input, errSlice Errors)
 		if input != nil {
 			name := input.InputVarName()
 			if _, ok := inputs[name]; ok {
-				err := wrapPosErrorNode2(
+				err := wrapPosErrorNode(
 					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
 				errSlice.add(wrapPathError(strconv.Itoa(i), err))
 			}
@@ -58,7 +58,7 @@ func visitInputTypeNode(node *yaml.Node) (input Input, errSlice Errors) {
 		p.validateRequiredString("name"),
 		p.validateRequiredString("type"),
 	)
-	pos := newPosNode2(node)
+	pos := newPosNode(node)
 	switch inputType {
 	case "":
 		// validate required has already added error for it

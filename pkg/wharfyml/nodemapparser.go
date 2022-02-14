@@ -27,7 +27,7 @@ type nodeMapParser struct {
 }
 
 func (p nodeMapParser) parentPos() Pos {
-	return newPosNode2(p.parent)
+	return newPosNode(p.parent)
 }
 
 func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
@@ -35,7 +35,7 @@ func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode2(node)
+	p.positions[key] = newPosNode(node)
 	num, err := visitFloat64(node)
 	if err != nil {
 		return wrapPathError(key, err)
@@ -49,7 +49,7 @@ func (p nodeMapParser) unmarshalString(key string, target *string) error {
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode2(node)
+	p.positions[key] = newPosNode(node)
 	str, err := visitString(node)
 	if err != nil {
 		return wrapPathError(key, err)
@@ -63,7 +63,7 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode2(node)
+	p.positions[key] = newPosNode(node)
 	seq, err := visitSequence(node)
 	if err != nil {
 		return Errors{err}
@@ -87,7 +87,7 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode2(node)
+	p.positions[key] = newPosNode(node)
 	var errSlice Errors
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(wrapPathErrorSlice(key, errs)...)
@@ -110,7 +110,7 @@ func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	if !ok {
 		return nil
 	}
-	p.positions[key] = newPosNode2(node)
+	p.positions[key] = newPosNode(node)
 	b, err := visitBool(node)
 	if err != nil {
 		return wrapPathError(key, err)
@@ -145,12 +145,12 @@ func (p nodeMapParser) validateRequiredSlice(key string) error {
 
 func (p nodeMapParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
-	return wrapPosErrorNode2(inner, p.parent)
+	return wrapPosErrorNode(inner, p.parent)
 }
 
 func newInvalidFieldTypeErr(key string, wantType string, node *yaml.Node) error {
-	gotType := prettyNodeTypeName2(node)
-	err := wrapPosErrorNode2(fmt.Errorf("%w: expected %s, but found %s",
+	gotType := prettyNodeTypeName(node)
+	err := wrapPosErrorNode(fmt.Errorf("%w: expected %s, but found %s",
 		ErrInvalidFieldType, wantType, gotType), node)
 	return wrapPathError(key, err)
 }

@@ -20,16 +20,16 @@ type Step struct {
 }
 
 func visitStepNode(name strNode, node *yaml.Node) (step Step, errSlice Errors) {
-	step.Pos = newPosNode2(node)
+	step.Pos = newPosNode(node)
 	step.Name = name.value
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode2(ErrStepEmpty, node))
+		errSlice.add(wrapPosErrorNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.add(wrapPosErrorNode2(ErrStepMultipleStepTypes, node))
+		errSlice.add(wrapPosErrorNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {

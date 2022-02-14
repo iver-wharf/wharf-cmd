@@ -21,7 +21,7 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
-func newPosNode2(node *yaml.Node) Pos {
+func newPosNode(node *yaml.Node) Pos {
 	return Pos{
 		Line:   node.Line,
 		Column: node.Column,
@@ -35,8 +35,8 @@ func wrapPosError(err error, pos Pos) error {
 	}
 }
 
-func wrapPosErrorNode2(err error, node *yaml.Node) error {
-	return wrapPosError(err, newPosNode2(node))
+func wrapPosErrorNode(err error, node *yaml.Node) error {
+	return wrapPosError(err, newPosNode(node))
 }
 
 // PosError is an error type that holds metadata about where the error

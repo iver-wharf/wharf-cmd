@@ -39,8 +39,8 @@ func unwrapNode(node *yaml.Node) *yaml.Node {
 
 func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 	if node.Kind != wantKind {
-		return wrapPosErrorNode2(fmt.Errorf("%w: expected %s, but was %s",
-			ErrInvalidFieldType, wantStr, prettyNodeTypeName2(node)), node)
+		return wrapPosErrorNode(fmt.Errorf("%w: expected %s, but was %s",
+			ErrInvalidFieldType, wantStr, prettyNodeTypeName(node)), node)
 	}
 	return nil
 }
@@ -48,8 +48,8 @@ func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 func verifyTag(node *yaml.Node, wantStr string, wantTag string) error {
 	gotTag := node.ShortTag()
 	if gotTag != wantTag {
-		return wrapPosErrorNode2(fmt.Errorf("%w: expected %s, but was %s",
-			ErrInvalidFieldType, wantStr, prettyNodeTypeName2(node)), node)
+		return wrapPosErrorNode(fmt.Errorf("%w: expected %s, but was %s",
+			ErrInvalidFieldType, wantStr, prettyNodeTypeName(node)), node)
 	}
 	return nil
 }
@@ -76,7 +76,7 @@ func visitInt(node *yaml.Node) (int, error) {
 	}
 	num, err := parseInt(node.Value)
 	if err != nil {
-		return 0, wrapPosErrorNode2(err, node)
+		return 0, wrapPosErrorNode(err, node)
 	}
 	return num, nil
 }
@@ -96,7 +96,7 @@ func visitUInt(node *yaml.Node) (uint, error) {
 	}
 	num, err := parseUint(node.Value)
 	if err != nil {
-		return 0, wrapPosErrorNode2(err, node)
+		return 0, wrapPosErrorNode(err, node)
 	}
 	return num, nil
 }
@@ -123,7 +123,7 @@ func visitFloat64(node *yaml.Node) (float64, error) {
 	}
 	num, err := parseFloat64(node.Value)
 	if err != nil {
-		return 0, wrapPosErrorNode2(err, node)
+		return 0, wrapPosErrorNode(err, node)
 	}
 	return num, nil
 }
@@ -157,7 +157,7 @@ func visitBool(node *yaml.Node) (bool, error) {
 	}
 	b, err := parseBool(node.Value)
 	if err != nil {
-		return false, wrapPosErrorNode2(err, node)
+		return false, wrapPosErrorNode(err, node)
 	}
 	return b, nil
 }
@@ -222,15 +222,15 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 
 		key, err := visitString(keyNode)
 		if err != nil {
-			errSlice.add(wrapPosErrorNode2(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
+			errSlice.add(wrapPosErrorNode(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
 			// non fatal error
 		} else if key == "" {
-			errSlice.add(wrapPosErrorNode2(ErrKeyEmpty, keyNode))
+			errSlice.add(wrapPosErrorNode(ErrKeyEmpty, keyNode))
 			// non fatal error
 		}
 		if _, ok := keys[key]; ok {
 			errSlice.add(wrapPathError(key,
-				wrapPosErrorNode2(ErrKeyCollision, keyNode)))
+				wrapPosErrorNode(ErrKeyCollision, keyNode)))
 			continue
 		}
 		keys[key] = struct{}{}
@@ -294,5 +294,14 @@ func yamlShortTagName(tag string) string {
 		return "undefined"
 	default:
 		return strings.TrimLeft(tag, "!")
+	}
+}
+
+func prettyNodeTypeName(node *yaml.Node) string {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return yamlShortTagName(node.ShortTag())
+	default:
+		return yamlKindString(node.Kind)
 	}
 }
