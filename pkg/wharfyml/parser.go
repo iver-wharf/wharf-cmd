@@ -1,8 +1,12 @@
 package wharfyml
 
 import (
+	"fmt"
 	"io"
+	"math"
 	"os"
+	"strconv"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -60,4 +64,52 @@ func decodeFirstDoc(reader io.Reader) (*yaml.Node, error) {
 		return body, ErrTooManyDocs
 	}
 	return body, nil
+}
+
+func parseInt(str string) (int, error) {
+	num, err := strconv.ParseInt(removeUnderscores(str), 0, 0)
+	if err != nil {
+		return 0, err
+	}
+	return int(num), nil
+}
+
+func parseFloat64(str string) (float64, error) {
+	// https://yaml.org/type/float.html
+	switch str {
+	case ".inf", ".Inf", ".INF", "+.inf", "+.Inf", "+.INF":
+		return math.Inf(1), nil
+	case "-.inf", "-.Inf", "-.INF":
+		return math.Inf(-1), nil
+	case ".nan", ".NaN", ".NAN":
+		return math.NaN(), nil
+	}
+	num, err := strconv.ParseFloat(removeUnderscores(str), 64)
+	if err != nil {
+		return 0, err
+	}
+	return num, nil
+}
+
+func removeUnderscores(str string) string {
+	// YAML supports underscore delimiters for readability, while
+	// strconv.ParseFloat does not.
+	return strings.ReplaceAll(str, "_", "")
+}
+
+func parseBool(val string) (bool, error) {
+	// Got damn, YAML has too many boolean alternatives...
+	// https://yaml.org/type/bool.html
+	switch val {
+	case "y", "Y", "yes", "Yes", "YES",
+		"true", "True", "TRUE",
+		"on", "On", "ON":
+		return true, nil
+	case "n", "N", "no", "No", "NO",
+		"off", "Off", "OFF",
+		"false", "False", "FALSE":
+		return false, nil
+	default:
+		return false, fmt.Errorf("invalid boolean value: %q", val)
+	}
 }
