@@ -3,6 +3,7 @@ package wharfyml
 import (
 	"errors"
 	"fmt"
+	"strings"
 )
 
 // Errors is a slice of errors.
@@ -21,8 +22,9 @@ func (s *Errors) addNonNils(errs ...error) {
 	}
 }
 
-func wrapPathError(path string, err error) error {
+func wrapPathError(err error, paths ...string) error {
 	var keyed pathError
+	path := strings.Join(paths, "/")
 	if !errors.As(err, &keyed) {
 		return pathError{
 			path:  path,
@@ -35,10 +37,10 @@ func wrapPathError(path string, err error) error {
 	}
 }
 
-func wrapPathErrorSlice(path string, errs Errors) Errors {
+func wrapPathErrorSlice(errs Errors, paths ...string) Errors {
 	result := make(Errors, len(errs))
 	for i, err := range errs {
-		result[i] = wrapPathError(path, err)
+		result[i] = wrapPathError(err, paths...)
 	}
 	return result
 }

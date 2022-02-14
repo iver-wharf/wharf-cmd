@@ -211,8 +211,9 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 			// non fatal error
 		}
 		if _, ok := keys[key]; ok {
-			errSlice.add(wrapPathError(key,
-				wrapPosErrorNode(ErrKeyCollision, keyNode)))
+			errSlice.add(wrapPathError(
+				wrapPosErrorNode(ErrKeyCollision, keyNode),
+				key))
 			continue
 		}
 		keys[key] = struct{}{}

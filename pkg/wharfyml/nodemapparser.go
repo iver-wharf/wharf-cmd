@@ -38,7 +38,7 @@ func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 	p.positions[key] = newPosNode(node)
 	num, err := visitFloat64(node)
 	if err != nil {
-		return wrapPathError(key, err)
+		return wrapPathError(err, key)
 	}
 	*target = num
 	return nil
@@ -52,7 +52,7 @@ func (p nodeMapParser) unmarshalString(key string, target *string) error {
 	p.positions[key] = newPosNode(node)
 	str, err := visitString(node)
 	if err != nil {
-		return wrapPathError(key, err)
+		return wrapPathError(err, key)
 	}
 	*target = str
 	return nil
@@ -73,7 +73,7 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	for i, n := range seq {
 		str, err := visitString(n)
 		if err != nil {
-			errSlice.add(wrapPathError(fmt.Sprintf("%s[%d]", key, i), err))
+			errSlice.add(wrapPathError(err, fmt.Sprintf("%s[%d]", key, i)))
 			continue
 		}
 		strs = append(strs, str)
@@ -90,13 +90,13 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	p.positions[key] = newPosNode(node)
 	var errSlice Errors
 	nodes, errs := visitMapSlice(node)
-	errSlice.add(wrapPathErrorSlice(key, errs)...)
+	errSlice.add(wrapPathErrorSlice(errs, key)...)
 
 	strMap := make(map[string]string, len(nodes))
 	for _, n := range nodes {
 		val, err := visitString(n.value)
 		if err != nil {
-			errSlice.add(wrapPathError(fmt.Sprintf("%s.%s", key, n.key.value), err))
+			errSlice.add(wrapPathError(err, fmt.Sprintf("%s.%s", key, n.key.value)))
 			continue
 		}
 		strMap[n.key.value] = val
@@ -113,7 +113,7 @@ func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	p.positions[key] = newPosNode(node)
 	b, err := visitBool(node)
 	if err != nil {
-		return wrapPathError(key, err)
+		return wrapPathError(err, key)
 	}
 	*target = b
 	return nil

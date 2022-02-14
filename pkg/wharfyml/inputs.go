@@ -31,14 +31,14 @@ func visitInputsNode(node *yaml.Node) (inputs map[string]Input, errSlice Errors)
 	for i, inputNode := range nodes {
 		input, errs := visitInputTypeNode(inputNode)
 		if len(errs) > 0 {
-			errSlice.add(wrapPathErrorSlice(strconv.Itoa(i), errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, strconv.Itoa(i))...)
 		}
 		if input != nil {
 			name := input.InputVarName()
 			if _, ok := inputs[name]; ok {
 				err := wrapPosErrorNode(
 					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
-				errSlice.add(wrapPathError(strconv.Itoa(i), err))
+				errSlice.add(wrapPathError(err, strconv.Itoa(i)))
 			}
 			inputs[name] = input
 		}

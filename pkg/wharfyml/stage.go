@@ -36,11 +36,11 @@ func visitStageNode(nameNode strNode, node *yaml.Node) (stage Stage, errSlice Er
 			stage.EnvsPos = newPosNode(stepNode.value)
 			envs, errs := visitStageEnvironmentsNode(stepNode.value)
 			stage.Envs = envs
-			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
 		default:
 			step, errs := visitStepNode(stepNode.key, stepNode.value)
 			stage.Steps = append(stage.Steps, step)
-			errSlice.add(wrapPathErrorSlice(stepNode.key.value, errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, stepNode.key.value)...)
 		}
 	}
 	return

@@ -27,15 +27,15 @@ func visitDefNode(node *yaml.Node) (def Definition, errSlice Errors) {
 		case propEnvironments:
 			var errs Errors
 			def.Envs, errs = visitDocEnvironmentsNode(n.value)
-			errSlice.add(wrapPathErrorSlice(propEnvironments, errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
 		case propInputs:
 			var errs Errors
 			def.Inputs, errs = visitInputsNode(n.value)
-			errSlice.add(wrapPathErrorSlice(propInputs, errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, propInputs)...)
 		default:
 			stage, errs := visitStageNode(n.key, n.value)
 			def.Stages = append(def.Stages, stage)
-			errSlice.add(wrapPathErrorSlice(n.key.value, errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, n.key.value)...)
 		}
 	}
 	errSlice.add(validateDefEnvironmentUsage(def)...)

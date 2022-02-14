@@ -36,7 +36,7 @@ func visitStepNode(name strNode, node *yaml.Node) (step Step, errSlice Errors) {
 		stepType, errs := visitStepTypeNode(stepTypeNode.key, stepTypeNode.value)
 		step.Type = stepType
 		if stepType != nil {
-			errSlice.add(wrapPathErrorSlice(stepType.StepTypeName(), errs)...)
+			errSlice.add(wrapPathErrorSlice(errs, stepType.StepTypeName())...)
 		} else {
 			errSlice.add(errs...)
 		}

@@ -33,7 +33,7 @@ func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, Errors) {
 	for _, n := range nodes {
 		env, errs := visitEnvironmentNode(n.key, n.value)
 		envs[n.key.value] = env
-		errSlice.add(wrapPathErrorSlice(n.key.value, errs)...)
+		errSlice.add(wrapPathErrorSlice(errs, n.key.value)...)
 	}
 	return envs, errSlice
 }
@@ -49,7 +49,7 @@ func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice 
 	for _, n := range nodes {
 		val, err := visitEnvironmentVariableNode(n.value)
 		if err != nil {
-			errSlice.add(wrapPathError(n.key.value, err))
+			errSlice.add(wrapPathError(err, n.key.value))
 		}
 		env.Vars[n.key.value] = val
 	}
