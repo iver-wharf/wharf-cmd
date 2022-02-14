@@ -126,7 +126,7 @@ func (p nodeMapParser) validateRequiredString(key string) error {
 		return p.newRequiredError(key)
 	}
 	isStr := node.Kind == yaml.ScalarNode && node.ShortTag() == shortTagString
-	if !isStr && node.Value == "" {
+	if isStr && node.Value == "" {
 		return p.newRequiredError(key)
 	}
 	return nil
@@ -134,7 +134,7 @@ func (p nodeMapParser) validateRequiredString(key string) error {
 
 func (p nodeMapParser) validateRequiredSlice(key string) error {
 	node, ok := p.nodes[key]
-	if ok {
+	if !ok {
 		return p.newRequiredError(key)
 	}
 	isSeq := node.Kind == yaml.SequenceNode

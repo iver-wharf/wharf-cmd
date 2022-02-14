@@ -313,7 +313,7 @@ func getKeyedNode(t *testing.T, content string) (strNode, *yaml.Node) {
 	node := getNode(t, content)
 	require.Equal(t, yaml.MappingNode, node.Kind, "keyed node")
 	require.Len(t, node.Content, 2, "keyed node")
-	require.Equal(t, yaml.ScalarNode, node.Content[0], "key node kind in keyed node")
+	require.Equal(t, yaml.ScalarNode, node.Content[0].Kind, "key node kind in keyed node")
 	require.Equal(t, shortTagString, node.Content[0].ShortTag(), "key node tag in keyed node")
 	return strNode{node: node.Content[0], value: node.Content[0].Value}, node.Content[1]
 }
