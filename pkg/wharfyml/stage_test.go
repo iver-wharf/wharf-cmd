@@ -8,7 +8,7 @@ import (
 
 func TestParseStage_ErrIfNotMap(t *testing.T) {
 	_, errs := visitStageNode(getKeyedNode(t, `myStage: 123`))
-	requireContainsErr(t, errs, ErrNotMap)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseStage_ErrIfEmptyMap(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 
 func TestParseDocInputs_ErrIfNotArray(t *testing.T) {
 	_, errs := visitInputsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrNotArray)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseDocInputs_ErrIfNameCollision(t *testing.T) {
@@ -43,7 +43,7 @@ name: myVar
 type: string
 default: hello there`,
 			want: InputString{
-				Source:  Pos{2, 5},
+				Source:  Pos{2, 1},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -55,7 +55,7 @@ name: myVar
 type: password
 default: hello there`,
 			want: InputPassword{
-				Source:  Pos{2, 5},
+				Source:  Pos{2, 1},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -67,7 +67,7 @@ name: myVar
 type: number
 default: 12345`,
 			want: InputNumber{
-				Source:  Pos{2, 5},
+				Source:  Pos{2, 1},
 				Name:    "myVar",
 				Default: 12345,
 			},
@@ -79,7 +79,7 @@ name: myVar
 type: number
 default: 123.45`,
 			want: InputNumber{
-				Source:  Pos{2, 5},
+				Source:  Pos{2, 1},
 				Name:    "myVar",
 				Default: 123.45,
 			},
@@ -92,7 +92,7 @@ type: choice
 default: optionA
 values: [optionA, optionB, optionC]`,
 			want: InputChoice{
-				Source:  Pos{2, 5},
+				Source:  Pos{2, 1},
 				Name:    "myVar",
 				Default: "optionA",
 				Values: []string{

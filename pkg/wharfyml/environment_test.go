@@ -9,7 +9,7 @@ import (
 
 func TestParseDefEnvironments_ErrIfNotMap(t *testing.T) {
 	_, errs := visitDocEnvironmentsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrNotMap)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseDefEnvironments_ErrIfKeyNotString(t *testing.T) {
@@ -44,7 +44,7 @@ func TestParseEnvironment_SetsName(t *testing.T) {
 
 func TestParseEnvironment_ErrIfEnvNotMap(t *testing.T) {
 	_, errs := visitEnvironmentNode(getKeyedNode(t, `myEnv: 123`))
-	requireContainsErr(t, errs, ErrNotMap)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseEnvironment_ErrIfInvalidVarType(t *testing.T) {
@@ -66,8 +66,8 @@ myEnv:
 `))
 	requireNotContainsErr(t, errs, ErrInvalidFieldType)
 	want := map[string]interface{}{
-		"myIntNeg": int64(-123),
-		"myIntPos": int64(123),
+		"myIntNeg": -123,
+		"myIntPos": 123,
 		"myFloat":  456.789,
 		"myString": "foo bar",
 		"myBool":   true,
@@ -77,7 +77,7 @@ myEnv:
 
 func TestParseStageEnvironments_ErrIfNotArray(t *testing.T) {
 	_, errs := visitStageEnvironmentsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrNotArray)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseStageEnvironments_Valid(t *testing.T) {

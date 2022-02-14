@@ -48,7 +48,9 @@ func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice 
 	errSlice.add(errs...)
 	for _, n := range nodes {
 		val, err := visitEnvironmentVariableNode(n.value)
-		errSlice.add(wrapPathError(n.key.value, err))
+		if err != nil {
+			errSlice.add(wrapPathError(n.key.value, err))
+		}
 		env.Vars[n.key.value] = val
 	}
 	return

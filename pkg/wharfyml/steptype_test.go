@@ -6,7 +6,7 @@ import (
 
 func TestParseStepType_ErrIfNotMap(t *testing.T) {
 	_, errs := visitStepTypeNode(getKeyedNode(t, `container: 123`))
-	requireContainsErr(t, errs, ErrNotMap)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParseStepType_ErrIfInvalidField(t *testing.T) {

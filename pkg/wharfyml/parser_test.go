@@ -81,16 +81,16 @@ myStage2:
 	assert.Len(t, got.Envs, 2)
 	if myEnvA, ok := got.Envs["myEnvA"]; assert.True(t, ok, "myEnvA") {
 		assert.Equal(t, "foo bar", myEnvA.Vars["myString"], `myEnvA.Vars["myString"]`)
-		assert.Equal(t, uint64(123), myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
-		assert.Equal(t, int64(-123), myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
+		assert.Equal(t, 123, myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
+		assert.Equal(t, -123, myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
 		assert.Equal(t, 123.45, myEnvA.Vars["myFloat"], `myEnvA.Vars["myFloat"]`)
 		assert.Equal(t, true, myEnvA.Vars["myBool"], `myEnvA.Vars["myBool"]`)
 	}
 
 	if myEnvB, ok := got.Envs["myEnvB"]; assert.True(t, ok, "myEnvB") {
 		assert.Equal(t, "foo bar", myEnvB.Vars["myString"], `myEnvB.Vars["myString"]`)
-		assert.Equal(t, uint64(123), myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
-		assert.Equal(t, int64(-123), myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
+		assert.Equal(t, 123, myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
+		assert.Equal(t, -123, myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
 		assert.Equal(t, 123.45, myEnvB.Vars["myFloat"], `myEnvB.Vars["myFloat"]`)
 		assert.Equal(t, true, myEnvB.Vars["myBool"], `myEnvB.Vars["myBool"]`)
 	}
@@ -132,12 +132,24 @@ myStage2:
 	}
 }
 
+func TestParse_SupportsTags(t *testing.T) {
+	def, errs := Parse(strings.NewReader(`
+environments:
+  myEnv:
+    myStr: !!str 123
+    myInt: !!int 123
+`))
+	requireNoErr(t, errs)
+	myEnv, ok := def.Envs["myEnv"]
+	require.True(t, ok, "myEnv environment exists")
+
+	assert.Equal(t, "123", myEnv.Vars["myStr"], "myStr env var")
+	assert.Equal(t, 123, myEnv.Vars["myInt"], "myInt env var")
+}
+
 func TestParse_SupportsAnchoringStages(t *testing.T) {
 	def, errs := Parse(strings.NewReader(`
 myStage1: &reused
-  environments:
-    - !!str hello
-    - !!str world
   myStep:
     helm-package: {}
 
@@ -150,8 +162,31 @@ myStage2: *reused
 
 	require.Len(t, def.Stages[0].Steps, 1, "stage 1 steps")
 	require.Len(t, def.Stages[1].Steps, 1, "stage 2 steps")
-	assert.IsType(t, StepHelmPackage{}, def.Stages[0].Steps[0], "stage 1 step 1")
-	assert.IsType(t, StepHelmPackage{}, def.Stages[1].Steps[0], "stage 2 step 1")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[0].Steps[0].Type, "stage 1 step 1")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[1].Steps[0].Type, "stage 2 step 1")
+}
+
+func TestParse_SupportsMergingStages(t *testing.T) {
+	def, errs := Parse(strings.NewReader(`
+myStage1: &reused
+  myStep:
+    helm-package: {}
+
+myStage2:
+  <<: *reused
+  myOtherStep:
+    helm-package: {}
+`))
+	requireNoErr(t, errs)
+	require.Len(t, def.Stages, 2)
+	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
+	assert.Equal(t, "myStage2", def.Stages[1].Name, "stage 2 name")
+
+	require.Len(t, def.Stages[0].Steps, 1, "stage 1 steps")
+	require.Len(t, def.Stages[1].Steps, 2, "stage 2 steps")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[0].Steps[0].Type, "stage 1 step 1")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[1].Steps[0].Type, "stage 2 step 1")
+	assert.IsType(t, StepHelmPackage{}, def.Stages[1].Steps[1].Type, "stage 2 step 2")
 }
 
 func TestParse_PreservesStageOrder(t *testing.T) {
@@ -277,7 +312,7 @@ func TestParser_MissingDoc(t *testing.T) {
 
 func TestParser_ErrIfDocNotMap(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`123`))
-	requireContainsErr(t, errs, ErrNotMap)
+	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParser_ErrIfNonStringKey(t *testing.T) {

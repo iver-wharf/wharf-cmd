@@ -9,8 +9,7 @@ import (
 
 // Errors related to parsing map of nodes.
 var (
-	ErrInvalidFieldType = errors.New("invalid field type")
-	ErrMissingRequired  = errors.New("missing required field")
+	ErrMissingRequired = errors.New("missing required field")
 )
 
 func newNodeMapParser(parent *yaml.Node, nodes map[string]*yaml.Node) nodeMapParser {

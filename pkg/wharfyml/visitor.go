@@ -1,12 +1,17 @@
 package wharfyml
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+)
+
+var (
+	ErrInvalidFieldType = errors.New("invalid field type")
 )
 
 const (
@@ -18,6 +23,7 @@ const (
 	shortTagMap       = "!!map"
 	shortTagSeq       = "!!seq"
 	shortTagTimestamp = "!!timestamp"
+	shortTagMerge     = "!!merge"
 )
 
 type visitor struct {
@@ -33,8 +39,8 @@ func unwrapNode(node *yaml.Node) *yaml.Node {
 
 func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 	if node.Kind != wantKind {
-		return wrapPosErrorNode2(fmt.Errorf("expected %s, but was %s",
-			wantStr, yamlKindString(node.Kind)), node)
+		return wrapPosErrorNode2(fmt.Errorf("%w: expected %s, but was %s",
+			ErrInvalidFieldType, wantStr, prettyNodeTypeName2(node)), node)
 	}
 	return nil
 }
@@ -42,8 +48,8 @@ func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 func verifyTag(node *yaml.Node, wantStr string, wantTag string) error {
 	gotTag := node.ShortTag()
 	if gotTag != wantTag {
-		return wrapPosErrorNode2(fmt.Errorf("expected %s, but was %s",
-			wantStr, yamlShortTagName(gotTag)), node)
+		return wrapPosErrorNode2(fmt.Errorf("%w: expected %s, but was %s",
+			ErrInvalidFieldType, wantStr, prettyNodeTypeName2(node)), node)
 	}
 	return nil
 }
@@ -52,10 +58,7 @@ func verifyKindAndTag(node *yaml.Node, wantStr string, wantKind yaml.Kind, wantT
 	if err := verifyKind(node, wantStr, wantKind); err != nil {
 		return err
 	}
-	if err := verifyTag(node, wantStr, wantTag); err != nil {
-		return err
-	}
-	return nil
+	return verifyTag(node, wantStr, wantTag)
 }
 
 func visitString(node *yaml.Node) (string, error) {
@@ -108,7 +111,14 @@ func parseUint(str string) (uint, error) {
 
 func visitFloat64(node *yaml.Node) (float64, error) {
 	node = unwrapNode(node)
-	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagFloat); err != nil {
+	if node.Kind == yaml.ScalarNode && node.ShortTag() == shortTagInt {
+		num, err := visitInt(node)
+		if err != nil {
+			return 0, err
+		}
+		return float64(num), nil
+	}
+	if err := verifyKindAndTag(node, "float", yaml.ScalarNode, shortTagFloat); err != nil {
 		return 0, err
 	}
 	num, err := parseFloat64(node.Value)
@@ -201,9 +211,18 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 	keys := make(map[string]struct{}, len(pairs))
 	for i := 0; i < len(node.Content)-1; i += 2 {
 		keyNode := node.Content[i]
+		valueNode := node.Content[i+1]
+
+		if keyNode.Kind == yaml.ScalarNode && keyNode.ShortTag() == shortTagMerge {
+			merged, errs := visitMapSlice(valueNode)
+			errSlice.add(errs...)
+			pairs = append(pairs, merged...)
+			continue
+		}
+
 		key, err := visitString(keyNode)
 		if err != nil {
-			errSlice.add(fmt.Errorf("%w: %v", ErrKeyNotString, err))
+			errSlice.add(wrapPosErrorNode2(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
 			// non fatal error
 		} else if key == "" {
 			errSlice.add(wrapPosErrorNode2(ErrKeyEmpty, keyNode))
@@ -211,12 +230,12 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 		}
 		if _, ok := keys[key]; ok {
 			errSlice.add(wrapPathError(key,
-				wrapPosErrorNode2(ErrKeyDuplicate, keyNode)))
+				wrapPosErrorNode2(ErrKeyCollision, keyNode)))
 			continue
 		}
 		keys[key] = struct{}{}
-		value := node.Content[i+1]
-		pairs = append(pairs, mapItem{strNode{keyNode, key}, value})
+		fmt.Printf("node %q value kind: %[2]T(%[2]d)\n", key, valueNode.Kind)
+		pairs = append(pairs, mapItem{strNode{keyNode, key}, valueNode})
 	}
 	return pairs, errSlice
 }
