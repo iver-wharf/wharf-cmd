@@ -336,11 +336,6 @@ myStage:
 	requireContainsErr(t, errs, ErrUseOfUndefinedEnv)
 }
 
-// TODO: Test the following:
-// - error on unused environment
-// - error on use of undeclared environment
-// - error on use of undeclared variable
-
 func getKeyedNode(t *testing.T, content string) (strNode, *yaml.Node) {
 	node := getNode(t, content)
 	require.Equal(t, yaml.MappingNode, node.Kind, "keyed node")
