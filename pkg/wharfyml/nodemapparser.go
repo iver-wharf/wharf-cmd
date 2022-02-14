@@ -66,7 +66,7 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	p.positions[key] = newPosNode(node)
 	seq, err := visitSequence(node)
 	if err != nil {
-		return Errors{err}
+		return Errors{wrapPathError(err, key)}
 	}
 	strs := make([]string, 0, len(seq))
 	var errSlice Errors
