@@ -38,90 +38,69 @@ func TestConvertPodToWorker_BasicConversionIgnoringStatusInfo(t *testing.T) {
 	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 }
 
-func TestConvertPodToWorker_HasStatusSchedulingIfPodConditionIsScheduled(t *testing.T) {
-	pod := makeTestPod(v1.PodStatus{
-		Conditions: []v1.PodCondition{{
-			Type:   v1.PodScheduled,
-			Status: v1.ConditionTrue,
-		}}})
-
-	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   "some-namespace/some-name",
-		Status: worker.StatusScheduling,
+func TestConvertPodToWorker_Status(t *testing.T) {
+	testCases := []struct {
+		name string
+		pod  v1.Pod
+		want worker.Status
+	}{
+		{
+			name: "scheduling",
+			pod: makeTestPod(v1.PodStatus{
+				Conditions: []v1.PodCondition{{
+					Type:   v1.PodScheduled,
+					Status: v1.ConditionTrue,
+				}}}),
+			want: worker.StatusScheduling,
+		},
+		{
+			name: "initializing",
+			pod: makeTestPod(v1.PodStatus{
+				InitContainerStatuses: []v1.ContainerStatus{{
+					State: v1.ContainerState{
+						Running: &v1.ContainerStateRunning{},
+					},
+				}}}),
+			want: worker.StatusInitializing,
+		},
+		{
+			name: "running",
+			pod: makeTestPod(v1.PodStatus{
+				ContainerStatuses: []v1.ContainerStatus{{
+					State: v1.ContainerState{
+						Running: &v1.ContainerStateRunning{},
+					},
+				}}}),
+			want: worker.StatusRunning,
+		},
+		{
+			name: "success",
+			pod:  makeTestPodWithPhase(v1.PodSucceeded),
+			want: worker.StatusSuccess,
+		},
+		{
+			name: "failed",
+			pod:  makeTestPodWithPhase(v1.PodFailed),
+			want: worker.StatusFailed,
+		},
+		{
+			name: "unknown_explicit",
+			pod:  makeTestPodWithPhase(v1.PodUnknown),
+			want: worker.StatusUnknown,
+		},
+		{
+			name: "unknown_implicit",
+			pod:  makeTestPod(v1.PodStatus{}),
+			want: worker.StatusUnknown,
+		},
 	}
-	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
-}
 
-func TestConvertPodToWorker_HasStatusRunningIfContainerIsRunning(t *testing.T) {
-	pod := makeTestPod(v1.PodStatus{
-		ContainerStatuses: []v1.ContainerStatus{{
-			State: v1.ContainerState{
-				Running: &v1.ContainerStateRunning{},
-			},
-		}}})
-
-	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   "some-namespace/some-name",
-		Status: worker.StatusRunning,
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := convertPodToWorker(&tc.pod).Status
+			assert.Equal(t, tc.want, got)
+		})
 	}
-	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
-}
-
-func TestConvertPodToWorker_HasStatusInitializingIfInitContainerIsRunning(t *testing.T) {
-	pod := makeTestPod(v1.PodStatus{
-		InitContainerStatuses: []v1.ContainerStatus{{
-			State: v1.ContainerState{
-				Running: &v1.ContainerStateRunning{},
-			},
-		}}})
-
-	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   "some-namespace/some-name",
-		Status: worker.StatusInitializing,
-	}
-	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
-}
-
-func TestConvertPodToWorker_HasStatusCompletedIfInPhaseSucceeded(t *testing.T) {
-	pod := makeTestPodWithPhase(v1.PodSucceeded)
-
-	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   "some-namespace/some-name",
-		Status: worker.StatusSuccess,
-	}
-	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
-}
-
-func TestConvertPodToWorker_HasStatusFailedIfInPhaseFailed(t *testing.T) {
-	pod := makeTestPodWithPhase(v1.PodFailed)
-
-	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   "some-namespace/some-name",
-		Status: worker.StatusFailed,
-	}
-	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
-}
-
-func TestConvertPodToWorker_HasStatusUnknownIfInPhaseUnknown(t *testing.T) {
-	pod := makeTestPodWithPhase(v1.PodUnknown)
-
-	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   "some-namespace/some-name",
-		Status: worker.StatusUnknown,
-	}
-	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
 func TestConvertPodsToWorkers_NilPodsReturnsEmptySlice(t *testing.T) {
