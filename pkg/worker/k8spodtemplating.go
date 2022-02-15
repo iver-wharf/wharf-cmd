@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -11,22 +12,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var (
+	commonRepoVolumeMount = v1.VolumeMount{
+		Name:      "repo",
+		MountPath: "/mnt/repo",
+	}
+)
+
 func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
-	image, err := getPodImage(step)
-	if err != nil {
-		return v1.Pod{}, err
-	}
-	cmds, args, err := getPodCommandArgs(step)
-	if err != nil {
-		return v1.Pod{}, err
-	}
 	annotations := map[string]string{
 		"wharf.iver.com/step": step.Name,
 	}
 	if stage, ok := contextStageName(ctx); ok {
 		annotations["wharf.iver.com/stage"] = stage
 	}
-	return v1.Pod{
+	pod := v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: getPodGenerateName(step),
 			Annotations:  annotations,
@@ -50,22 +50,6 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 					},
 				},
 			},
-			Containers: []v1.Container{
-				{
-					Name:            "step",
-					Image:           image,
-					ImagePullPolicy: v1.PullAlways,
-					Command:         cmds,
-					Args:            args,
-					WorkingDir:      "/mnt/repo",
-					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "repo",
-							MountPath: "/mnt/repo",
-						},
-					},
-				},
-			},
 			Volumes: []v1.Volume{
 				{
 					Name: "repo",
@@ -75,7 +59,17 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 				},
 			},
 		},
-	}, nil
+	}
+
+	if err := applyStepType(&pod, step.Type); err != nil {
+		return v1.Pod{}, err
+	}
+
+	if len(pod.Spec.Containers) == 0 {
+		return v1.Pod{}, errors.New("step type did not add an app container")
+	}
+
+	return v1.Pod{}, nil
 }
 
 func getPodGenerateName(step wharfyml.Step) string {
@@ -109,21 +103,75 @@ func sanitizePodName(name string) string {
 	return name
 }
 
-func getPodImage(step wharfyml.Step) (string, error) {
-	switch s := step.Type.(type) {
+func applyStepType(pod *v1.Pod, stepType wharfyml.StepType) error {
+	switch s := stepType.(type) {
 	case wharfyml.StepContainer:
-		return s.Image, nil
+		return applyStepContainer(pod, s)
+	case nil:
+		return errors.New("nil step type")
 	default:
-		return "", fmt.Errorf("unsupported step type: %q", step.Type)
+		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
 	}
 }
 
-func getPodCommandArgs(step wharfyml.Step) (cmds, args []string, err error) {
-	switch s := step.Type.(type) {
-	case wharfyml.StepContainer:
-		args := strings.Join(s.Cmds, "\n")
-		return []string{s.Shell, "-c"}, []string{args}, nil
-	default:
-		return nil, nil, fmt.Errorf("unsupported step type: %q", step.Type)
+func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
+	var cmds []string
+
+	if step.OS == "windows" && step.Shell == "/bin/sh" {
+		cmds = []string{"powershell.exe", "-C"}
+	} else {
+		cmds = []string{step.Shell, "-c"}
 	}
+
+	args := []string{strings.Join(step.Cmds, "\n")}
+	cont := v1.Container{
+		Name:            "step",
+		Image:           step.Image,
+		ImagePullPolicy: v1.PullAlways,
+		Command:         cmds,
+		Args:            args,
+		WorkingDir:      commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+		},
+	}
+
+	pod.Spec.ServiceAccountName = step.ServiceAccount
+
+	if step.CertificatesMountPath != "" {
+		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+			Name: "certificates",
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "ca-certificates-config",
+					},
+				},
+			},
+		})
+		cont.VolumeMounts = append(cont.VolumeMounts, v1.VolumeMount{
+			Name:      "certificates",
+			MountPath: step.CertificatesMountPath,
+		})
+	}
+
+	if step.SecretName != "" {
+		secretName := fmt.Sprintf("wharf-%s-project%d-secretname-%s",
+			"local", // TODO: Use Wharf instance ID
+			1,       // TODO: Use project ID
+			step.SecretName,
+		)
+		optional := true
+		cont.EnvFrom = append(cont.EnvFrom, v1.EnvFromSource{
+			SecretRef: &v1.SecretEnvSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: secretName,
+				},
+				Optional: &optional,
+			},
+		})
+	}
+
+	pod.Spec.Containers = append(pod.Spec.Containers, cont)
+	return nil
 }
