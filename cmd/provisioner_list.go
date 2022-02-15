@@ -18,13 +18,13 @@ var provisionerListCmd = &cobra.Command{
 			return err
 		}
 
-		workerList, err := p.ListWorkers(context.Background())
+		workers, err := p.ListWorkers(context.Background())
 		if err != nil {
 			return err
 		}
 
-		log.Info().WithInt("count", workerList.Count).Message("Fetched workers with matching labels.")
-		for i, worker := range workerList.Items {
+		log.Info().WithInt("count", len(workers)).Message("Fetched workers with matching labels.")
+		for i, worker := range workers {
 			log.Info().WithInt("index", i).
 				WithString("workerID", string(worker.ID)).
 				WithString("name", worker.Name).

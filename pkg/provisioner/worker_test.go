@@ -1,7 +1,6 @@
 package provisioner
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
@@ -18,9 +17,7 @@ func TestConvertPodToWorker_NilPodReturnsEmptyWorker(t *testing.T) {
 	}
 	gotWorker := convertPodToWorker(nil)
 
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+	assert.Equal(t, wantWorker, gotWorker)
 }
 
 func TestConvertPodToWorker_BasicConversionIgnoringStatusInfo(t *testing.T) {
@@ -32,22 +29,21 @@ func TestConvertPodToWorker_BasicConversionIgnoringStatusInfo(t *testing.T) {
 		},
 	}
 	wantWorker := Worker{
-		ID:     "some-uid-420",
-		Name:   fmt.Sprintf("%s/%s", "some-namespace", "some-name"),
-		Status: worker.StatusUnknown,
+		ID:   "some-uid-420",
+		Name: "some-namespace/some-name",
 	}
 	gotWorker := convertPodToWorker(&pod)
 
 	assert.Equal(t, wantWorker.ID, gotWorker.ID)
 	assert.Equal(t, wantWorker.Name, gotWorker.Name)
-	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
 func TestConvertPodToWorker_HasStatusSchedulingIfPodConditionIsScheduled(t *testing.T) {
-	pod := makeTestPod(nil, nil, []v1.PodCondition{{
-		Type:   v1.PodScheduled,
-		Status: v1.ConditionTrue,
-	}})
+	pod := makeTestPod(v1.PodStatus{
+		Conditions: []v1.PodCondition{{
+			Type:   v1.PodScheduled,
+			Status: v1.ConditionTrue,
+		}}})
 
 	wantWorker := Worker{
 		ID:     "some-uid-420",
@@ -55,16 +51,16 @@ func TestConvertPodToWorker_HasStatusSchedulingIfPodConditionIsScheduled(t *test
 		Status: worker.StatusScheduling,
 	}
 	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
 func TestConvertPodToWorker_HasStatusRunningIfContainerIsRunning(t *testing.T) {
-	pod := makeTestPod(nil, []v1.ContainerStatus{{
-		State: v1.ContainerState{
-			Running: &v1.ContainerStateRunning{},
-		}}}, nil)
+	pod := makeTestPod(v1.PodStatus{
+		ContainerStatuses: []v1.ContainerStatus{{
+			State: v1.ContainerState{
+				Running: &v1.ContainerStateRunning{},
+			},
+		}}})
 
 	wantWorker := Worker{
 		ID:     "some-uid-420",
@@ -72,15 +68,16 @@ func TestConvertPodToWorker_HasStatusRunningIfContainerIsRunning(t *testing.T) {
 		Status: worker.StatusRunning,
 	}
 	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
 func TestConvertPodToWorker_HasStatusInitializingIfInitContainerIsRunning(t *testing.T) {
-	pod := makeTestPod([]v1.ContainerStatus{
-		{State: v1.ContainerState{Running: &v1.ContainerStateRunning{}}},
-	}, nil, nil)
+	pod := makeTestPod(v1.PodStatus{
+		InitContainerStatuses: []v1.ContainerStatus{{
+			State: v1.ContainerState{
+				Running: &v1.ContainerStateRunning{},
+			},
+		}}})
 
 	wantWorker := Worker{
 		ID:     "some-uid-420",
@@ -88,8 +85,6 @@ func TestConvertPodToWorker_HasStatusInitializingIfInitContainerIsRunning(t *tes
 		Status: worker.StatusInitializing,
 	}
 	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
@@ -102,8 +97,6 @@ func TestConvertPodToWorker_HasStatusCompletedIfInPhaseSucceeded(t *testing.T) {
 		Status: worker.StatusSuccess,
 	}
 	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
@@ -116,8 +109,6 @@ func TestConvertPodToWorker_HasStatusFailedIfInPhaseFailed(t *testing.T) {
 		Status: worker.StatusFailed,
 	}
 	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
@@ -130,8 +121,6 @@ func TestConvertPodToWorker_HasStatusUnknownIfInPhaseUnknown(t *testing.T) {
 		Status: worker.StatusUnknown,
 	}
 	gotWorker := convertPodToWorker(&pod)
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
-	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
@@ -141,7 +130,7 @@ func TestConvertPodsToWorkers_NilPodsReturnsEmptySlice(t *testing.T) {
 	assert.ElementsMatch(t, wantWorkers, gotWorkers)
 }
 
-func TestConvertPodsToWorkers_Success(t *testing.T) {
+func TestConvertPodsToWorkers(t *testing.T) {
 	pods := []v1.Pod{
 		{
 			ObjectMeta: metav1.ObjectMeta{
@@ -169,17 +158,17 @@ func TestConvertPodsToWorkers_Success(t *testing.T) {
 	wantWorkers := []Worker{
 		{
 			ID:     "first-uid-420",
-			Name:   fmt.Sprintf("%s/%s", "first-namespace", "first-name"),
+			Name:   "first-namespace/first-name",
 			Status: worker.StatusUnknown,
 		},
 		{
 			ID:     "second-uid-420",
-			Name:   fmt.Sprintf("%s/%s", "first-namespace", "second-name"),
+			Name:   "first-namespace/second-name",
 			Status: worker.StatusUnknown,
 		},
 		{
 			ID:     "third-uid-420",
-			Name:   fmt.Sprintf("%s/%s", "second-namespace", "third-name"),
+			Name:   "second-namespace/third-name",
 			Status: worker.StatusUnknown,
 		},
 	}
@@ -188,79 +177,14 @@ func TestConvertPodsToWorkers_Success(t *testing.T) {
 	assert.ElementsMatch(t, wantWorkers, gotWorkers)
 }
 
-func TestConvertPodListToWorkerList_NilPodListReturnsEmptyWorkerList(t *testing.T) {
-	wantWorkerList := WorkerList{}
-	gotWorkerList := convertPodListToWorkerList(nil)
-	assert.ElementsMatch(t, wantWorkerList.Items, gotWorkerList.Items)
-	assert.Equal(t, wantWorkerList.Count, gotWorkerList.Count)
-}
-
-func TestConvertPodListToWorkerList_Success(t *testing.T) {
-	podList := v1.PodList{
-		Items: []v1.Pod{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					UID:       "first-uid-420",
-					Name:      "first-name",
-					Namespace: "first-namespace",
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					UID:       "second-uid-420",
-					Name:      "second-name",
-					Namespace: "first-namespace",
-				},
-			},
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					UID:       "third-uid-420",
-					Name:      "third-name",
-					Namespace: "second-namespace",
-				},
-			},
-		},
-	}
-
-	wantWorkerList := WorkerList{
-		Items: []Worker{
-			{
-				ID:     "first-uid-420",
-				Name:   fmt.Sprintf("%s/%s", "first-namespace", "first-name"),
-				Status: worker.StatusUnknown,
-			},
-			{
-				ID:     "second-uid-420",
-				Name:   fmt.Sprintf("%s/%s", "first-namespace", "second-name"),
-				Status: worker.StatusUnknown,
-			},
-			{
-				ID:     "third-uid-420",
-				Name:   fmt.Sprintf("%s/%s", "second-namespace", "third-name"),
-				Status: worker.StatusUnknown,
-			},
-		},
-	}
-	wantWorkerList.Count = len(wantWorkerList.Items)
-
-	gotWorkerList := convertPodListToWorkerList(&podList)
-
-	assert.ElementsMatch(t, wantWorkerList.Items, gotWorkerList.Items)
-	assert.Equal(t, wantWorkerList.Count, gotWorkerList.Count)
-}
-
-func makeTestPod(initContainerStatuses []v1.ContainerStatus, containerStatuses []v1.ContainerStatus, conditions []v1.PodCondition) v1.Pod {
+func makeTestPod(status v1.PodStatus) v1.Pod {
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			UID:       "some-uid-420",
 			Name:      "some-name",
 			Namespace: "some-namespace",
 		},
-		Status: v1.PodStatus{
-			Conditions:            conditions,
-			InitContainerStatuses: initContainerStatuses,
-			ContainerStatuses:     containerStatuses,
-		},
+		Status: status,
 	}
 }
 

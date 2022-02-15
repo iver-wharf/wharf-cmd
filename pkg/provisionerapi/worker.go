@@ -10,8 +10,7 @@ import (
 )
 
 type workerModule struct {
-	kubeConfig *rest.Config
-	p          provisioner.Provisioner
+	prov provisioner.Provisioner
 }
 
 func (m *workerModule) init(cfg *rest.Config) error {
@@ -19,8 +18,7 @@ func (m *workerModule) init(cfg *rest.Config) error {
 	if err != nil {
 		return err
 	}
-	m.kubeConfig = cfg
-	m.p = p
+	m.prov = p
 	return nil
 }
 
@@ -31,7 +29,7 @@ func (m *workerModule) register(g *gin.RouterGroup) {
 }
 
 func (m *workerModule) listWorkersHandler(c *gin.Context) {
-	workers, err := m.p.ListWorkers(c.Request.Context())
+	workers, err := m.prov.ListWorkers(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 		return
@@ -41,7 +39,7 @@ func (m *workerModule) listWorkersHandler(c *gin.Context) {
 }
 
 func (m *workerModule) createWorkerHandler(c *gin.Context) {
-	worker, err := m.p.CreateWorker(c.Request.Context())
+	worker, err := m.prov.CreateWorker(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 		return
@@ -56,7 +54,7 @@ func (m *workerModule) deleteWorkerHandler(c *gin.Context) {
 		return
 	}
 
-	if err := m.p.DeleteWorker(c.Request.Context(), workerID); err != nil {
+	if err := m.prov.DeleteWorker(c.Request.Context(), workerID); err != nil {
 		c.JSON(http.StatusInternalServerError, err)
 		return
 	}

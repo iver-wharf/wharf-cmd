@@ -12,6 +12,6 @@ var log = logger.NewScoped("PROVISIONER")
 // for a provisioner.
 type Provisioner interface {
 	CreateWorker(ctx context.Context) (Worker, error)
-	ListWorkers(ctx context.Context) (WorkerList, error)
+	ListWorkers(ctx context.Context) ([]Worker, error)
 	DeleteWorker(ctx context.Context, workerID string) error
 }

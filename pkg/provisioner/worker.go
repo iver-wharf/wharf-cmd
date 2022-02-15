@@ -16,23 +16,6 @@ type Worker struct {
 	Status worker.Status
 }
 
-// WorkerList contains a slice of workers and a count field for the size of the
-// array.
-type WorkerList struct {
-	Items []Worker
-	Count int
-}
-
-func convertPodListToWorkerList(podList *v1.PodList) WorkerList {
-	if podList == nil {
-		return WorkerList{}
-	}
-	return WorkerList{
-		Items: convertPodsToWorkers(podList.Items),
-		Count: len(podList.Items),
-	}
-}
-
 func convertPodsToWorkers(pods []v1.Pod) []Worker {
 	workers := make([]Worker, len(pods))
 	for k, v := range pods {

@@ -42,13 +42,13 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 	}, nil
 }
 
-func (p k8sProvisioner) ListWorkers(ctx context.Context) (WorkerList, error) {
+func (p k8sProvisioner) ListWorkers(ctx context.Context) ([]Worker, error) {
 	podList, err := p.listPods(ctx, listOptionsMatchLabels)
 	if err != nil {
-		return WorkerList{}, err
+		return []Worker{}, err
 	}
 
-	return convertPodListToWorkerList(podList), nil
+	return convertPodsToWorkers(podList.Items), nil
 }
 
 func (p k8sProvisioner) listPods(ctx context.Context, opts metav1.ListOptions) (*v1.PodList, error) {
