@@ -23,7 +23,7 @@ func TestConvertPodToWorker_NilPodReturnsEmptyWorker(t *testing.T) {
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
 }
 
-func TestConvertPodToWorker_Success(t *testing.T) {
+func TestConvertPodToWorker_BasicConversionIgnoringStatusInfo(t *testing.T) {
 	pod := v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			UID:       "some-uid-420",
@@ -38,6 +38,98 @@ func TestConvertPodToWorker_Success(t *testing.T) {
 	}
 	gotWorker := convertPodToWorker(&pod)
 
+	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.Name, gotWorker.Name)
+	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+}
+
+func TestConvertPodToWorker_HasStatusSchedulingIfPodConditionIsScheduled(t *testing.T) {
+	pod := makeTestPod(nil, nil, []v1.PodCondition{{
+		Type:   v1.PodScheduled,
+		Status: v1.ConditionTrue,
+	}})
+
+	wantWorker := Worker{
+		ID:     "some-uid-420",
+		Name:   "some-namespace/some-name",
+		Status: worker.StatusScheduling,
+	}
+	gotWorker := convertPodToWorker(&pod)
+	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.Name, gotWorker.Name)
+	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+}
+
+func TestConvertPodToWorker_HasStatusRunningIfContainerIsRunning(t *testing.T) {
+	pod := makeTestPod(nil, []v1.ContainerStatus{{
+		State: v1.ContainerState{
+			Running: &v1.ContainerStateRunning{},
+		}}}, nil)
+
+	wantWorker := Worker{
+		ID:     "some-uid-420",
+		Name:   "some-namespace/some-name",
+		Status: worker.StatusRunning,
+	}
+	gotWorker := convertPodToWorker(&pod)
+	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.Name, gotWorker.Name)
+	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+}
+
+func TestConvertPodToWorker_HasStatusInitializingIfInitContainerIsRunning(t *testing.T) {
+	pod := makeTestPod([]v1.ContainerStatus{
+		{State: v1.ContainerState{Running: &v1.ContainerStateRunning{}}},
+	}, nil, nil)
+
+	wantWorker := Worker{
+		ID:     "some-uid-420",
+		Name:   "some-namespace/some-name",
+		Status: worker.StatusInitializing,
+	}
+	gotWorker := convertPodToWorker(&pod)
+	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.Name, gotWorker.Name)
+	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+}
+
+func TestConvertPodToWorker_HasStatusCompletedIfInPhaseSucceeded(t *testing.T) {
+	pod := makeTestPodWithPhase(v1.PodSucceeded)
+
+	wantWorker := Worker{
+		ID:     "some-uid-420",
+		Name:   "some-namespace/some-name",
+		Status: worker.StatusSuccess,
+	}
+	gotWorker := convertPodToWorker(&pod)
+	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.Name, gotWorker.Name)
+	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+}
+
+func TestConvertPodToWorker_HasStatusFailedIfInPhaseFailed(t *testing.T) {
+	pod := makeTestPodWithPhase(v1.PodFailed)
+
+	wantWorker := Worker{
+		ID:     "some-uid-420",
+		Name:   "some-namespace/some-name",
+		Status: worker.StatusFailed,
+	}
+	gotWorker := convertPodToWorker(&pod)
+	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.Name, gotWorker.Name)
+	assert.Equal(t, wantWorker.Status, gotWorker.Status)
+}
+
+func TestConvertPodToWorker_HasStatusUnknownIfInPhaseUnknown(t *testing.T) {
+	pod := makeTestPodWithPhase(v1.PodUnknown)
+
+	wantWorker := Worker{
+		ID:     "some-uid-420",
+		Name:   "some-namespace/some-name",
+		Status: worker.StatusUnknown,
+	}
+	gotWorker := convertPodToWorker(&pod)
 	assert.Equal(t, wantWorker.ID, gotWorker.ID)
 	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 	assert.Equal(t, wantWorker.Status, gotWorker.Status)
@@ -155,4 +247,32 @@ func TestConvertPodListToWorkerList_Success(t *testing.T) {
 
 	assert.ElementsMatch(t, wantWorkerList.Items, gotWorkerList.Items)
 	assert.Equal(t, wantWorkerList.Count, gotWorkerList.Count)
+}
+
+func makeTestPod(initContainerStatuses []v1.ContainerStatus, containerStatuses []v1.ContainerStatus, conditions []v1.PodCondition) v1.Pod {
+	return v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:       "some-uid-420",
+			Name:      "some-name",
+			Namespace: "some-namespace",
+		},
+		Status: v1.PodStatus{
+			Conditions:            conditions,
+			InitContainerStatuses: initContainerStatuses,
+			ContainerStatuses:     containerStatuses,
+		},
+	}
+}
+
+func makeTestPodWithPhase(phase v1.PodPhase) v1.Pod {
+	return v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			UID:       "some-uid-420",
+			Name:      "some-name",
+			Namespace: "some-namespace",
+		},
+		Status: v1.PodStatus{
+			Phase: phase,
+		},
+	}
 }

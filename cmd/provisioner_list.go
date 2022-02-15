@@ -28,6 +28,7 @@ var provisionerListCmd = &cobra.Command{
 			log.Info().WithInt("index", i).
 				WithString("workerID", string(worker.ID)).
 				WithString("name", worker.Name).
+				WithStringer("status", worker.Status).
 				Message("")
 		}
 

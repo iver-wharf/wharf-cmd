@@ -45,9 +45,42 @@ func convertPodToWorker(pod *v1.Pod) Worker {
 	if pod == nil {
 		return Worker{}
 	}
+	var status worker.Status = worker.StatusUnknown
+	if pod.Status.Phase == v1.PodUnknown {
+		status = worker.StatusUnknown
+	} else if pod.Status.Phase == v1.PodSucceeded {
+		status = worker.StatusSuccess
+	} else if pod.Status.Phase == v1.PodFailed {
+		status = worker.StatusFailed
+	} else if anyContainerIsRunning(pod.Status.InitContainerStatuses) {
+		status = worker.StatusInitializing
+	} else if anyContainerIsRunning(pod.Status.ContainerStatuses) {
+		status = worker.StatusRunning
+	} else if podConditionIsTrue(pod.Status.Conditions, v1.PodScheduled) {
+		status = worker.StatusScheduling
+	}
+
 	return Worker{
 		ID:     string(pod.UID),
 		Name:   fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
-		Status: worker.StatusUnknown,
+		Status: status,
 	}
+}
+
+func podConditionIsTrue(conditions []v1.PodCondition, conditionType v1.PodConditionType) bool {
+	for _, v := range conditions {
+		if v.Type == conditionType {
+			return v.Status == v1.ConditionTrue
+		}
+	}
+	return false
+}
+
+func anyContainerIsRunning(containers []v1.ContainerStatus) bool {
+	for _, v := range containers {
+		if v.State.Terminated == nil {
+			return true
+		}
+	}
+	return false
 }
