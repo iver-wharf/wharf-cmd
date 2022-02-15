@@ -14,3 +14,7 @@ var provisionerServeCmd = &cobra.Command{
 		return provisionerapi.Serve(Kubeconfig)
 	},
 }
+
+func init() {
+	provisionerCmd.AddCommand(provisionerServeCmd)
+}

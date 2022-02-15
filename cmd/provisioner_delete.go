@@ -28,5 +28,6 @@ var provisionerDeleteCmd = &cobra.Command{
 }
 
 func init() {
-	provisionerDeleteCmd.PersistentFlags().StringVar(&deleteWorkerID, "id", "", "ID of the worker to delete")
+	provisionerDeleteCmd.Flags().StringVar(&deleteWorkerID, "id", "", "ID of the worker to delete")
+	provisionerCmd.AddCommand(provisionerDeleteCmd)
 }

@@ -12,9 +12,5 @@ var provisionerCmd = &cobra.Command{
 }
 
 func init() {
-	provisionerCmd.AddCommand(provisionerServeCmd)
-	provisionerCmd.AddCommand(provisionerListCmd)
-	provisionerCmd.AddCommand(provisionerDeleteCmd)
-	provisionerCmd.AddCommand(provisionerCreateCmd)
 	rootCmd.AddCommand(provisionerCmd)
 }

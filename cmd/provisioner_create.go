@@ -24,10 +24,13 @@ var provisionerCreateCmd = &cobra.Command{
 		}
 
 		log.Info().WithString("name", worker.Name).
-			WithString("namespace", worker.Namespace).
-			WithString("workerID", string(worker.UID)).
+			WithString("workerID", string(worker.ID)).
 			Message("Created worker")
 
 		return nil
 	},
+}
+
+func init() {
+	provisionerCmd.AddCommand(provisionerCreateCmd)
 }

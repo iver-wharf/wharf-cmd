@@ -18,20 +18,23 @@ var provisionerListCmd = &cobra.Command{
 			return err
 		}
 
-		workers, err := p.ListWorkers(context.Background())
+		workerList, err := p.ListWorkers(context.Background())
 		if err != nil {
 			return err
 		}
 
-		log.Info().WithInt("count", len(workers)).Message("Fetched workers with matching labels.")
-		for i, pod := range workers {
+		log.Info().WithInt("count", workerList.Count).Message("Fetched workers with matching labels.")
+		for i, worker := range workerList.Items {
 			log.Info().WithInt("index", i).
-				WithString("workerID", string(pod.UID)).
-				WithString("name", pod.Name).
-				WithString("namespace", pod.Namespace).
-				Message("Pod")
+				WithString("workerID", string(worker.ID)).
+				WithString("name", worker.Name).
+				Message("")
 		}
 
 		return nil
 	},
+}
+
+func init() {
+	provisionerCmd.AddCommand(provisionerListCmd)
 }

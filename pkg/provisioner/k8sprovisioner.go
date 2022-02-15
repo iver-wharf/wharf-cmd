@@ -25,7 +25,6 @@ type k8sProvisioner struct {
 	Clientset  *kubernetes.Clientset
 	Pods       corev1.PodInterface
 	restConfig *rest.Config
-	events     corev1.EventInterface
 }
 
 // NewK8sProvisioner returns a new Provisioner implementation that targets
@@ -40,77 +39,65 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 		Clientset:  clientset,
 		Pods:       clientset.CoreV1().Pods(namespace),
 		restConfig: restConfig,
-		events:     clientset.CoreV1().Events(namespace),
 	}, nil
 }
 
-func (p k8sProvisioner) ListWorkers(ctx context.Context) ([]v1.Pod, error) {
-	podList, err := p.Pods.List(ctx, listOptionsMatchLabels)
+func (p k8sProvisioner) ListWorkers(ctx context.Context) (WorkerList, error) {
+	podList, err := p.listPods(ctx, listOptionsMatchLabels)
 	if err != nil {
-		return nil, err
+		return WorkerList{}, err
 	}
 
-	return podList.Items, nil
+	return convertPodListToWorkerList(podList), nil
+}
+
+func (p k8sProvisioner) listPods(ctx context.Context, opts metav1.ListOptions) (*v1.PodList, error) {
+	return p.Pods.List(ctx, opts)
 }
 
 func (p k8sProvisioner) DeleteWorker(ctx context.Context, workerID string) error {
-	worker, err := p.getWorker(ctx, workerID)
+	pod, err := p.getPod(ctx, workerID)
 	if err != nil {
 		return err
 	}
 
-	return p.Pods.Delete(ctx, worker.Name, metav1.DeleteOptions{})
+	return p.Pods.Delete(ctx, pod.Name, metav1.DeleteOptions{})
 }
 
-func (p k8sProvisioner) CreateWorker(ctx context.Context) (*v1.Pod, error) {
+func (p k8sProvisioner) CreateWorker(ctx context.Context) (Worker, error) {
 	podMeta := createPodMeta()
 	newPod, err := p.Pods.Create(ctx, &podMeta, metav1.CreateOptions{})
-	return newPod, err
+	return convertPodToWorker(newPod), err
 }
 
-func (p k8sProvisioner) getWorker(ctx context.Context, workerID string) (*v1.Pod, error) {
-	workers, err := p.ListWorkers(ctx)
+func (p k8sProvisioner) getPod(ctx context.Context, workerID string) (*v1.Pod, error) {
+	podList, err := p.listPods(ctx, listOptionsMatchLabels)
 	if err != nil {
 		return nil, err
 	}
-	for _, pod := range workers {
-		if string(pod.ObjectMeta.UID) == workerID {
+	for _, pod := range podList.Items {
+		if string(pod.UID) == workerID {
 			return &pod, nil
 		}
 	}
-	return nil, fmt.Errorf("found no pod with appropriate labels matching workerID: %s", workerID)
+	return nil, fmt.Errorf("found no worker with appropriate labels matching workerID: %s", workerID)
 }
 
 func createPodMeta() v1.Pod {
 	const (
-		gitCloneContainerName = "init"
-		gitCloneImage         = "bitnami/git:2-debian-10"
-		gitURL                = "http://github.com/iver-wharf/wharf-cmd"
-		repoVolumeName        = "repo"
-		repoVolumeMountPath   = "/mnt/repo"
-
-		workerContainerName = "app"
-		workerImage         = "ubuntu:20.04"
-
-		labelWorkerInstance  = "prod"
-		labelWorkerBuildRef  = "123"
-		labelWorkerProjectID = "456"
+		repoVolumeName      = "repo"
+		repoVolumeMountPath = "/mnt/repo"
 	)
-	extraLabels := make(map[string]string)
 	labels := map[string]string{
 		"app":                          "wharf-cmd-worker",
 		"app.kubernetes.io/name":       "wharf-cmd-worker",
 		"app.kubernetes.io/part-of":    "wharf",
 		"app.kubernetes.io/managed-by": "wharf-cmd-provisioner",
 		"app.kubernetes.io/created-by": "wharf-cmd-provisioner",
-		"wharf.iver.com/instance":      labelWorkerInstance,
-		"wharf.iver.com/build-ref":     labelWorkerBuildRef,
-		"wharf.iver.com/project-id":    labelWorkerProjectID,
+		"wharf.iver.com/instance":      "prod",
+		"wharf.iver.com/build-ref":     "123",
+		"wharf.iver.com/project-id":    "456",
 	}
-	for k, v := range extraLabels {
-		labels[k] = v
-	}
-
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      repoVolumeName,
@@ -120,7 +107,7 @@ func createPodMeta() v1.Pod {
 
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: "wharf-provisioner-",
+			GenerateName: "wharf-cmd-worker-",
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
@@ -128,17 +115,17 @@ func createPodMeta() v1.Pod {
 			RestartPolicy:                v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
-					Name:            gitCloneContainerName,
-					Image:           gitCloneImage,
+					Name:            "init",
+					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            append(podInitCloneArgs, gitURL, repoVolumeMountPath),
+					Args:            append(podInitCloneArgs, "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
 					VolumeMounts:    volumeMounts,
 				},
 			},
 			Containers: []v1.Container{
 				{
-					Name:            workerContainerName,
-					Image:           workerImage,
+					Name:            "app",
+					Image:           "ubuntu:20.04",
 					ImagePullPolicy: v1.PullAlways,
 					Command:         podContainerListArgs,
 					WorkingDir:      repoVolumeMountPath,
