@@ -1,4 +1,10 @@
 
+build:
+  myBuild:
+    docker:
+      file: Dockerfile
+      tag: latest
+      push: false
 
 test:
   step1:

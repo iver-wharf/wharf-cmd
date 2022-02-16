@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path"
 	"regexp"
 	"strings"
 
@@ -61,7 +62,7 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 		},
 	}
 
-	if err := applyStepType(&pod, step.Type); err != nil {
+	if err := applyStep(&pod, step); err != nil {
 		return v1.Pod{}, err
 	}
 
@@ -69,7 +70,7 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 		return v1.Pod{}, errors.New("step type did not add an app container")
 	}
 
-	return v1.Pod{}, nil
+	return pod, nil
 }
 
 func getPodGenerateName(step wharfyml.Step) string {
@@ -103,10 +104,12 @@ func sanitizePodName(name string) string {
 	return name
 }
 
-func applyStepType(pod *v1.Pod, stepType wharfyml.StepType) error {
-	switch s := stepType.(type) {
+func applyStep(pod *v1.Pod, step wharfyml.Step) error {
+	switch s := step.Type.(type) {
 	case wharfyml.StepContainer:
 		return applyStepContainer(pod, s)
+	case wharfyml.StepDocker:
+		return applyStepDocker(pod, s, step.Name)
 	case nil:
 		return errors.New("nil step type")
 	default:
@@ -174,4 +177,88 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	return nil
+}
+
+func applyStepDocker(pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
+	repoDir := commonRepoVolumeMount.MountPath
+	cont := v1.Container{
+		Name:  "step",
+		Image: "boolman/kaniko:busybox-2020-01-15",
+		// default entrypoint for image is "/kaniko/executor"
+		WorkingDir: repoDir,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+		},
+	}
+
+	// TODO: Load in certificates somehow
+
+	// TODO: Mount Docker secrets from REG_SECRET built-in var
+
+	// TODO: Add "--insecure" arg if REG_INSECURE
+
+	args := []string{
+		// Not using path/filepath package because we know don't want to
+		// suddenly use Windows directory separator when running from Windows.
+		"--dockerfile", path.Join(repoDir, step.File),
+		"--context", path.Join(repoDir, step.Context),
+		"--skip-tls-verify", // This is bad, but remains due to backward compatibility
+	}
+
+	for _, buildArg := range step.Args {
+		args = append(args, "--build-arg", buildArg)
+	}
+
+	destination := getDockerDestination(step, stepName)
+	anyTag := false
+	for _, tag := range strings.Split(step.Tag, ",") {
+		tag = strings.TrimSpace(tag)
+		if tag == "" {
+			continue
+		}
+		anyTag = true
+		args = append(args, "--destination",
+			fmt.Sprintf("%s:%s", destination, tag))
+	}
+	if !anyTag {
+		return errors.New("tags field resolved to zero tags")
+	}
+
+	if !step.Push {
+		args = append(args, "--no-push")
+	}
+
+	cont.Args = args
+
+	argsQuoted := make([]string, len(args))
+	copy(argsQuoted, args)
+	for i, arg := range args {
+		if strings.ContainsAny(arg, `"\' `) {
+			argsQuoted[i] = fmt.Sprintf("%q", arg)
+		}
+	}
+	log.Debug().WithStringf("args", strings.Join(argsQuoted, " ")).
+		Message("Kaniko args.")
+
+	pod.Spec.Containers = append(pod.Spec.Containers, cont)
+	return nil
+}
+
+func getDockerDestination(step wharfyml.StepDocker, stepName string) string {
+	if step.Destination != "" {
+		return strings.ToLower(step.Destination)
+	}
+	const repoName = "project-name" // TODO: replace with REPO_NAME built-in var
+	if step.Registry == "" {
+		step.Registry = "docker.io" // TODO: replace with REG_URL
+	}
+	if step.Group == "" {
+		step.Group = "iver-wharf" // TODO: replace with REPO_GROUP
+	}
+	if stepName == repoName {
+		return strings.ToLower(fmt.Sprintf("%s/%s/%s",
+			step.Registry, step.Group, repoName))
+	}
+	return strings.ToLower(fmt.Sprintf("%s/%s/%s/%s",
+		step.Registry, step.Group, repoName, stepName))
 }
