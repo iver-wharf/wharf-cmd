@@ -1,59 +1,47 @@
 package wharfyml
 
-import "fmt"
+import (
+	"errors"
 
+	"gopkg.in/yaml.v3"
+)
+
+// Errors related to parsing stages.
+var (
+	ErrStageEmpty = errors.New("stage is missing steps")
+)
+
+// Stage holds the name, environment filter, and list of steps for this Wharf
+// build stage.
 type Stage struct {
-	Name         string
-	Environments []string
-	Steps        []Step
+	Pos     Pos
+	Name    string
+	Envs    []EnvRef
+	EnvsPos Pos
+	Steps   []Step
 }
 
-func (s Stage) HasEnvironments() bool {
-	return len(s.Environments) > 0
-}
-
-func (s Stage) ContainsEnvironment(name string) bool {
-	for _, e := range s.Environments {
-		if e == name {
-			return true
+func visitStageNode(nameNode strNode, node *yaml.Node) (stage Stage, errSlice Errors) {
+	stage.Pos = newPosNode(node)
+	stage.Name = nameNode.value
+	nodes, errs := visitMapSlice(node)
+	errSlice.add(errs...)
+	if len(nodes) == 0 {
+		errSlice.add(wrapPosErrorNode(ErrStageEmpty, node))
+		return
+	}
+	for _, stepNode := range nodes {
+		switch stepNode.key.value {
+		case propEnvironments:
+			stage.EnvsPos = newPosNode(stepNode.value)
+			envs, errs := visitStageEnvironmentsNode(stepNode.value)
+			stage.Envs = envs
+			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
+		default:
+			step, errs := visitStepNode(stepNode.key, stepNode.value)
+			stage.Steps = append(stage.Steps, step)
+			errSlice.add(wrapPathErrorSlice(errs, stepNode.key.value)...)
 		}
 	}
-	return false
-}
-
-func parseStage(name string, content map[string]interface{}) (Stage, error) {
-	stage := Stage{Name: name, Environments: []string{}, Steps: []Step{}}
-
-	for k, v := range content {
-		if k == propEnvironments {
-			envs, err := parseStageEnvironments(v.([]interface{}))
-			if err != nil {
-				return Stage{}, err
-			}
-
-			stage.Environments = envs
-			continue
-		}
-
-		step, err := parseStep(k, v.(map[string]interface{}))
-		if err != nil {
-			return Stage{}, err
-		}
-
-		stage.Steps = append(stage.Steps, step)
-	}
-
-	return stage, nil
-}
-
-func parseStageEnvironments(content []interface{}) ([]string, error) {
-	var envs []string
-	for _, v := range content {
-		str, ok := v.(string)
-		if !ok {
-			return envs, fmt.Errorf("expected value type string, got %T", v)
-		}
-		envs = append(envs, str)
-	}
-	return envs, nil
+	return
 }

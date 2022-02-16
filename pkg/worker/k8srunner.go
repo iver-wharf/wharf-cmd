@@ -62,7 +62,7 @@ func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResu
 	return StepResult{
 		Name:     step.Name,
 		Status:   status,
-		Type:     step.Type.String(),
+		Type:     step.Type.StepTypeName(),
 		Error:    err,
 		Duration: time.Since(start),
 	}

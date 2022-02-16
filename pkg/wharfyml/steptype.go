@@ -1,37 +1,80 @@
 package wharfyml
 
-type StepType int
+import (
+	"errors"
+	"fmt"
 
-const (
-	Container = StepType(iota + 1)
-	Kaniko
-	Docker
-	HelmDeploy
-	HelmPackage
-	KubeApply
+	"gopkg.in/yaml.v3"
 )
 
-var strToStepType = map[string]StepType{
-	"container":    Container,
-	"kaniko":       Kaniko,
-	"helm":         HelmDeploy,
-	"helm-package": HelmPackage,
-	"kubectl":      KubeApply,
-	"docker":       Docker,
+// Errors related to parsing step types.
+var (
+	ErrStepTypeUnknown = errors.New("unknown step type")
+)
+
+// StepType is an interface that is implemented by all step types.
+type StepType interface {
+	StepTypeName() string
 }
 
-var stepTypeToString = map[StepType]string{}
+// StepTypeMeta contains metadata about a step type.
+type StepTypeMeta struct {
+	Source   Pos
+	FieldPos map[string]Pos
+}
 
-func init() {
-	for str, st := range strToStepType {
-		stepTypeToString[st] = str
+func visitStepTypeNode(key strNode, node *yaml.Node) (StepType, Errors) {
+	visitor, err := visitStepTypeKeyNode(key)
+	if err != nil {
+		return nil, Errors{err}
 	}
+	return visitor.visitStepTypeValueNode(node)
 }
 
-func (t StepType) String() string {
-	return stepTypeToString[t]
+func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
+	visitor := stepTypeVisitor{
+		keyNode: key.node,
+	}
+	switch key.value {
+	case "container":
+		visitor.visitNode = StepContainer{}.visitStepTypeNode
+	case "docker":
+		visitor.visitNode = StepDocker{}.visitStepTypeNode
+	case "helm":
+		visitor.visitNode = StepHelm{}.visitStepTypeNode
+	case "helm-package":
+		visitor.visitNode = StepHelmPackage{}.visitStepTypeNode
+	case "kubectl":
+		visitor.visitNode = StepKubectl{}.visitStepTypeNode
+	case "nuget-package":
+		visitor.visitNode = StepNuGetPackage{}.visitStepTypeNode
+	default:
+		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, key.value)
+		return stepTypeVisitor{}, wrapPosErrorNode(err, key.node)
+	}
+	return visitor, nil
 }
 
-func ParseStepType(name string) StepType {
-	return strToStepType[name]
+type stepTypeVisitor struct {
+	keyNode   *yaml.Node
+	visitNode func(nodeMapParser) (StepType, Errors)
+}
+
+func (v stepTypeVisitor) visitStepTypeValueNode(node *yaml.Node) (StepType, Errors) {
+	var errSlice Errors
+	m, errs := visitMap(node)
+	errSlice.add(errs...)
+
+	parser := newNodeMapParser(v.keyNode, m)
+	stepType, errs := v.visitNode(parser)
+	errSlice.add(errs...)
+
+	return stepType, errSlice
+}
+
+func getStepTypeMeta(p nodeMapParser) StepTypeMeta {
+	return StepTypeMeta{
+		Source:   p.parentPos(),
+		FieldPos: p.positions,
+	}
 }
