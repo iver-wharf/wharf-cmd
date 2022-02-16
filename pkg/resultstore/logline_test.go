@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseLogLine(t *testing.T) {
+func TestVisitLogLine(t *testing.T) {
 	zeroTime := time.Time{}
 	testCases := []struct {
 		name     string

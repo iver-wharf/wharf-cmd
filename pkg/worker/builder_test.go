@@ -26,11 +26,11 @@ func TestBuilder_runsAllSuccess(t *testing.T) {
 		StageResult{Status: StatusSuccess},
 	)}
 	b := New(stageRun)
-	def := wharfyml.BuildDefinition{
-		Stages: map[string]wharfyml.Stage{
-			"foo": {Name: "foo"},
-			"bar": {Name: "bar"},
-			"moo": {Name: "moo"},
+	def := wharfyml.Definition{
+		Stages: []wharfyml.Stage{
+			{Name: "foo"},
+			{Name: "bar"},
+			{Name: "moo"},
 		},
 	}
 	result, err := b.Build(context.Background(), def, BuildOptions{})
@@ -48,11 +48,11 @@ func TestBuilder_runsMiddleFails(t *testing.T) {
 		StageResult{Status: StatusSuccess},
 	)}
 	b := New(stageRun)
-	def := wharfyml.BuildDefinition{
-		Stages: map[string]wharfyml.Stage{
-			"foo": {Name: "foo"},
-			"bar": {Name: "bar"},
-			"moo": {Name: "moo"},
+	def := wharfyml.Definition{
+		Stages: []wharfyml.Stage{
+			{Name: "foo"},
+			{Name: "bar"},
+			{Name: "moo"},
 		},
 	}
 	result, err := b.Build(context.Background(), def, BuildOptions{})

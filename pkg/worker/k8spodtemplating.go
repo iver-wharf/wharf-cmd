@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -29,7 +28,7 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: fmt.Sprintf("wharf-build-%s-%s-",
-				strings.ToLower(step.Type.String()),
+				strings.ToLower(step.Type.StepTypeName()),
 				strings.ToLower(step.Name)),
 			Annotations: annotations,
 			Labels: map[string]string{
@@ -81,59 +80,20 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 }
 
 func getPodImage(step wharfyml.Step) (string, error) {
-	switch step.Type {
-	case wharfyml.Container:
-		image, ok := step.Variables["image"]
-		if !ok {
-			return "", errors.New("missing required field: image")
-		}
-		imageStr, ok := image.(string)
-		if !ok {
-			return "", fmt.Errorf("invalid field type: image: want string, got: %T", image)
-		}
-		return imageStr, nil
+	switch s := step.Type.(type) {
+	case wharfyml.StepContainer:
+		return s.Image, nil
 	default:
 		return "", fmt.Errorf("unsupported step type: %q", step.Type)
 	}
 }
 
 func getPodCommandArgs(step wharfyml.Step) (cmds, args []string, err error) {
-	switch step.Type {
-	case wharfyml.Container:
-		cmdsAny, ok := step.Variables["cmds"]
-		if !ok {
-			return nil, nil, errors.New("missing required field: cmds")
-		}
-		cmds, err := convStepFieldToStrings("cmds", cmdsAny)
-		if err != nil {
-			return nil, nil, err
-		}
-		args := strings.Join(cmds, "\n")
-		shell := "/bin/sh"
-		if shellAny, ok := step.Variables["shell"]; ok {
-			shell, ok = shellAny.(string)
-			if !ok {
-				return nil, nil, fmt.Errorf("invalid field type: shell: want string, got %T", shellAny)
-			}
-		}
-		return []string{shell, "-c"}, []string{args}, nil
+	switch s := step.Type.(type) {
+	case wharfyml.StepContainer:
+		args := strings.Join(s.Cmds, "\n")
+		return []string{s.Shell, "-c"}, []string{args}, nil
 	default:
 		return nil, nil, fmt.Errorf("unsupported step type: %q", step.Type)
 	}
-}
-
-func convStepFieldToStrings(fieldName string, value interface{}) ([]string, error) {
-	anyArr, ok := value.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid field type: %s: want string array, got: %T", fieldName, value)
-	}
-	strs := make([]string, 0, len(anyArr))
-	for i, v := range anyArr {
-		str, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("invalid field type: %s: index %d: want string, got: %T", fieldName, i, value)
-		}
-		strs = append(strs, str)
-	}
-	return strs, nil
 }

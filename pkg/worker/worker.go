@@ -20,7 +20,7 @@ type BuildOptions struct {
 // contain any number of stages, which in turn may contain any number of steps.
 // All stages will be run in sequence.
 type Builder interface {
-	Build(ctx context.Context, def wharfyml.BuildDefinition, opt BuildOptions) (Result, error)
+	Build(ctx context.Context, def wharfyml.Definition, opt BuildOptions) (Result, error)
 }
 
 // StageRunner is the interface for running Wharf build stages. A single Wharf

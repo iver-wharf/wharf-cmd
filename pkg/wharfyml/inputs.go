@@ -1,100 +1,92 @@
 package wharfyml
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"strconv"
 
-type InputString struct {
-	Name    string
-	Type    InputType
-	Default string
+	"gopkg.in/yaml.v3"
+)
+
+// Errors related to parsing environments.
+var (
+	ErrInputNameCollision      = errors.New("input variable name is already used")
+	ErrInputUnknownType        = errors.New("unknown input type")
+	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
+)
+
+// Input is an interface that is implemented by all input types.
+type Input interface {
+	InputTypeName() string
+	InputVarName() string
 }
 
-type InputPassword struct {
-	Name    string
-	Type    InputType
-	Default string
-}
-
-type InputNumber struct {
-	Name    string
-	Type    InputType
-	Default int
-}
-
-type InputChoice struct {
-	Name    string
-	Type    InputType
-	Values  []interface{}
-	Default interface{}
-}
-
-func parseInput(inputMap map[string]interface{}) (interface{}, error) {
-	inputTypeName, ok := inputMap[inputType].(string)
-	if !ok {
-		return nil, fmt.Errorf("invalid input type: %v", inputMap)
+func visitInputsNode(node *yaml.Node) (inputs map[string]Input, errSlice Errors) {
+	nodes, err := visitSequence(node)
+	if err != nil {
+		errSlice.add(err)
+		return
 	}
-
-	inputType, ok := ParseInputType(inputTypeName)
-	if !ok {
-		return nil, fmt.Errorf("invalid input type: %v", inputMap)
+	inputs = make(map[string]Input, len(nodes))
+	for i, inputNode := range nodes {
+		input, errs := visitInputTypeNode(inputNode)
+		if len(errs) > 0 {
+			errSlice.add(wrapPathErrorSlice(errs, strconv.Itoa(i))...)
+		}
+		if input != nil {
+			name := input.InputVarName()
+			if _, ok := inputs[name]; ok {
+				err := wrapPosErrorNode(
+					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
+				errSlice.add(wrapPathError(err, strconv.Itoa(i)))
+			}
+			inputs[name] = input
+		}
 	}
+	return
+}
 
-	inputName, ok := inputMap[inputName].(string)
-	if inputName == "" || !ok {
-		return nil, fmt.Errorf("invalid input name: %v", inputMap)
-	}
-
+func visitInputTypeNode(node *yaml.Node) (input Input, errSlice Errors) {
+	nodeMap, errs := visitMap(node)
+	errSlice.add(errs...)
+	p := newNodeMapParser(node, nodeMap)
+	var inputName string
+	var inputType string
+	errSlice.addNonNils(
+		p.unmarshalString("name", &inputName),
+		p.unmarshalString("type", &inputType),
+		p.validateRequiredString("name"),
+		p.validateRequiredString("type"),
+	)
+	pos := newPosNode(node)
 	switch inputType {
-	case String:
-		def, ok := inputMap[inputDefault].(string)
-		if !ok {
-			def = ""
-		}
-
-		return InputString{
-			Name:    inputName,
-			Type:    inputType,
-			Default: def,
-		}, nil
-	case Choice:
-		def := inputMap[inputDefault]
-		if def == "" {
-			return nil, fmt.Errorf("invalid input, missing default: %v", inputMap)
-		}
-
-		values, ok := inputMap[inputValues].([]interface{})
-		if len(values) == 0 || !ok {
-			return nil, fmt.Errorf("invalid input, missing default: %v", inputMap)
-		}
-
-		return InputChoice{
-			Name:    inputName,
-			Type:    inputType,
-			Values:  values,
-			Default: def,
-		}, nil
-	case Number:
-		defNumber, ok := inputMap[inputDefault].(float64)
-		if !ok {
-			defNumber = 0
-		}
-
-		return InputNumber{
-			Name:    inputName,
-			Type:    inputType,
-			Default: int(defNumber),
-		}, nil
-	case Password:
-		def, ok := inputMap[inputDefault].(string)
-		if !ok {
-			def = ""
-		}
-
-		return InputPassword{
-			Name:    inputName,
-			Type:    inputType,
-			Default: def,
-		}, nil
+	case "":
+		// validate required has already added error for it
+		return
+	case "string":
+		inputString := InputString{Name: inputName, Source: pos}
+		p.unmarshalString("default", &inputString.Default)
+		input = inputString
+	case "password":
+		inputPassword := InputPassword{Name: inputName, Source: pos}
+		p.unmarshalString("default", &inputPassword.Default)
+		input = inputPassword
+	case "number":
+		inputNumber := InputNumber{Name: inputName, Source: pos}
+		p.unmarshalNumber("default", &inputNumber.Default)
+		input = inputNumber
+	case "choice":
+		inputChoice := InputChoice{Name: inputName, Source: pos}
+		p.unmarshalString("default", &inputChoice.Default)
+		p.unmarshalStringSlice("values", &inputChoice.Values)
+		input = inputChoice
+		errSlice.addNonNils(
+			p.validateRequiredString("default"),
+			p.validateRequiredSlice("values"),
+			inputChoice.validate(),
+		)
+	default:
+		errSlice.add(ErrInputUnknownType)
 	}
-
-	return nil, fmt.Errorf("invalid input type, %v", inputMap)
+	return
 }

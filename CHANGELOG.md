@@ -16,7 +16,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `wharf run`. (#33)
 
-- Added dependency on `github.com/iver-wharf/wharf-core`. (#2, #7)
+- Added new implementation for `.wharf-ci.yml` file parsing that now supports
+  returning multiple errors for the whole parsing as well as keep track of the
+  line & column of each parse error. (#48)
 
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)
@@ -24,7 +26,15 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
-- Removed dependency on `github.com/sirupsen/logrus`. (#2)
+- Added dependencies:
+
+  - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `gopkg.in/yaml.v3` v3.0.0 (#48)
+
+- Removed dependencies:
+
+  - `github.com/sirupsen/logrus` (#2)
+  - `sigs.k8s.io/yaml` (#48)
 
 - Removed commands `init`, `setup`, and `serve`. (#8)
 
