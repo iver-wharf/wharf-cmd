@@ -26,6 +26,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
 
+- Fixed `wharf run` not failing due to pod config errors, such as "secret
+  'cluster-config' not found" in `kubectl` steps. (#52)
+
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
