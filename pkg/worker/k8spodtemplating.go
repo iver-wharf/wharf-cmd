@@ -153,8 +153,6 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 		},
 	}
 
-	pod.Spec.ServiceAccountName = step.ServiceAccount
-
 	if step.CertificatesMountPath != "" {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
 			Name: "certificates",
@@ -173,7 +171,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 	}
 
 	if step.SecretName != "" {
-		secretName := fmt.Sprintf("wharf-%s-project%d-secretname-%s",
+		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
 			"local", // TODO: Use Wharf instance ID
 			1,       // TODO: Use project ID
 			step.SecretName,
@@ -189,6 +187,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 		})
 	}
 
+	pod.Spec.ServiceAccountName = step.ServiceAccount
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	return nil
 }
