@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# -u: exit when referencing undeclared variable
+set -u
+
 # ${VAR:?"Message"} means it has to be set a cannot be empty
 # ${VAR?"Message"} means it has to be set, but could be empty
 # ${VAR:="fallback"} means it will use "fallback" if not set or empty

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# -e: exit when any command fails
+# -u: exit when referencing undeclared variable
+# -o pipefail: exit when any commands fails in pipes
+set -euo pipefail
+
 # ${VAR:?"Message"} means it has to be set a cannot be empty
 # ${VAR?"Message"} means it has to be set, but could be empty
 # ${VAR:="fallback"} means it will use "fallback" if not set or empty
