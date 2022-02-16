@@ -112,6 +112,8 @@ func applyStep(pod *v1.Pod, step wharfyml.Step) error {
 		return applyStepDocker(pod, s, step.Name)
 	case wharfyml.StepHelmPackage:
 		return applyStepHelmPackage(pod, s)
+	case wharfyml.StepHelm:
+		return applyStepHelm(pod, s)
 	case nil:
 		return errors.New("nil step type")
 	default:
@@ -230,18 +232,10 @@ func applyStepDocker(pod *v1.Pod, step wharfyml.StepDocker, stepName string) err
 		args = append(args, "--no-push")
 	}
 
-	cont.Args = args
-
-	argsQuoted := make([]string, len(args))
-	copy(argsQuoted, args)
-	for i, arg := range args {
-		if strings.ContainsAny(arg, `"\' `) {
-			argsQuoted[i] = fmt.Sprintf("%q", arg)
-		}
-	}
-	log.Debug().WithStringf("args", strings.Join(argsQuoted, " ")).
+	log.Debug().WithString("args", quoteArgsForLogging(args)).
 		Message("Kaniko args.")
 
+	cont.Args = args
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	return nil
 }
@@ -277,9 +271,8 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 	}
 
 	cont := v1.Container{
-		Name:  "step",
-		Image: "wharfse/helm:v3.5.4",
-		// default entrypoint for image is "/kaniko/executor"
+		Name:       "step",
+		Image:      "wharfse/helm:v3.5.4",
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
@@ -304,4 +297,68 @@ helm push *.tgz "$CHART_REPO" --insecure --username "$REG_USER" --password "$REG
 
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	return nil
+}
+
+func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
+	cont := v1.Container{
+		Name:       "step",
+		Image:      "wharfse/helm:" + step.HelmVersion,
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+			{
+				Name:      "kubeconfig",
+				MountPath: "/root/.kube",
+			},
+		},
+		Command: []string{"helm", "upgrade", "--install"},
+	}
+
+	args := []string{
+		step.Name,
+		step.Chart,
+		"--repo",
+		step.Repo,
+		"--namespace",
+		step.Namespace,
+	}
+
+	if step.ChartVersion != "" {
+		args = append(args, "--version", step.ChartVersion)
+	}
+
+	for _, file := range step.Files {
+		args = append(args, "--values", file)
+	}
+
+	// TODO: Add chart repo credentials from REG_USER & REG_PASS if set
+	// TODO: Also make sure to censor them, so their values don't get logged.
+
+	log.Debug().WithString("args", quoteArgsForLogging(args)).
+		Message("Helm args.")
+
+	cont.Args = args
+	pod.Spec.Containers = append(pod.Spec.Containers, cont)
+	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+		Name: "kubeconfig",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: step.Cluster,
+				},
+			},
+		},
+	})
+	return nil
+}
+
+func quoteArgsForLogging(args []string) string {
+	argsQuoted := make([]string, len(args))
+	copy(argsQuoted, args)
+	for i, arg := range args {
+		if strings.ContainsAny(arg, `"\' `) {
+			argsQuoted[i] = fmt.Sprintf("%q", arg)
+		}
+	}
+	return strings.Join(argsQuoted, " ")
 }
