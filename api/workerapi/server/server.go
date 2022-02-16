@@ -9,7 +9,7 @@ type workerServer struct {
 	v1.UnimplementedWorkerServer
 }
 
-func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
+func (s *workerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
 	streamLogsResponse := &v1.StreamLogsResponse{
 		Logs: []*v1.LogLine{
 			{
@@ -30,7 +30,7 @@ func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_St
 	return stream.Send(streamLogsResponse)
 }
 
-func (s *workerServer) Logs(req *v1.LogsRequest, stream v1.Worker_LogsServer) error {
+func (s *workerServer) Logs(_ *v1.LogsRequest, stream v1.Worker_LogsServer) error {
 	logs := []*v1.LogsResponse{
 		{
 			LogId:     1,
@@ -55,7 +55,7 @@ func (s *workerServer) Logs(req *v1.LogsRequest, stream v1.Worker_LogsServer) er
 	return nil
 }
 
-func (s *workerServer) StatusEvents(req *v1.StatusEventsRequest, stream v1.Worker_StatusEventsServer) error {
+func (s *workerServer) StatusEvents(_ *v1.StatusEventsRequest, stream v1.Worker_StatusEventsServer) error {
 	statuses := []*v1.StatusEventsResponse{
 		{
 			EventId: 1,
@@ -78,7 +78,7 @@ func (s *workerServer) StatusEvents(req *v1.StatusEventsRequest, stream v1.Worke
 	return nil
 }
 
-func (s *workerServer) ArtifactEvents(req *v1.ArtifactEventsRequest, stream v1.Worker_ArtifactEventsServer) error {
+func (s *workerServer) ArtifactEvents(_ *v1.ArtifactEventsRequest, stream v1.Worker_ArtifactEventsServer) error {
 	artifacts := []*v1.ArtifactEventResponse{
 		{
 			ArtifactId: 1,
