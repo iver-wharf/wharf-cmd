@@ -6,9 +6,9 @@
 
 : ${CHART_PATH:?"Missing required Helm chart path"}
 : ${CHART_VERSION?"Missing required Helm chart version"}
-: ${CHART_REPO:?"Missing required .NET project path"}
-: ${REG_USER:?"Missing required NuGet package version"}
-: ${REG_PASS:?"Missing required NuGet package version"}
+: ${CHART_REPO:?"Missing required Helm registry URL"}
+: ${REG_USER:?"Missing required Helm registry username"}
+: ${REG_PASS:?"Missing required Helm registry password"}
 
 VERSION_FLAG=""
 
