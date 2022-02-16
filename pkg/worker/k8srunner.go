@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
@@ -189,7 +190,12 @@ func (r k8sStepRunner) streamLogsUntilCompleted(ctx context.Context, podName str
 	podLog := logger.NewScoped(contextStageStepName(ctx))
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
-		podLog.Info().Message(scanner.Text())
+		txt := scanner.Text()
+		idx := strings.LastIndexByte(txt, '\r')
+		if idx != -1 {
+			txt = txt[idx+1:]
+		}
+		podLog.Info().Message(txt)
 	}
 	return scanner.Err()
 }
