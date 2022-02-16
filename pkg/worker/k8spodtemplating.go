@@ -289,7 +289,8 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 			{Name: "REG_USER", Value: "admin"},    // TODO: replace with REG_USER
 			{Name: "REG_PASS", Value: "changeit"}, // TODO: replace with REG_PASS
 		},
-		Command: []string{"/bin/sh", "-c", helmPackageScript},
+		Command: []string{"/bin/bash", "-c"},
+		Args:    []string{helmPackageScript},
 	}
 
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
