@@ -110,6 +110,8 @@ func applyStep(pod *v1.Pod, step wharfyml.Step) error {
 		return applyStepContainer(pod, s)
 	case wharfyml.StepDocker:
 		return applyStepDocker(pod, s, step.Name)
+	case wharfyml.StepHelmPackage:
+		return applyStepHelmPackage(pod, s)
 	case nil:
 		return errors.New("nil step type")
 	default:
@@ -261,4 +263,45 @@ func getDockerDestination(step wharfyml.StepDocker, stepName string) string {
 	}
 	return strings.ToLower(fmt.Sprintf("%s/%s/%s/%s",
 		step.Registry, step.Group, repoName, stepName))
+}
+
+func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
+	destination := "https://harbor.local/chartrepo/my-group" // TODO: replace with CHART_REPO/REPO_GROUP
+	if step.Destination != "" {
+		destination = step.Destination
+	}
+
+	var versionFlag string
+	if step.Version != "" {
+		versionFlag = "--version=" + step.Version
+	}
+
+	cont := v1.Container{
+		Name:  "step",
+		Image: "wharfse/helm:v3.5.4",
+		// default entrypoint for image is "/kaniko/executor"
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+		},
+		Command: []string{"/bin/sh", "-c"},
+		Env: []v1.EnvVar{
+			{Name: "CHART_PATH", Value: step.ChartPath},
+			{Name: "CHART_REPO", Value: destination},
+			{Name: "VERSION_FLAG", Value: versionFlag},
+			{Name: "REG_USER", Value: "admin"},    // TODO: replace with REG_USER
+			{Name: "REG_PASS", Value: "changeit"}, // TODO: replace with REG_PASS
+		},
+	}
+
+	cont.Args = []string{`
+echo "\$ helm package $CHART_PATH $VERSION_FLAG"
+helm package "$CHART_PATH" "$VERSION_FLAG"
+
+echo "\$ helm push *.tgz $CHART_REPO --insecure --username \$REG_USER --password \$REG_PASS"
+helm push *.tgz "$CHART_REPO" --insecure --username "$REG_USER" --password "$REG_PASS"
+`}
+
+	pod.Spec.Containers = append(pod.Spec.Containers, cont)
+	return nil
 }
