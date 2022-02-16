@@ -102,10 +102,14 @@ func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) err
 	}
 	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
 	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
+		if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{}); err != nil {
+			log.Debug().WithError(err).
+				Message("Failed to read logs from failed container.")
+		}
 		return fmt.Errorf("wait for app container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
-	if err := r.streamLogsUntilCompleted(ctx, newPod.Name); err != nil {
+	if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{Follow: true}); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Logs ended. Waiting for termination.")
@@ -177,10 +181,8 @@ func (r k8sStepRunner) waitForPodModifiedFunc(ctx context.Context, podMeta metav
 	return fmt.Errorf("got no more events when watching pod: %v", podMeta.Name)
 }
 
-func (r k8sStepRunner) streamLogsUntilCompleted(ctx context.Context, podName string) error {
-	req := r.pods.GetLogs(podName, &v1.PodLogOptions{
-		Follow: true,
-	})
+func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.PodLogOptions) error {
+	req := r.pods.GetLogs(podName, opts)
 	readCloser, err := req.Stream(ctx)
 	if err != nil {
 		return err
