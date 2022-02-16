@@ -1,6 +1,6 @@
 .PHONY: install tidy deps \
-	lint lint-md lint-go \
-	lint-fix lint-md-fix
+	proto lint lint-md \
+	lint-go lint-fix lint-md-fix
 
 ifeq ($(OS),Windows_NT)
 wharf.exe:
@@ -19,7 +19,14 @@ tidy:
 deps:
 	go install github.com/mgechev/revive@latest
 	go install golang.org/x/tools/cmd/goimports@latest
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
 	npm install
+
+proto:
+	protoc --go_out=. --go_opt=paths=source_relative \
+	--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+	./pkg/worker/v1/rpc/worker.proto
 
 lint: lint-md lint-go
 lint-fix: lint-md-fix
