@@ -19,6 +19,10 @@ var (
 		Name:      "repo",
 		MountPath: "/mnt/repo",
 	}
+	//go:embed k8sscript-helm-package.sh
+	helmPackageScript string
+	//go:embed k8sscript-nuget-package.sh
+	nugetPackageScript string
 )
 
 func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
@@ -270,11 +274,6 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 		destination = step.Destination
 	}
 
-	var versionFlag string
-	if step.Version != "" {
-		versionFlag = "--version=" + step.Version
-	}
-
 	cont := v1.Container{
 		Name:       "step",
 		Image:      "wharfse/helm:v3.5.4",
@@ -282,23 +281,15 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
 		},
-		Command: []string{"/bin/sh", "-c"},
 		Env: []v1.EnvVar{
 			{Name: "CHART_PATH", Value: step.ChartPath},
 			{Name: "CHART_REPO", Value: destination},
-			{Name: "VERSION_FLAG", Value: versionFlag},
+			{Name: "CHART_VERSION", Value: step.Version},
 			{Name: "REG_USER", Value: "admin"},    // TODO: replace with REG_USER
 			{Name: "REG_PASS", Value: "changeit"}, // TODO: replace with REG_PASS
 		},
+		Command: []string{"/bin/sh", "-c", helmPackageScript},
 	}
-
-	cont.Args = []string{`
-echo "\$ helm package $CHART_PATH $VERSION_FLAG"
-helm package "$CHART_PATH" "$VERSION_FLAG"
-
-echo "\$ helm push *.tgz $CHART_REPO --insecure --username \$REG_USER --password \$REG_PASS"
-helm push *.tgz "$CHART_REPO" --insecure --username "$REG_USER" --password "$REG_PASS"
-`}
 
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	return nil
@@ -410,9 +401,6 @@ func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
 	})
 	return nil
 }
-
-//go:embed nuget-package-script.sh
-var nugetPackageScript string
 
 func applyStepNuGetPackage(pod *v1.Pod, step wharfyml.StepNuGetPackage) error {
 	cont := v1.Container{
