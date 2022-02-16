@@ -1,10 +1,15 @@
 
 build:
-  myBuild:
+  my-build:
     docker:
       file: Dockerfile
       tag: latest
       push: false
+
+helm-pack:
+  my-chart:
+    helm-package:
+      chart-path: helm-chart
 
 test:
   step1:
