@@ -15,6 +15,7 @@ import (
 )
 
 var (
+	commonContainerName   = "step"
 	commonRepoVolumeMount = v1.VolumeMount{
 		Name:      "repo",
 		MountPath: "/mnt/repo",
@@ -141,7 +142,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 
 	args := []string{strings.Join(step.Cmds, "\n")}
 	cont := v1.Container{
-		Name:            "step",
+		Name:            commonContainerName,
 		Image:           step.Image,
 		ImagePullPolicy: v1.PullAlways,
 		Command:         cmds,
@@ -195,7 +196,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 func applyStepDocker(pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
-		Name:  "step",
+		Name:  commonContainerName,
 		Image: "boolman/kaniko:busybox-2020-01-15",
 		// default entrypoint for image is "/kaniko/executor"
 		WorkingDir: repoDir,
@@ -275,7 +276,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 	}
 
 	cont := v1.Container{
-		Name:       "step",
+		Name:       commonContainerName,
 		Image:      "wharfse/helm:v3.5.4",
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
@@ -297,7 +298,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 
 func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
 	cont := v1.Container{
-		Name:       "step",
+		Name:       commonContainerName,
 		Image:      "wharfse/helm:" + step.HelmVersion,
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
@@ -350,7 +351,7 @@ func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
 
 func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
 	cont := v1.Container{
-		Name:       "step",
+		Name:       commonContainerName,
 		Image:      "wharfse/kubectl:v1.21.1",
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
@@ -404,7 +405,7 @@ func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
 
 func applyStepNuGetPackage(pod *v1.Pod, step wharfyml.StepNuGetPackage) error {
 	cont := v1.Container{
-		Name:       "step",
+		Name:       commonContainerName,
 		Image:      "mcr.microsoft.com/dotnet/sdk:3.1-alpine",
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
