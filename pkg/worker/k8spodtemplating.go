@@ -304,10 +304,7 @@ func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
-			{
-				Name:      "kubeconfig",
-				MountPath: "/root/.kube",
-			},
+			{Name: "kubeconfig", MountPath: "/root/.kube"},
 		},
 	}
 
@@ -357,10 +354,7 @@ func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
-			{
-				Name:      "kubeconfig",
-				MountPath: "/root/.kube",
-			},
+			{Name: "kubeconfig", MountPath: "/root/.kube"},
 		},
 	}
 
@@ -424,22 +418,10 @@ func applyStepNuGetPackage(pod *v1.Pod, step wharfyml.StepNuGetPackage) error {
 					},
 				},
 			},
-			{
-				Name:  "NUGET_REPO",
-				Value: step.Repo,
-			},
-			{
-				Name:  "NUGET_PROJECT_PATH",
-				Value: step.ProjectPath,
-			},
-			{
-				Name:  "NUGET_VERSION",
-				Value: step.Version,
-			},
-			{
-				Name:  "NUGET_SKIP_DUP",
-				Value: boolString(step.SkipDuplicate),
-			},
+			{Name: "NUGET_REPO", Value: step.Repo},
+			{Name: "NUGET_PROJECT_PATH", Value: step.ProjectPath},
+			{Name: "NUGET_VERSION", Value: step.Version},
+			{Name: "NUGET_SKIP_DUP", Value: boolString(step.SkipDuplicate)},
 		},
 		Command: []string{"/bin/bash", "-c"},
 		Args:    []string{nugetPackageScript},
