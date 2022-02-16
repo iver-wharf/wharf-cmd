@@ -9,6 +9,27 @@ type workerServer struct {
 	v1.UnimplementedWorkerServer
 }
 
+func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
+	streamLogsResponse := &v1.StreamLogsResponse{
+		Logs: []*v1.LogLine{
+			{
+				LogId:     1,
+				StepId:    2,
+				Timestamp: &timestamp.Timestamp{},
+				Line:      "Text here",
+			},
+			{
+				LogId:     2,
+				StepId:    2,
+				Timestamp: &timestamp.Timestamp{},
+				Line:      "Second text here",
+			},
+		},
+	}
+
+	return stream.Send(streamLogsResponse)
+}
+
 func (s *workerServer) Logs(req *v1.LogsRequest, stream v1.Worker_LogsServer) error {
 	logs := []*v1.LogsResponse{
 		{

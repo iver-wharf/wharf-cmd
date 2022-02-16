@@ -18,6 +18,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerClient interface {
+	StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error)
 	Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (Worker_LogsClient, error)
 	StatusEvents(ctx context.Context, in *StatusEventsRequest, opts ...grpc.CallOption) (Worker_StatusEventsClient, error)
 	ArtifactEvents(ctx context.Context, in *ArtifactEventsRequest, opts ...grpc.CallOption) (Worker_ArtifactEventsClient, error)
@@ -31,8 +32,40 @@ func NewWorkerClient(cc grpc.ClientConnInterface) WorkerClient {
 	return &workerClient{cc}
 }
 
+func (c *workerClient) StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[0], "/wharf.worker.v1.Worker/StreamLogs", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &workerStreamLogsClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type Worker_StreamLogsClient interface {
+	Recv() (*StreamLogsResponse, error)
+	grpc.ClientStream
+}
+
+type workerStreamLogsClient struct {
+	grpc.ClientStream
+}
+
+func (x *workerStreamLogsClient) Recv() (*StreamLogsResponse, error) {
+	m := new(StreamLogsResponse)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 func (c *workerClient) Logs(ctx context.Context, in *LogsRequest, opts ...grpc.CallOption) (Worker_LogsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[0], "/wharf.worker.v1.Worker/Logs", opts...)
+	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[1], "/wharf.worker.v1.Worker/Logs", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +97,7 @@ func (x *workerLogsClient) Recv() (*LogsResponse, error) {
 }
 
 func (c *workerClient) StatusEvents(ctx context.Context, in *StatusEventsRequest, opts ...grpc.CallOption) (Worker_StatusEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[1], "/wharf.worker.v1.Worker/StatusEvents", opts...)
+	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[2], "/wharf.worker.v1.Worker/StatusEvents", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +129,7 @@ func (x *workerStatusEventsClient) Recv() (*StatusEventsResponse, error) {
 }
 
 func (c *workerClient) ArtifactEvents(ctx context.Context, in *ArtifactEventsRequest, opts ...grpc.CallOption) (Worker_ArtifactEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[2], "/wharf.worker.v1.Worker/ArtifactEvents", opts...)
+	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[3], "/wharf.worker.v1.Worker/ArtifactEvents", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -131,6 +164,7 @@ func (x *workerArtifactEventsClient) Recv() (*ArtifactEventResponse, error) {
 // All implementations must embed UnimplementedWorkerServer
 // for forward compatibility
 type WorkerServer interface {
+	StreamLogs(*StreamLogsRequest, Worker_StreamLogsServer) error
 	Logs(*LogsRequest, Worker_LogsServer) error
 	StatusEvents(*StatusEventsRequest, Worker_StatusEventsServer) error
 	ArtifactEvents(*ArtifactEventsRequest, Worker_ArtifactEventsServer) error
@@ -141,6 +175,9 @@ type WorkerServer interface {
 type UnimplementedWorkerServer struct {
 }
 
+func (UnimplementedWorkerServer) StreamLogs(*StreamLogsRequest, Worker_StreamLogsServer) error {
+	return status.Errorf(codes.Unimplemented, "method StreamLogs not implemented")
+}
 func (UnimplementedWorkerServer) Logs(*LogsRequest, Worker_LogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method Logs not implemented")
 }
@@ -161,6 +198,27 @@ type UnsafeWorkerServer interface {
 
 func RegisterWorkerServer(s grpc.ServiceRegistrar, srv WorkerServer) {
 	s.RegisterService(&Worker_ServiceDesc, srv)
+}
+
+func _Worker_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(StreamLogsRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(WorkerServer).StreamLogs(m, &workerStreamLogsServer{stream})
+}
+
+type Worker_StreamLogsServer interface {
+	Send(*StreamLogsResponse) error
+	grpc.ServerStream
+}
+
+type workerStreamLogsServer struct {
+	grpc.ServerStream
+}
+
+func (x *workerStreamLogsServer) Send(m *StreamLogsResponse) error {
+	return x.ServerStream.SendMsg(m)
 }
 
 func _Worker_Logs_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -235,6 +293,11 @@ var Worker_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
+			StreamName:    "StreamLogs",
+			Handler:       _Worker_StreamLogs_Handler,
+			ServerStreams: true,
+		},
+		{
 			StreamName:    "Logs",
 			Handler:       _Worker_Logs_Handler,
 			ServerStreams: true,
@@ -250,5 +313,5 @@ var Worker_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "api/workerapi/v1/rpc/worker.proto",
+	Metadata: "api/workerapi/v1/worker.proto",
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"time"
 
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/client"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/server"
@@ -11,7 +10,6 @@ import (
 func main() {
 	server := server.Server{}
 	server.Start()
-	time.Sleep(time.Millisecond * 500)
 
 	client, err := client.NewClient()
 	if err != nil {
@@ -19,6 +17,7 @@ func main() {
 		return
 	}
 
+	client.PrintStreamedLogs()
 	client.PrintLogs()
 	client.PrintStatusEvents()
 	client.PrintArtifactEvents()

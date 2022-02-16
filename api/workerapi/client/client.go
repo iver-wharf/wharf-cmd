@@ -38,6 +38,30 @@ func (c Client) Close() {
 	}
 }
 
+// PrintStreamedLogs prints logs received from the server.
+//
+// TEMPORARY: To test functionality.
+func (c Client) PrintStreamedLogs() {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	stream, err := c.client.StreamLogs(ctx, &v1.StreamLogsRequest{})
+	if err != nil {
+		log.Fatalf("%v.Logs(_) = _, %v: ", c, err)
+	}
+
+	for {
+		logLines, err := stream.Recv()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			log.Fatalf("%v.ListFeatures(_) = _, %v", c, err)
+		}
+		for _, v := range logLines.Logs {
+			log.Printf("%v\n", v)
+		}
+	}
+}
+
 // PrintLogs prints logs received from the server.
 //
 // TEMPORARY: To test functionality.
