@@ -133,20 +133,18 @@ func applyStep(pod *v1.Pod, step wharfyml.Step) error {
 
 func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 	var cmds []string
-
 	if step.OS == "windows" && step.Shell == "/bin/sh" {
 		cmds = []string{"powershell.exe", "-C"}
 	} else {
 		cmds = []string{step.Shell, "-c"}
 	}
 
-	args := []string{strings.Join(step.Cmds, "\n")}
 	cont := v1.Container{
 		Name:            commonContainerName,
 		Image:           step.Image,
 		ImagePullPolicy: v1.PullAlways,
 		Command:         cmds,
-		Args:            args,
+		Args:            []string{strings.Join(step.Cmds, "\n")},
 		WorkingDir:      commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
