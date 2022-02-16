@@ -2,7 +2,7 @@ package server
 
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
-	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1/rpc"
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 )
 
 type workerServer struct {

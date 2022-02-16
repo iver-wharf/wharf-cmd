@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1/rpc"
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
