@@ -250,5 +250,5 @@ var Worker_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "pkg/worker/v1/rpc/worker.proto",
+	Metadata: "api/workerapi/v1/rpc/worker.proto",
 }

@@ -4,16 +4,16 @@ import (
 	"log"
 	"time"
 
-	clientv1 "github.com/iver-wharf/wharf-cmd/pkg/worker/v1/client"
-	serverv1 "github.com/iver-wharf/wharf-cmd/pkg/worker/v1/server"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/client"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/server"
 )
 
 func main() {
-	server := serverv1.Server{}
+	server := server.Server{}
 	server.Start()
 	time.Sleep(time.Millisecond * 500)
 
-	client, err := clientv1.NewClient()
+	client, err := client.NewClient()
 	if err != nil {
 		log.Fatalf("creating client failed: %v", err)
 		return

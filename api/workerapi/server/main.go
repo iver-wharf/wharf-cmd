@@ -1,10 +1,10 @@
-package v1
+package server
 
 import (
 	"log"
 	"net"
 
-	v1 "github.com/iver-wharf/wharf-cmd/pkg/worker/v1/rpc"
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1/rpc"
 	"google.golang.org/grpc"
 )
 
