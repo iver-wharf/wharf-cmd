@@ -114,6 +114,8 @@ func applyStep(pod *v1.Pod, step wharfyml.Step) error {
 		return applyStepHelmPackage(pod, s)
 	case wharfyml.StepHelm:
 		return applyStepHelm(pod, s)
+	case wharfyml.StepKubectl:
+		return applyStepKubectl(pod, s)
 	case nil:
 		return errors.New("nil step type")
 	default:
@@ -311,33 +313,87 @@ func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
 				MountPath: "/root/.kube",
 			},
 		},
-		Command: []string{"helm", "upgrade", "--install"},
 	}
 
-	args := []string{
+	cmd := []string{
+		"helm",
+		"upgrade",
+		"--install",
 		step.Name,
 		step.Chart,
-		"--repo",
-		step.Repo,
-		"--namespace",
-		step.Namespace,
+		"--repo", step.Repo,
+		"--namespace", step.Namespace,
 	}
 
 	if step.ChartVersion != "" {
-		args = append(args, "--version", step.ChartVersion)
+		cmd = append(cmd, "--version", step.ChartVersion)
 	}
 
 	for _, file := range step.Files {
-		args = append(args, "--values", file)
+		cmd = append(cmd, "--values", file)
 	}
 
 	// TODO: Add chart repo credentials from REG_USER & REG_PASS if set
 	// TODO: Also make sure to censor them, so their values don't get logged.
 
-	log.Debug().WithString("args", quoteArgsForLogging(args)).
+	log.Debug().WithString("args", quoteArgsForLogging(cmd)).
 		Message("Helm args.")
 
-	cont.Args = args
+	cont.Command = cmd
+	pod.Spec.Containers = append(pod.Spec.Containers, cont)
+	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+		Name: "kubeconfig",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: step.Cluster,
+				},
+			},
+		},
+	})
+	return nil
+}
+
+func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
+	cont := v1.Container{
+		Name:       "step",
+		Image:      "wharfse/kubectl:v1.21.1",
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+			{
+				Name:      "kubeconfig",
+				MountPath: "/root/.kube",
+			},
+		},
+	}
+
+	cmd := []string{
+		"kubectl",
+		step.Action,
+	}
+
+	if step.Namespace != "" {
+		cmd = append(cmd, "--namespace", step.Namespace)
+	}
+
+	files := step.Files
+	if step.File != "" {
+		files = append(files, step.File)
+	}
+
+	for _, file := range files {
+		cmd = append(cmd, "--filename", file)
+	}
+
+	if step.Force {
+		cmd = append(cmd, "--force")
+	}
+
+	log.Debug().WithString("args", quoteArgsForLogging(cmd)).
+		Message("Kubectl args.")
+
+	cont.Command = cmd
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
 		Name: "kubeconfig",
