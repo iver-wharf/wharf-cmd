@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"io"
 	"log"
 	"time"
 
@@ -12,8 +13,8 @@ import (
 
 // Client is used to communicate with the Worker gRPC server.
 type Client struct {
-	v1.WorkerClient
-	conn *grpc.ClientConn
+	client v1.WorkerClient
+	conn   *grpc.ClientConn
 }
 
 // NewClient creates a new gRPC Client that can communicate with the Worker
@@ -37,32 +38,68 @@ func (c Client) Close() {
 	}
 }
 
-func (c Client) printLogs() {
+// PrintLogs prints logs received from the server.
+//
+// TEMPORARY: To test functionality.
+func (c Client) PrintLogs() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	logs, err := c.Logs(ctx, &v1.LogsRequest{})
+	stream, err := c.client.Logs(ctx, &v1.LogsRequest{})
 	if err != nil {
 		log.Fatalf("%v.Logs(_) = _, %v: ", c, err)
 	}
-	log.Println(logs)
+
+	for {
+		logLine, err := stream.Recv()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			log.Fatalf("%v.ListFeatures(_) = _, %v", c, err)
+		}
+		log.Printf("%v", logLine)
+	}
 }
 
-func (c Client) printStatusEvents() {
+// PrintStatusEvents prints status events received from the server.
+//
+// TEMPORARY: To test functionality.
+func (c Client) PrintStatusEvents() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	statusEvents, err := c.StatusEvents(ctx, &v1.StatusEventsRequest{})
+	stream, err := c.client.StatusEvents(ctx, &v1.StatusEventsRequest{})
 	if err != nil {
 		log.Fatalf("%v.StatusEvents(_) = _, %v: ", c, err)
 	}
-	log.Println(statusEvents)
+
+	for {
+		statusEvent, err := stream.Recv()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			log.Fatalf("%v.ListFeatures(_) = _, %v", c, err)
+		}
+		log.Printf("%v", statusEvent)
+	}
 }
 
-func (c Client) printArtifactEvents() {
+// PrintArtifactEvents prints artifact events received from the server.
+//
+// TEMPORARY: To test functionality.
+func (c Client) PrintArtifactEvents() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	artifactEvents, err := c.ArtifactEvents(ctx, &v1.ArtifactEventsRequest{})
+	stream, err := c.client.ArtifactEvents(ctx, &v1.ArtifactEventsRequest{})
 	if err != nil {
 		log.Fatalf("%v.ArtifactEvents(_) = _, %v: ", c, err)
 	}
-	log.Println(artifactEvents)
+
+	for {
+		artifactEvent, err := stream.Recv()
+		if err == io.EOF {
+			return
+		} else if err != nil {
+			log.Fatalf("%v.ListFeatures(_) = _, %v", c, err)
+		}
+		log.Printf("%v", artifactEvent)
+	}
 }
