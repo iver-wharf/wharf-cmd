@@ -14,19 +14,20 @@ type Server struct {
 	grpcServer *grpc.Server
 }
 
-// Start starts the gRPC server using a goroutine.
+// Start starts the gRPC server, and starts listening to it in a goroutine.
 //
 // To stop the server you may use Server.GracefulStop or Server.Stop.
 func (s *Server) Start() {
+	listener, err := net.Listen("tcp", "0.0.0.0:8081")
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
+	}
+	var opts []grpc.ServerOption
+	grpcServer := grpc.NewServer(opts...)
+	v1.RegisterWorkerServer(grpcServer, newServer())
+	s.grpcServer = grpcServer
+
 	go func() {
-		listener, err := net.Listen("tcp", "0.0.0.0:8081")
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
-		}
-		var opts []grpc.ServerOption
-		grpcServer := grpc.NewServer(opts...)
-		v1.RegisterWorkerServer(grpcServer, newServer())
-		s.grpcServer = grpcServer
 		grpcServer.Serve(listener)
 	}()
 }
