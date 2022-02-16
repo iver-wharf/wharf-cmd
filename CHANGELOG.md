@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added new implementation for `wharf run`. (#33)
+- Added new implementation for `wharf run`. (#33, #45)
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
