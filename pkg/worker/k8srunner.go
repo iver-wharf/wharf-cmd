@@ -135,6 +135,10 @@ func (r k8sStepRunner) waitForAppContainerRunningOrDone(ctx context.Context, pod
 				}
 				return true, nil
 			}
+			if c.State.Waiting != nil &&
+				c.State.Waiting.Reason == "CreateContainerConfigError" {
+				return false, fmt.Errorf("config error: %s", c.State.Waiting.Message)
+			}
 			if c.State.Running != nil {
 				return true, nil
 			}
