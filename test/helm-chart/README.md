@@ -1,7 +1,6 @@
 # Testing Helm chart
 
-This Helm chart was created by running:
+Testing chart useful to attempting `helm-package` steps via wharf-cmd-worker.
 
-```sh
-helm create helm-chart
-```
+This Helm chart was created by running `helm create helm-chart`, meaning there's
+nothing special about the content of this Helm chart. It's just testing assets.
