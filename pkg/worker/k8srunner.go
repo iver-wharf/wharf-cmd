@@ -17,7 +17,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -272,7 +271,7 @@ func execInPodPipeStdout(c *rest.Config, namespace, podName, containerName strin
 }
 
 func execInPod(c *rest.Config, namespace, podName string, execOpts *v1.PodExecOptions) (remotecommand.Executor, error) {
-	coreclient, err := corev1client.NewForConfig(c)
+	coreclient, err := corev1.NewForConfig(c)
 	if err != nil {
 		return nil, err
 	}
