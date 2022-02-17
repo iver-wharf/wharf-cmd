@@ -83,6 +83,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 
+- Changed to trim away everything before the last CR (carriage return)
+  character in a log line from a Kubernetes pod. (#49)
+
 - Changed location of packages and code files: (#44)
 
   - File `pkg/core/utils/variablesreplacer.go` to its own package in `pkg/varsub`
