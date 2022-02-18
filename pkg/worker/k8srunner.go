@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
@@ -17,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -102,10 +102,14 @@ func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) err
 	}
 	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
 	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
+		if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{}); err != nil {
+			log.Debug().WithError(err).
+				Message("Failed to read logs from failed container.")
+		}
 		return fmt.Errorf("wait for app container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
-	if err := r.streamLogsUntilCompleted(ctx, newPod.Name); err != nil {
+	if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{Follow: true}); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Logs ended. Waiting for termination.")
@@ -131,6 +135,10 @@ func (r k8sStepRunner) waitForAppContainerRunningOrDone(ctx context.Context, pod
 					return false, fmt.Errorf("non-zero exit code: %d", c.State.Terminated.ExitCode)
 				}
 				return true, nil
+			}
+			if c.State.Waiting != nil &&
+				c.State.Waiting.Reason == "CreateContainerConfigError" {
+				return false, fmt.Errorf("config error: %s", c.State.Waiting.Message)
 			}
 			if c.State.Running != nil {
 				return true, nil
@@ -177,10 +185,8 @@ func (r k8sStepRunner) waitForPodModifiedFunc(ctx context.Context, podMeta metav
 	return fmt.Errorf("got no more events when watching pod: %v", podMeta.Name)
 }
 
-func (r k8sStepRunner) streamLogsUntilCompleted(ctx context.Context, podName string) error {
-	req := r.pods.GetLogs(podName, &v1.PodLogOptions{
-		Follow: true,
-	})
+func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.PodLogOptions) error {
+	req := r.pods.GetLogs(podName, opts)
 	readCloser, err := req.Stream(ctx)
 	if err != nil {
 		return err
@@ -189,7 +195,12 @@ func (r k8sStepRunner) streamLogsUntilCompleted(ctx context.Context, podName str
 	podLog := logger.NewScoped(contextStageStepName(ctx))
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
-		podLog.Info().Message(scanner.Text())
+		txt := scanner.Text()
+		idx := strings.LastIndexByte(txt, '\r')
+		if idx != -1 {
+			txt = txt[idx+1:]
+		}
+		podLog.Info().Message(txt)
 	}
 	return scanner.Err()
 }
@@ -270,7 +281,7 @@ func execInPodPipeStdout(c *rest.Config, namespace, podName, containerName strin
 }
 
 func execInPod(c *rest.Config, namespace, podName string, execOpts *v1.PodExecOptions) (remotecommand.Executor, error) {
-	coreclient, err := corev1client.NewForConfig(c)
+	coreclient, err := corev1.NewForConfig(c)
 	if err != nil {
 		return nil, err
 	}

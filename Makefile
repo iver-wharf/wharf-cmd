@@ -1,6 +1,6 @@
 .PHONY: install tidy deps \
-	proto lint lint-md \
-	lint-go lint-fix lint-md-fix
+	proto lint lint-md lint-go \
+	lint-fix lint-fix-md lint-fix-go
 
 ifeq ($(OS),Windows_NT)
 wharf.exe:
@@ -31,13 +31,17 @@ proto:
 	goimports -w ./api/workerapi/v1/.
 
 lint: lint-md lint-go
-lint-fix: lint-md-fix
+lint-fix: lint-fix-md lint-fix-go
 
 lint-md:
 	npx remark . .github
 
-lint-md-fix:
+lint-fix-md:
 	npx remark . .github -o
 
 lint-go:
+	goimports -d $(shell git ls-files "*.go")
 	revive -formatter stylish -config revive.toml ./...
+
+lint-fix-go:
+	goimports -d -w $(shell git ls-files "*.go")
