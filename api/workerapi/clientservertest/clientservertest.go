@@ -1,8 +1,6 @@
 package main
 
 import (
-	"time"
-
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -30,7 +28,6 @@ func main() {
 		}
 	}()
 
-	time.Sleep(1 * time.Second)
 	testClientCalls(client)
 }
 
