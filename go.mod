@@ -3,8 +3,8 @@ module github.com/iver-wharf/wharf-cmd
 go 1.17
 
 require (
-	github.com/golang/protobuf v1.5.2
 	github.com/gin-gonic/gin v1.7.1
+	github.com/golang/protobuf v1.5.2
 	github.com/iver-wharf/wharf-core v1.3.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
