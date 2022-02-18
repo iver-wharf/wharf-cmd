@@ -36,9 +36,9 @@ A command-line interface to run tasks specified in a `.wharf-ci.yml` file.
 
 ## Linting
 
-You can lint all of the above at the same time by running:
-
 ```sh
+make deps # download linting dependencies
+
 make lint
 
 make lint-go # only lint Go code
@@ -51,7 +51,7 @@ files in place.
 ```sh
 make lint-fix
 
-#make lint-fix-go # Go linter does not support fixes
+make lint-fix-go # only lint and fix Go files
 make lint-fix-md # only lint and fix Markdown files
 ```
 

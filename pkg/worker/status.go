@@ -16,6 +16,9 @@ const (
 	StatusNone
 	// StatusScheduling means the step is not yet running.
 	StatusScheduling
+	// StatusInitializing means the step is still not yet running, but
+	// initialization has started.
+	StatusInitializing
 	// StatusRunning means the step is now running.
 	StatusRunning
 	// StatusSuccess means the build succeeded.
@@ -34,6 +37,8 @@ func (s Status) String() string {
 		return "None"
 	case StatusScheduling:
 		return "Scheduling"
+	case StatusInitializing:
+		return "Initializing"
 	case StatusRunning:
 		return "Running"
 	case StatusSuccess:
@@ -56,6 +61,8 @@ func ParseStatus(s string) Status {
 		return StatusNone
 	case "scheduling":
 		return StatusScheduling
+	case "initializing":
+		return StatusInitializing
 	case "running":
 		return StatusRunning
 	case "success":
