@@ -66,8 +66,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added dependencies:
 
   - `github.com/iver-wharf/wharf-core` (#2, #7)
-  - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
+  - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
