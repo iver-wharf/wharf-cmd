@@ -15,7 +15,7 @@ var log = logger.NewScoped("WORKER-RPC-SERVER")
 // Server contains a gRPC server object, and lets us start the gRPC server
 // asynchronously.
 type Server struct {
-	bindAddress         string
+	address             string
 	port                string
 	onServeErrorHandler func(error)
 
@@ -24,10 +24,10 @@ type Server struct {
 	isRunning    bool
 }
 
-// NewServer creates a new server that can be started by calling Server.Start.
-func NewServer(bindAddress, port string, store resultstore.Store) *Server {
+// NewServer creates a new server that can be started by calling Start.
+func NewServer(address, port string, store resultstore.Store) *Server {
 	return &Server{
-		bindAddress:  bindAddress,
+		address:      address,
 		port:         port,
 		workerServer: newWorkerServer(store),
 	}
@@ -41,14 +41,14 @@ func (s *Server) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 
 // Serve starts the gRPC server, and starts listening to it in a goroutine.
 //
-// Also functions as a force-restart by calling Server.Stop if the server is
+// Also functions as a force-restart by calling ForceStop if the server is
 // already running, followed by attempting to launch it again.
 //
-// To stop the server you may use Server.GracefulStop or Server.Stop.
+// To stop the server you may use GracefulStop or ForceStop.
 func (s *Server) Serve() error {
 	s.ForceStop()
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", s.bindAddress, s.port))
+	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", s.address, s.port))
 	if err != nil {
 		return err
 	}

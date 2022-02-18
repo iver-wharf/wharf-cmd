@@ -1,4 +1,4 @@
-package main
+package workerhttpserver
 
 import (
 	"net/http"

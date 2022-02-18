@@ -67,10 +67,7 @@ outer:
 			return err
 		}
 	}
-	if err := send(); err != nil {
-		return err
-	}
-	return nil
+	return send()
 }
 
 func (s *workerServer) Log(_ *v1.LogRequest, stream v1.Worker_LogServer) error {

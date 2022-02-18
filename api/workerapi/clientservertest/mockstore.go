@@ -12,14 +12,14 @@ type mockStore struct{}
 // OpenLogWriter opens a file handle abstraction for writing log lines. Logs
 // will be automatically parsed when written and published to any active
 // subscriptions.
-func (s *mockStore) OpenLogWriter(stepID uint64) (resultstore.LogLineWriteCloser, error) {
+func (s *mockStore) OpenLogWriter(_ uint64) (resultstore.LogLineWriteCloser, error) {
 	return nil, nil
 }
 
 // OpenLogReader opens a file handle abstraction for reading log lines. Logs
 // will be automatically parsed when read. Will return fs.ErrNotExist if
 // the log file does not exist yet.
-func (s *mockStore) OpenLogReader(stepID uint64) (resultstore.LogLineReadCloser, error) {
+func (s *mockStore) OpenLogReader(_ uint64) (resultstore.LogLineReadCloser, error) {
 	return nil, nil
 }
 
@@ -48,7 +48,7 @@ func (s *mockStore) SubAllLogLines(buffer int) (<-chan resultstore.LogLine, erro
 
 // UnsubAllLogLines unsubscribes a subscription of all status updates
 // created via SubAllLogLines.
-func (s *mockStore) UnsubAllLogLines(ch <-chan resultstore.LogLine) bool {
+func (s *mockStore) UnsubAllLogLines(_ <-chan resultstore.LogLine) bool {
 	log.Info().Message("UnsubAllLogLines - mockStore")
 	return true
 }
@@ -57,7 +57,7 @@ func (s *mockStore) UnsubAllLogLines(ch <-chan resultstore.LogLine) bool {
 // update found for the step is the same as the new status, then this
 // status update is skipped. Any written status update is also published to
 // any active subscriptions.
-func (s *mockStore) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error {
+func (s *mockStore) AddStatusUpdate(_ uint64, _ time.Time, _ worker.Status) error {
 	return nil
 }
 
@@ -97,7 +97,7 @@ func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUp
 
 // UnsubAllStatusUpdates unsubscribes a subscription of all status updates
 // created via SubAllStatusUpdates.
-func (s *mockStore) UnsubAllStatusUpdates(ch <-chan resultstore.StatusUpdate) bool {
+func (s *mockStore) UnsubAllStatusUpdates(_ <-chan resultstore.StatusUpdate) bool {
 	log.Info().Message("UnsubAllStatusUpdates - mockStore")
 	return true
 }
