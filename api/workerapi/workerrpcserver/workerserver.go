@@ -1,4 +1,4 @@
-package workerserver
+package workerrpcserver
 
 import (
 	"strconv"

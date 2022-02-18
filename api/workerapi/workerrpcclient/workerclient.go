@@ -1,4 +1,4 @@
-package workerclient
+package workerrpcclient
 
 import (
 	"context"
