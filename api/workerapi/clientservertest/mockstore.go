@@ -7,8 +7,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 )
 
-type mockStore struct {
-}
+type mockStore struct{}
 
 // OpenLogWriter opens a file handle abstraction for writing log lines. Logs
 // will be automatically parsed when written and published to any active
@@ -28,7 +27,7 @@ func (s *mockStore) OpenLogReader(stepID uint64) (resultstore.LogLineReadCloser,
 // from this result store since the beginning, and keeps on streaming new
 // updates until unsubscribed.
 func (s *mockStore) SubAllLogLines(buffer int) (<-chan resultstore.LogLine, error) {
-	log.Info().WithInt("buffer", buffer).Message("SubAllLogLines - fakestore")
+	log.Info().WithInt("buffer", buffer).Message("SubAllLogLines - mockStore")
 	ch := make(chan resultstore.LogLine, buffer)
 
 	go func() {
@@ -51,7 +50,7 @@ func (s *mockStore) SubAllLogLines(buffer int) (<-chan resultstore.LogLine, erro
 // UnsubAllLogLines unsubscribes a subscription of all status updates
 // created via SubAllLogLines.
 func (s *mockStore) UnsubAllLogLines(ch <-chan resultstore.LogLine) bool {
-	log.Info().Message("UnsubAllLogLines - fakestore")
+	log.Info().Message("UnsubAllLogLines - mockStore")
 	return true
 }
 
@@ -67,7 +66,7 @@ func (s *mockStore) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatu
 // from this result store since the beginning, and keeps on streaming new
 // updates until unsubscribed.
 func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUpdate, error) {
-	log.Info().WithInt("buffer", buffer).Message("SubAllStatusUpdates - fakestore")
+	log.Info().WithInt("buffer", buffer).Message("SubAllStatusUpdates - mockStore")
 	ch := make(chan resultstore.StatusUpdate, buffer)
 
 	statuses := []worker.Status{
@@ -105,6 +104,6 @@ func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUp
 // UnsubAllStatusUpdates unsubscribes a subscription of all status updates
 // created via SubAllStatusUpdates.
 func (s *mockStore) UnsubAllStatusUpdates(ch <-chan resultstore.StatusUpdate) bool {
-	log.Info().Message("UnsubAllStatusUpdates - fakestore")
+	log.Info().Message("UnsubAllStatusUpdates - mockStore")
 	return true
 }

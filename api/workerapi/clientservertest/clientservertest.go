@@ -36,7 +36,7 @@ func main() {
 
 func launchServer() *workerserver.Server {
 	bindAddress, bindPort := "0.0.0.0", "8081"
-	server := workerserver.NewServer(bindAddress, bindPort, &fakeStore{})
+	server := workerserver.NewServer(bindAddress, bindPort, &mockStore{})
 	server.SetOnServeErrorHandler(func(err error) {
 		log.Error().WithError(err).Message("OnServeError called. Restarting server.")
 		// Try to auto-recover by restarting
