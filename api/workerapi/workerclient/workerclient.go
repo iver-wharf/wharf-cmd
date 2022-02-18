@@ -56,9 +56,7 @@ func (c *Client) Close() error {
 //
 // TEMPORARY: To test functionality.
 func (c *Client) PrintStreamedLogs() error {
-	stream, err := c.Client.StreamLogs(context.Background(), &v1.StreamLogsRequest{
-		ChunkSize: 5,
-	})
+	stream, err := c.Client.StreamLogs(context.Background(), &v1.StreamLogsRequest{ChunkSize: 50})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
 		return err

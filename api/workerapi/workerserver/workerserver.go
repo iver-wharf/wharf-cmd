@@ -19,7 +19,10 @@ func newWorkerServer(store resultstore.Store) *workerServer {
 }
 
 func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
-	bufferSize := int(req.ChunkSize)
+	bufferSize := 100
+	if req.ChunkSize > 0 {
+		bufferSize = int(req.ChunkSize)
+	}
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
 		return err
