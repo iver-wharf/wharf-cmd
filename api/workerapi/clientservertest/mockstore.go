@@ -33,7 +33,7 @@ func (s *mockStore) SubAllLogLines(buffer int) (<-chan resultstore.LogLine, erro
 	go func() {
 		for i := 1; i <= 1000; i++ {
 			ch <- resultstore.LogLine{
-				StepID:    uint64(i / 100),
+				StepID:    uint64(i/100) + 1,
 				LogID:     uint64(i),
 				Message:   "-",
 				Timestamp: time.Now(),
@@ -80,15 +80,11 @@ func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUp
 	}
 
 	go func() {
-		statusIdx := 0
-		updateID := 1
-		for i := 0; i < len(statuses)*4; i++ {
-			statusIdx++
-			updateID++
+		for i := 1; i <= len(statuses)*4; i++ {
 			ch <- resultstore.StatusUpdate{
-				StepID:    uint64(i / 100),
-				UpdateID:  uint64(updateID),
-				Status:    statuses[statusIdx%len(statuses)],
+				StepID:    uint64(i/100) + 1,
+				UpdateID:  uint64(i),
+				Status:    statuses[(i-1)%len(statuses)],
 				Timestamp: time.Now(),
 			}
 		}

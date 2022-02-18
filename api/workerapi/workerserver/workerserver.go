@@ -1,6 +1,7 @@
 package workerserver
 
 import (
+	"strconv"
 	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
@@ -56,8 +57,7 @@ outer:
 				if !ok {
 					break outer
 				}
-				logLine := convertLogLine(line)
-				logs[i] = &logLine
+				logs[i] = convertToLogLine(line)
 				i++
 			default:
 				break
@@ -85,24 +85,19 @@ func (s *workerServer) Log(_ *v1.LogRequest, stream v1.Worker_LogServer) error {
 		}
 	}()
 
-	resp := v1.LogResponse{}
+	var resp *v1.LogResponse
 	for {
 		select {
 		case line, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			resp = v1.LogResponse{
-				LogID:     line.LogID,
-				StepID:    line.StepID,
-				Timestamp: convertTimestamp(line.Timestamp),
-				Line:      line.Message,
-			}
+			resp = convertToLogResponse(line)
 		default:
 			continue
 		}
 
-		if err := stream.Send(&resp); err != nil {
+		if err := stream.Send(resp); err != nil {
 			return err
 		}
 	}
@@ -120,64 +115,84 @@ func (s *workerServer) StatusEvent(_ *v1.StatusEventRequest, stream v1.Worker_St
 		}
 	}()
 
-	resp := v1.StatusEventResponse{}
+	var resp *v1.StatusEventResponse
 	for {
 		select {
-		case statusUpdate, ok := <-ch:
+		case statusEvent, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			resp = convertStatusEvent(statusUpdate)
+			resp = convertToStatusEvent(statusEvent)
 		default:
 			continue
 		}
 
-		if err := stream.Send(&resp); err != nil {
+		if err := stream.Send(resp); err != nil {
 			return err
 		}
 	}
 }
 
 func (s *workerServer) ArtifactEvent(_ *v1.ArtifactEventRequest, stream v1.Worker_ArtifactEventServer) error {
-	artifacts := []*v1.ArtifactEventResponse{
-		{
-			ArtifactID: 1,
-			StepID:     2,
-			Name:       "An artifact name",
-		},
-		{
-			ArtifactID: 2,
-			StepID:     2,
-			Name:       "A second artifact name",
-		},
-	}
+	// Doesn't exist in resultstore currently so mocking it directly here.
+	var ch <-chan *v1.ArtifactEventResponse
+	go func() {
+		sendCh := make(chan *v1.ArtifactEventResponse)
+		ch = sendCh
+		for i := 1; i <= 10; i++ {
+			sendCh <- &v1.ArtifactEventResponse{
+				ArtifactID: uint32(i),
+				StepID:     uint32(i/3) + 1,
+				Name:       "Artifact " + strconv.Itoa(i),
+			}
+		}
+		close(sendCh)
+	}()
 
-	for _, artifact := range artifacts {
-		if err := stream.Send(artifact); err != nil {
+	var resp *v1.ArtifactEventResponse
+	for {
+		select {
+		case artifactEvent, ok := <-ch:
+			if !ok {
+				return nil
+			}
+			resp = artifactEvent
+		default:
+			continue
+		}
+
+		if err := stream.Send(resp); err != nil {
 			return err
 		}
 	}
-
-	return nil
 }
 
-func convertTimestamp(ts time.Time) *timestamppb.Timestamp {
+func convertToTimestamppb(ts time.Time) *timestamppb.Timestamp {
 	return &timestamppb.Timestamp{
 		Seconds: ts.Unix(),
 		Nanos:   int32(ts.Nanosecond()),
 	}
 }
 
-func convertLogLine(line resultstore.LogLine) v1.LogLine {
-	return v1.LogLine{
+func convertToLogLine(line resultstore.LogLine) *v1.LogLine {
+	return &v1.LogLine{
 		LogID:     line.LogID,
 		StepID:    line.StepID,
-		Timestamp: convertTimestamp(line.Timestamp),
+		Timestamp: convertToTimestamppb(line.Timestamp),
 		Line:      line.Message,
 	}
 }
 
-func convertStatus(status worker.Status) v1.StatusEventResponse_Status {
+func convertToLogResponse(line resultstore.LogLine) *v1.LogResponse {
+	return &v1.LogResponse{
+		LogID:     line.LogID,
+		StepID:    line.StepID,
+		Timestamp: convertToTimestamppb(line.Timestamp),
+		Line:      line.Message,
+	}
+}
+
+func convertToStatus(status worker.Status) v1.StatusEventResponse_Status {
 	switch status {
 	case worker.StatusNone:
 		return v1.StatusEventResponse_NONE
@@ -198,11 +213,11 @@ func convertStatus(status worker.Status) v1.StatusEventResponse_Status {
 	}
 }
 
-func convertStatusEvent(update resultstore.StatusUpdate) v1.StatusEventResponse {
-	return v1.StatusEventResponse{
+func convertToStatusEvent(update resultstore.StatusUpdate) *v1.StatusEventResponse {
+	return &v1.StatusEventResponse{
 		EventID: update.UpdateID,
 		StepID:  update.StepID,
-		Status:  convertStatus(update.Status),
+		Status:  convertToStatus(update.Status),
 	}
 }
 
