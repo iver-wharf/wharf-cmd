@@ -8,24 +8,25 @@ option go_package = "github.com/iver-wharf/wharf-cmd/api/workerapi/v1";
 
 service Worker {
   rpc StreamLogs(StreamLogsRequest) returns (stream StreamLogsResponse);
-  rpc Logs(LogsRequest) returns (stream LogsResponse);
-  rpc StatusEvents(StatusEventsRequest) returns (stream StatusEventsResponse);
-  rpc ArtifactEvents(ArtifactEventsRequest) returns (stream ArtifactEventResponse);
+  rpc Log(LogRequest) returns (stream LogResponse);
+  rpc StatusEvent(StatusEventRequest) returns (stream StatusEventResponse);
+  rpc ArtifactEvent(ArtifactEventRequest) returns (stream ArtifactEventResponse);
 }
 
 // Empty messages, but exists for potential future usages
-message LogsRequest { }
-message StatusEventsRequest { }
-message ArtifactEventsRequest { }
+message StreamLogsRequest { }
+message LogRequest { }
+message StatusEventRequest { }
+message ArtifactEventRequest { }
 
-message LogsResponse {
+message LogResponse {
   int64 log_id = 1; // not DB value; worker's own ID of the log line
   int32 step_id = 2; // not DB value; worker's own ID of the step ID
   google.protobuf.Timestamp timestamp = 3;
   string line = 4;
 }
 
-message StatusEventsResponse {
+message StatusEventResponse {
   int32 event_id = 1; // not DB value; worker's own ID of the event
   int32 step_id = 2; // not DB value; worker's own ID of the step ID
 
@@ -43,9 +44,6 @@ message ArtifactEventResponse {
   int32 step_id = 2; // not DB value; worker's own ID of the step ID
   string name = 3;
 }
-
-
-message StreamLogsRequest { }
 
 message StreamLogsResponse {
   repeated LogLine logs = 1;
