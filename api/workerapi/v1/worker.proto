@@ -14,34 +14,40 @@ service Worker {
 }
 
 // Empty messages, but exists for potential future usages
-message StreamLogsRequest { }
+message StreamLogsRequest {
+  int32 chunkSize = 1;
+}
 message LogRequest { }
 message StatusEventRequest { }
 message ArtifactEventRequest { }
 
 message LogResponse {
-  int64 log_id = 1; // not DB value; worker's own ID of the log line
-  int32 step_id = 2; // not DB value; worker's own ID of the step ID
+  uint64 logID = 1; // not DB value; worker's own ID of the log line
+  uint64 stepID = 2; // not DB value; worker's own ID of the step ID
   google.protobuf.Timestamp timestamp = 3;
   string line = 4;
 }
 
 message StatusEventResponse {
-  int32 event_id = 1; // not DB value; worker's own ID of the event
-  int32 step_id = 2; // not DB value; worker's own ID of the step ID
+  uint64 eventID = 1; // not DB value; worker's own ID of the event
+  uint64 stepID = 2; // not DB value; worker's own ID of the step ID
 
   enum Status {
-    SCHEDULING = 0;
-    RUNNING = 1;
-    FAILED = 2;
-    COMPLETED = 3;
+    UNKNOWN = 0;
+    NONE = 1;
+    SCHEDULING = 2;
+    INITIALIZING = 3;
+    RUNNING = 4;
+    SUCCESS = 5;
+    FAILED = 6;
+    CANCELLED = 7;
   }
   Status status = 3;
 }
 
 message ArtifactEventResponse {
-  int32 artifact_id = 1; // not DB value; worker's own ID of the artifact
-  int32 step_id = 2; // not DB value; worker's own ID of the step ID
+  uint32 artifactID = 1; // not DB value; worker's own ID of the artifact
+  uint32 stepID = 2; // not DB value; worker's own ID of the step ID
   string name = 3;
 }
 
@@ -50,8 +56,8 @@ message StreamLogsResponse {
 }
 
 message LogLine {
-  int64 log_id = 1; // not DB value; worker's own ID of the log line
-  int32 step_id = 2; // not DB value; worker's own ID of the step ID
+  uint64 logID = 1; // not DB value; worker's own ID of the log line
+  uint64 stepID = 2; // not DB value; worker's own ID of the step ID
   google.protobuf.Timestamp timestamp = 3;
   string line = 4;
 }

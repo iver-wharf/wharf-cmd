@@ -5,6 +5,7 @@ import (
 	"net"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
+	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"google.golang.org/grpc"
 )
@@ -18,15 +19,17 @@ type Server struct {
 	port                string
 	onServeErrorHandler func(error)
 
-	grpcServer *grpc.Server
-	isRunning  bool
+	grpcServer   *grpc.Server
+	workerServer *workerServer
+	isRunning    bool
 }
 
 // NewServer creates a new server that can be started by calling Server.Start.
-func NewServer(bindAddress, port string) *Server {
+func NewServer(bindAddress, port string, store resultstore.Store) *Server {
 	return &Server{
-		bindAddress: bindAddress,
-		port:        port,
+		bindAddress:  bindAddress,
+		port:         port,
+		workerServer: newWorkerServer(store),
 	}
 }
 
@@ -52,7 +55,7 @@ func (s *Server) Serve() error {
 
 	var opts []grpc.ServerOption
 	s.grpcServer = grpc.NewServer(opts...)
-	v1.RegisterWorkerServer(s.grpcServer, newWorkerServer())
+	v1.RegisterWorkerServer(s.grpcServer, s.workerServer)
 
 	go func() {
 		s.isRunning = true

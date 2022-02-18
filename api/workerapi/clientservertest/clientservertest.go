@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -28,12 +30,13 @@ func main() {
 		}
 	}()
 
+	time.Sleep(1 * time.Second)
 	testClientCalls(client)
 }
 
 func launchServer() *workerserver.Server {
 	bindAddress, bindPort := "0.0.0.0", "8081"
-	server := workerserver.NewServer(bindAddress, bindPort)
+	server := workerserver.NewServer(bindAddress, bindPort, &fakeStore{})
 	server.SetOnServeErrorHandler(func(err error) {
 		log.Error().WithError(err).Message("OnServeError called. Restarting server.")
 		// Try to auto-recover by restarting

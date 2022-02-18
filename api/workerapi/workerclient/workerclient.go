@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -17,7 +16,7 @@ type Client struct {
 	targetAddress string
 	targetPort    string
 
-	client v1.WorkerClient
+	Client v1.WorkerClient
 	conn   *grpc.ClientConn
 }
 
@@ -40,7 +39,7 @@ func (c *Client) Open() error {
 	if err != nil {
 		return fmt.Errorf("failed connecting to server: %v", err)
 	}
-	c.client = v1.NewWorkerClient(conn)
+	c.Client = v1.NewWorkerClient(conn)
 	c.conn = conn
 	return nil
 }
@@ -57,9 +56,9 @@ func (c *Client) Close() error {
 //
 // TEMPORARY: To test functionality.
 func (c *Client) PrintStreamedLogs() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	stream, err := c.client.StreamLogs(ctx, &v1.StreamLogsRequest{})
+	stream, err := c.Client.StreamLogs(context.Background(), &v1.StreamLogsRequest{
+		ChunkSize: 5,
+	})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
 		return err
@@ -83,9 +82,7 @@ func (c *Client) PrintStreamedLogs() error {
 //
 // TEMPORARY: To test functionality.
 func (c *Client) PrintLogs() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	stream, err := c.client.Log(ctx, &v1.LogRequest{}, grpc.FailFastCallOption{FailFast: true})
+	stream, err := c.Client.Log(context.Background(), &v1.LogRequest{}, grpc.FailFastCallOption{FailFast: true})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for logs.")
 		return err
@@ -107,9 +104,7 @@ func (c *Client) PrintLogs() error {
 //
 // TEMPORARY: To test functionality.
 func (c *Client) PrintStatusEvents() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	stream, err := c.client.StatusEvent(ctx, &v1.StatusEventRequest{})
+	stream, err := c.Client.StatusEvent(context.Background(), &v1.StatusEventRequest{})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for status events.")
 		return err
@@ -131,9 +126,7 @@ func (c *Client) PrintStatusEvents() error {
 //
 // TEMPORARY: To test functionality.
 func (c *Client) PrintArtifactEvents() error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	stream, err := c.client.ArtifactEvent(ctx, &v1.ArtifactEventRequest{})
+	stream, err := c.Client.ArtifactEvent(context.Background(), &v1.ArtifactEventRequest{})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for artifact events.")
 	}
