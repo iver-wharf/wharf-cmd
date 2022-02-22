@@ -53,6 +53,7 @@ func substituteRec(source string, params map[string]interface{}, usedParams []st
 			}
 		}
 		if len(matches) == 1 && len(source) == len(match.FullMatch) {
+			// keep the value as-is if it matches the whole source
 			return anyValue, nil
 		}
 		strValue := stringify(anyValue)
