@@ -62,6 +62,7 @@ func verifyKindAndTag(node *yaml.Node, wantStr string, wantKind yaml.Kind, wantT
 }
 
 func visitString(node *yaml.Node) (string, error) {
+	// TODO: Apply varsub
 	node = unwrapNode(node)
 	if err := verifyKindAndTag(node, "string", yaml.ScalarNode, shortTagString); err != nil {
 		return "", err
@@ -70,6 +71,7 @@ func visitString(node *yaml.Node) (string, error) {
 }
 
 func visitInt(node *yaml.Node) (int, error) {
+	// TODO: Apply varsub
 	node = unwrapNode(node)
 	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagInt); err != nil {
 		return 0, err
@@ -82,6 +84,7 @@ func visitInt(node *yaml.Node) (int, error) {
 }
 
 func visitFloat64(node *yaml.Node) (float64, error) {
+	// TODO: Apply varsub
 	node = unwrapNode(node)
 	if node.Kind == yaml.ScalarNode && node.ShortTag() == shortTagInt {
 		num, err := visitInt(node)
@@ -101,6 +104,7 @@ func visitFloat64(node *yaml.Node) (float64, error) {
 }
 
 func visitBool(node *yaml.Node) (bool, error) {
+	// TODO: Apply varsub
 	node = unwrapNode(node)
 	if err := verifyKindAndTag(node, "boolean", yaml.ScalarNode, shortTagBool); err != nil {
 		return false, err
