@@ -239,6 +239,53 @@ func applyStepDocker(pod *v1.Pod, step wharfyml.StepDocker, stepName string) err
 		args = append(args, "--no-push")
 	}
 
+	if step.SecretName != "" {
+		// In Docker & Kaniko, adding only `--build-arg MY_ARG` will make it
+		// pull the value from an environment variable instead of from a literal.
+		// This is used to not specify the secret values in the pod manifest.
+
+		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
+			"local", // TODO: Use Wharf instance ID
+			1,       // TODO: Use project ID
+			step.SecretName,
+		)
+		optional := true
+		for _, arg := range step.SecretArgs {
+			idx := strings.IndexByte(arg, '=')
+			if idx == -1 {
+				log.Warn().Message(
+					"Invalid secret arg format, missing '=', expected 'ARG=secret-key', skipping secret arg.")
+				continue
+			}
+			argName, secretKey := arg[:idx], arg[idx+1:]
+			if len(argName) == 0 {
+				log.Warn().Message(
+					"Invalid secret arg format, 'ARG', expected 'ARG=secret-key', skipping secret arg.")
+				continue
+			}
+			if len(secretKey) == 0 {
+				log.Warn().Message(
+					"Invalid secret arg format, 'secret-key', expected 'ARG=secret-key', skipping secret arg.")
+				continue
+			}
+			args = append(args, "--build-arg", argName)
+			cont.Env = append(cont.Env, v1.EnvVar{
+				Name: argName,
+				ValueFrom: &v1.EnvVarSource{
+					SecretKeyRef: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: secretName,
+						},
+						Optional: &optional,
+					},
+				},
+			})
+		}
+	} else if len(step.SecretArgs) != 0 {
+		log.Warn().Message(
+			"Found secretArgs but is missing secretName, skipping secret args.")
+	}
+
 	log.Debug().WithString("args", quoteArgsForLogging(args)).
 		Message("Kaniko args.")
 
