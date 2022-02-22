@@ -45,7 +45,7 @@ func stringify(val interface{}) string {
 	switch val := val.(type) {
 	case string:
 		return val
-	case nil:
+	case nil: // fmt.Sprint returns "<nil>"; we don't want that
 		return ""
 	default:
 		return fmt.Sprint(val)
