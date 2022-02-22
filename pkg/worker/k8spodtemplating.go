@@ -194,7 +194,7 @@ func applyStepDocker(pod *v1.Pod, step wharfyml.StepDocker, stepName string) err
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
 		Name:  commonContainerName,
-		Image: "boolman/kaniko:busybox-2020-01-15",
+		Image: "gcr.io/kaniko-project/executor:v1.7.0",
 		// default entrypoint for image is "/kaniko/executor"
 		WorkingDir: repoDir,
 		VolumeMounts: []v1.VolumeMount{
