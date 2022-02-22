@@ -19,6 +19,8 @@ type StepDocker struct {
 	AppendCert  bool
 	Push        bool
 	Args        []string
+	SecretName  string
+	SecretArgs  []string
 }
 
 // StepTypeName returns the name of this step type.
@@ -50,8 +52,10 @@ func (s StepDocker) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
 		p.unmarshalString("registry", &s.Registry),
 		p.unmarshalBool("append-cert", &s.AppendCert),
 		p.unmarshalBool("push", &s.Push),
+		p.unmarshalString("secretName", &s.SecretName),
 	)
 	errSlice.add(p.unmarshalStringSlice("args", &s.Args)...)
+	errSlice.add(p.unmarshalStringSlice("secretArgs", &s.SecretArgs)...)
 
 	// Validation
 	errSlice.addNonNils(
