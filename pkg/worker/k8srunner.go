@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
@@ -17,7 +18,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
-	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/remotecommand"
 )
@@ -136,6 +136,10 @@ func (r k8sStepRunner) waitForAppContainerRunningOrDone(ctx context.Context, pod
 				}
 				return true, nil
 			}
+			if c.State.Waiting != nil &&
+				c.State.Waiting.Reason == "CreateContainerConfigError" {
+				return false, fmt.Errorf("config error: %s", c.State.Waiting.Message)
+			}
 			if c.State.Running != nil {
 				return true, nil
 			}
@@ -191,7 +195,12 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	podLog := logger.NewScoped(contextStageStepName(ctx))
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
-		podLog.Info().Message(scanner.Text())
+		txt := scanner.Text()
+		idx := strings.LastIndexByte(txt, '\r')
+		if idx != -1 {
+			txt = txt[idx+1:]
+		}
+		podLog.Info().Message(txt)
 	}
 	return scanner.Err()
 }
@@ -272,7 +281,7 @@ func execInPodPipeStdout(c *rest.Config, namespace, podName, containerName strin
 }
 
 func execInPod(c *rest.Config, namespace, podName string, execOpts *v1.PodExecOptions) (remotecommand.Executor, error) {
-	coreclient, err := corev1client.NewForConfig(c)
+	coreclient, err := corev1.NewForConfig(c)
 	if err != nil {
 		return nil, err
 	}

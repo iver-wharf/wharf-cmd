@@ -14,6 +14,28 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
+- Added new commands: (#46)
+
+  - `wharf-cmd provisioner serve` that launches an HTTP REST api server with
+    endpoints:
+
+    - `GET /api` to check health.
+
+    - `POST /api/worker` creates a new worker with certain labels.
+
+    - `GET /api/worker` gets a list of all workers with certain labels.
+
+    - `DELETE /api/worker/:workerId` deletes a worker, as long as it has
+      certain labels.
+
+  - `wharf-cmd provisioner create` that creates a new worker.
+
+  - `wharf-cmd provisioner list` that lists all running workers with certain
+    labels.
+
+  - `wharf-cmd provisioner delete` with flag `--id` to specify the worker that
+    should be deleted, as long as it has certain labels as well.
+
 - Added new implementation for `wharf run`. (#33, #45)
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
@@ -26,6 +48,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
 
+- Fixed `wharf run` not failing due to pod config errors, such as "secret
+  'cluster-config' not found" in `kubectl` steps. (#52)
+
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
@@ -33,6 +58,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
+  - `github.com/gin-gonic/gin` v1.7.1 (#46)
 
 - Removed dependencies:
 
@@ -56,6 +82,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed Go runtime from v1.13 to v1.17. (#8)
 
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
+
+- Changed to trim away everything before the last CR (carriage return)
+  character in a log line from a Kubernetes pod. (#49)
 
 - Changed location of packages and code files: (#44)
 
