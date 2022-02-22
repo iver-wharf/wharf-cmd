@@ -36,7 +36,7 @@ func Substitute(source string, params map[string]interface{}) interface{} {
 		if len(matches) == 1 && len(source) == len(match.FullMatch) {
 			return newValue
 		}
-		result = strings.Replace(result, match.FullMatch, stringify(newValue), -1)
+		result = strings.Replace(result, match.FullMatch, stringify(newValue), 1)
 	}
 	return result
 }
