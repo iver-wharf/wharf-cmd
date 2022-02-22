@@ -1,9 +1,14 @@
 package varsub
 
 import (
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
+)
+
+var (
+	ErrRecursiveLoop = errors.New("recursive variable loop")
 )
 
 type VarMatch struct {
@@ -17,28 +22,52 @@ var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
 var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
 var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
 
-func Substitute(source string, params map[string]interface{}) interface{} {
+func Substitute(source string, params map[string]interface{}) (interface{}, error) {
+	return substituteRec(source, params, nil)
+}
+
+func substituteRec(source string, params map[string]interface{}, usedParams []string) (interface{}, error) {
 	result := source
 	matches := Matches(source)
 	for _, match := range matches {
-		var newValue interface{}
+		var anyValue interface{}
 		if match.Name == "%" {
-			newValue = "${}"
+			anyValue = "${}"
 		} else if escapedParamPattern.MatchString(match.Name) {
-			newValue = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
+			anyValue = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
 		} else {
+			if containsString(usedParams, match.Name) {
+				return nil, ErrRecursiveLoop
+			}
 			v, ok := params[match.Name]
 			if !ok {
 				continue
 			}
-			newValue = v
+			anyValue = v
+			if str, ok := anyValue.(string); ok && strings.Contains(str, "${") {
+				var err error
+				anyValue, err = substituteRec(str, params, append(usedParams, match.Name))
+				if err != nil {
+					return nil, err
+				}
+			}
 		}
 		if len(matches) == 1 && len(source) == len(match.FullMatch) {
-			return newValue
+			return anyValue, nil
 		}
-		result = strings.Replace(result, match.FullMatch, stringify(newValue), 1)
+		strValue := stringify(anyValue)
+		result = strings.Replace(result, match.FullMatch, strValue, 1)
 	}
-	return result
+	return result, nil
+}
+
+func containsString(slice []string, element string) bool {
+	for _, v := range slice {
+		if v == element {
+			return true
+		}
+	}
+	return false
 }
 
 func stringify(val interface{}) string {

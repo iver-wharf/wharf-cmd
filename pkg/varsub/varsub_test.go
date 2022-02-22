@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMatches(t *testing.T) {
@@ -171,7 +172,8 @@ func TestSubstitute(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Substitute(tc.source, vars)
+			got, err := Substitute(tc.source, vars)
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
 	}
@@ -236,8 +238,53 @@ func TestSubstitute_nonStrings(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Substitute(tc.source, tc.vars)
+			got, err := Substitute(tc.source, tc.vars)
+			require.NoError(t, err)
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func TestSubstitute_recursive(t *testing.T) {
+	tests := []struct {
+		name   string
+		vars   map[string]interface{}
+		source string
+		want   interface{}
+	}{
+		{
+			name: "string",
+			vars: map[string]interface{}{
+				"one": "11${two}11",
+				"two": 2222,
+			},
+			source: "00${one}00",
+			want:   "001122221100",
+		},
+		{
+			name: "typed",
+			vars: map[string]interface{}{
+				"one": "${two}",
+				"two": 2222,
+			},
+			source: "${one}",
+			want:   2222,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := Substitute(tc.source, tc.vars)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestSubstitute_errIfRecursiveLoop(t *testing.T) {
+	vars := map[string]interface{}{
+		"lorem": "ipsum: ${lorem}",
+	}
+	result, err := Substitute("root: ${lorem}", vars)
+	assert.ErrorIsf(t, err, ErrRecursiveLoop, "unexpected result: %q", result)
 }
