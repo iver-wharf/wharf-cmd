@@ -1,6 +1,7 @@
 package varsub
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
 )
@@ -16,30 +17,39 @@ var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
 var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
 var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
 
-func Substitute(source string, params map[string]interface{}) string {
+func Substitute(source string, params map[string]interface{}) interface{} {
 	result := source
-	varMatches := Matches(source)
-
-	var newValue string
-	for _, match := range varMatches {
-		ok := false
-
+	matches := Matches(source)
+	for _, match := range matches {
+		var newValue interface{}
 		if match.Name == "%" {
 			newValue = "${}"
-			ok = true
 		} else if escapedParamPattern.MatchString(match.Name) {
 			newValue = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
-			ok = true
 		} else {
-			newValue, ok = params[match.Name].(string)
+			v, ok := params[match.Name]
+			if !ok {
+				continue
+			}
+			newValue = v
 		}
-
-		if ok {
-			result = strings.Replace(result, match.FullMatch, newValue, -1)
+		if len(matches) == 1 && len(source) == len(match.FullMatch) {
+			return newValue
 		}
+		result = strings.Replace(result, match.FullMatch, stringify(newValue), -1)
 	}
-
 	return result
+}
+
+func stringify(val interface{}) string {
+	switch val := val.(type) {
+	case string:
+		return val
+	case nil:
+		return ""
+	default:
+		return fmt.Sprint(val)
+	}
 }
 
 func Matches(source string) []VarMatch {

@@ -104,6 +104,9 @@ func TestMatches(t *testing.T) {
 }
 
 func TestSubstitute(t *testing.T) {
+	vars := map[string]interface{}{
+		"lorem": "ipsum",
+	}
 	tests := []struct {
 		name   string
 		source string
@@ -168,9 +171,72 @@ func TestSubstitute(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := Substitute(tc.source, map[string]interface{}{
-				"lorem": "ipsum",
-			})
+			got := Substitute(tc.source, vars)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+
+func TestSubstitute_nonStrings(t *testing.T) {
+	tests := []struct {
+		name   string
+		vars   map[string]interface{}
+		source string
+		want   interface{}
+	}{
+		{
+			name:   "full/bool",
+			vars:   map[string]interface{}{"lorem": true},
+			source: "${lorem}",
+			want:   true,
+		},
+		{
+			name:   "full/int",
+			vars:   map[string]interface{}{"lorem": 123},
+			source: "${lorem}",
+			want:   123,
+		},
+		{
+			name:   "full/float",
+			vars:   map[string]interface{}{"lorem": 123.0},
+			source: "${lorem}",
+			want:   123.0,
+		},
+		{
+			name:   "full/nil",
+			vars:   map[string]interface{}{"lorem": nil},
+			source: "${lorem}",
+			want:   nil,
+		},
+		{
+			name:   "embed/bool",
+			vars:   map[string]interface{}{"lorem": true},
+			source: "foo ${lorem} bar",
+			want:   "foo true bar",
+		},
+		{
+			name:   "embed/int",
+			vars:   map[string]interface{}{"lorem": 123},
+			source: "foo ${lorem} bar",
+			want:   "foo 123 bar",
+		},
+		{
+			name:   "embed/float",
+			vars:   map[string]interface{}{"lorem": 123.0},
+			source: "foo ${lorem} bar",
+			want:   "foo 123 bar",
+		},
+		{
+			name:   "embed/nil",
+			vars:   map[string]interface{}{"lorem": nil},
+			source: "foo ${lorem} bar",
+			want:   "foo  bar",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := Substitute(tc.source, tc.vars)
 			assert.Equal(t, tc.want, got)
 		})
 	}
