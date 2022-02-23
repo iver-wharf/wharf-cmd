@@ -8,20 +8,25 @@ import (
 )
 
 var (
+	// ErrRecursiveLoop means a variable substitution has some self-referring
+	// variables, either directly or indirectly.
 	ErrRecursiveLoop = errors.New("recursive variable loop")
 )
 
+// VarMatch is a single variable match.
 type VarMatch struct {
-	Name       string
-	FullMatch  string
-	StartIndex int
-	EndIndex   int
+	// Name is the name of the variable inside the match.
+	Name string
+	// FullMatch is the entire match, including the variable syntax of ${}.
+	FullMatch string
 }
 
 var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
 var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
 var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
 
+// Substitute will replace all variables in the string using the variable
+// substution source. Variables are looked up recursively.
 func Substitute(value string, source Source) (interface{}, error) {
 	return substituteRec(value, source, nil)
 }
@@ -53,7 +58,7 @@ func substituteRec(value string, source Source, usedParams []string) (interface{
 			}
 		}
 		if len(matches) == 1 && len(value) == len(match.FullMatch) {
-			// keep the value as-is if it matches the whole source
+			// keep the value as-is if it matches the whole value
 			return matchVal, nil
 		}
 		matchValStr := stringify(matchVal)
@@ -82,13 +87,13 @@ func stringify(val interface{}) string {
 	}
 }
 
-func Matches(source string) []VarMatch {
-	matches := varSyntaxPattern.FindAllStringSubmatchIndex(source, -1)
+// Matches returns all variable substitution-prone matches from a string.
+func Matches(value string) []VarMatch {
+	matches := varSyntaxPattern.FindAllStringSubmatch(value, -1)
 	var params []VarMatch
 
 	for _, match := range matches {
-		start, end := match[2], match[3]
-		paramName := source[start:end]
+		paramName := match[1]
 
 		if paramName == "" {
 			continue
@@ -99,10 +104,8 @@ func Matches(source string) []VarMatch {
 		}
 
 		params = append(params, VarMatch{
-			Name:       paramName,
-			FullMatch:  source[match[0]:match[1]],
-			StartIndex: start,
-			EndIndex:   end,
+			Name:      paramName,
+			FullMatch: match[0],
 		})
 	}
 
