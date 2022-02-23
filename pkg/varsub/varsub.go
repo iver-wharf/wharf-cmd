@@ -22,19 +22,19 @@ var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
 var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
 var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
 
-func Substitute(source string, params map[string]interface{}) (interface{}, error) {
-	return substituteRec(source, params, nil)
+func Substitute(value string, params map[string]interface{}) (interface{}, error) {
+	return substituteRec(value, params, nil)
 }
 
-func substituteRec(source string, params map[string]interface{}, usedParams []string) (interface{}, error) {
-	result := source
-	matches := Matches(source)
+func substituteRec(value string, params map[string]interface{}, usedParams []string) (interface{}, error) {
+	result := value
+	matches := Matches(value)
 	for _, match := range matches {
-		var anyValue interface{}
+		var matchVal interface{}
 		if match.Name == "%" {
-			anyValue = "${}"
+			matchVal = "${}"
 		} else if escapedParamPattern.MatchString(match.Name) {
-			anyValue = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
+			matchVal = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
 		} else {
 			if containsString(usedParams, match.Name) {
 				return nil, ErrRecursiveLoop
@@ -43,21 +43,21 @@ func substituteRec(source string, params map[string]interface{}, usedParams []st
 			if !ok {
 				continue
 			}
-			anyValue = v
-			if str, ok := anyValue.(string); ok && strings.Contains(str, "${") {
+			matchVal = v
+			if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
 				var err error
-				anyValue, err = substituteRec(str, params, append(usedParams, match.Name))
+				matchVal, err = substituteRec(str, params, append(usedParams, match.Name))
 				if err != nil {
 					return nil, err
 				}
 			}
 		}
-		if len(matches) == 1 && len(source) == len(match.FullMatch) {
+		if len(matches) == 1 && len(value) == len(match.FullMatch) {
 			// keep the value as-is if it matches the whole source
-			return anyValue, nil
+			return matchVal, nil
 		}
-		strValue := stringify(anyValue)
-		result = strings.Replace(result, match.FullMatch, strValue, 1)
+		matchValStr := stringify(matchVal)
+		result = strings.Replace(result, match.FullMatch, matchValStr, 1)
 	}
 	return result, nil
 }
