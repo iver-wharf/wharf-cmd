@@ -10,6 +10,7 @@ import (
 
 type builder struct {
 	stageRun StageRunner
+	steps    []wharfyml.Step
 }
 
 // New returns a new Builder implementation that uses the provided StageRunner
@@ -32,6 +33,9 @@ func (b builder) Build(ctx context.Context, def wharfyml.Definition, opt BuildOp
 			Message("No stages to run.")
 		result.Status = StatusNone
 		return result, nil
+	}
+	for _, stage := range stages {
+		b.steps = append(b.steps, stage.Steps...)
 	}
 	for _, stage := range stages {
 		log.Info().
@@ -71,6 +75,10 @@ func (b builder) Build(ctx context.Context, def wharfyml.Definition, opt BuildOp
 	}
 	result.Duration = time.Since(start)
 	return result, nil
+}
+
+func (b builder) GetBuildSteps() []wharfyml.Step {
+	return b.steps
 }
 
 func (b builder) filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {

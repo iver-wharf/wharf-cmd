@@ -6,7 +6,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-type artifactModule struct{}
+type artifactModule struct {
+	*workerServer
+}
 
 func (m *artifactModule) register(g *gin.RouterGroup) {
 	artifact := g.Group("/artifact")

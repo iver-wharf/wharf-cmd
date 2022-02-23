@@ -2,12 +2,15 @@ package workerhttpserver
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 )
 
@@ -17,15 +20,17 @@ type Server struct {
 	port                string
 	onServeErrorHandler func(error)
 
-	srv       *http.Server
-	isRunning bool
+	srv          *http.Server
+	workerServer *workerServer
+	isRunning    bool
 }
 
 // NewServer creates a new server that can be started by calling Start.
-func NewServer(address, port string) *Server {
+func NewServer(address, port string, builder worker.Builder) *Server {
 	return &Server{
-		address: address,
-		port:    port,
+		address:      address,
+		port:         port,
+		workerServer: newWorkerServer(builder),
 	}
 }
 
@@ -57,20 +62,35 @@ func (s *Server) Serve() {
 	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 
 	{
-		buildModule := buildModule{}
-		artifactModule := artifactModule{}
+		buildModule := buildModule{s.workerServer}
+		artifactModule := artifactModule{s.workerServer}
 		buildModule.register(g)
 		artifactModule.register(g)
 	}
 
+	rootCAs, err := x509.SystemCertPool()
+	if err != nil {
+		log.Warn().Message("No system cert pool found. Disabling TLS.")
+	} else {
+		http.DefaultClient = &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: &tls.Config{
+					RootCAs: rootCAs,
+				},
+			},
+		}
+	}
+
+	bindAddress := fmt.Sprintf("%s:%s", s.address, s.port)
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", s.address, s.port),
+		Addr:    bindAddress,
 		Handler: r,
 	}
 
 	go func() {
-		log.Info().WithString("bindAddress", s.srv.Addr).Message("Server starting.")
-		if err := s.srv.ListenAndServe(); err != nil {
+		log.Info().WithString("bindAddress", bindAddress).Message("Server starting.")
+		err := s.srv.ListenAndServeTLS("localhost.crt", "localhost.key")
+		if err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				log.Info().Message("Closed server.")
 			} else if s.onServeErrorHandler != nil {
