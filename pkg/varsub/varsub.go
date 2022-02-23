@@ -22,11 +22,11 @@ var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
 var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
 var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
 
-func Substitute(value string, params map[string]interface{}) (interface{}, error) {
-	return substituteRec(value, params, nil)
+func Substitute(value string, source Source) (interface{}, error) {
+	return substituteRec(value, source, nil)
 }
 
-func substituteRec(value string, params map[string]interface{}, usedParams []string) (interface{}, error) {
+func substituteRec(value string, source Source, usedParams []string) (interface{}, error) {
 	result := value
 	matches := Matches(value)
 	for _, match := range matches {
@@ -39,14 +39,14 @@ func substituteRec(value string, params map[string]interface{}, usedParams []str
 			if containsString(usedParams, match.Name) {
 				return nil, ErrRecursiveLoop
 			}
-			v, ok := params[match.Name]
+			v, ok := source.Lookup(match.Name)
 			if !ok {
 				continue
 			}
 			matchVal = v
 			if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
 				var err error
-				matchVal, err = substituteRec(str, params, append(usedParams, match.Name))
+				matchVal, err = substituteRec(str, source, append(usedParams, match.Name))
 				if err != nil {
 					return nil, err
 				}
