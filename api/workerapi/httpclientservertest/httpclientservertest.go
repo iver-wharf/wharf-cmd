@@ -9,17 +9,26 @@ import (
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 )
 
+var log = logger.NewScoped("HTTP-CLIENT-SERVER-TEST")
+
 func main() {
 	logger.AddOutput(logger.LevelDebug, consolepretty.New(consolepretty.DefaultConfig))
 
-	server := workerhttpserver.NewServer("0.0.0.0", "8080", &mockBuilder{})
+	server := workerhttpserver.NewServer(&mockBuilder{})
+	server.SetOnServeErrorHandler(func(err error) {
+		log.Error().WithError(err).Message("Serve error occurred.")
+	})
 	server.Serve()
 
-	client := workerhttpclient.NewClient("localhost", "8080")
+	client, err := workerhttpclient.NewClient()
+	if err != nil {
+		log.Error().WithError(err).Message("Creating client failed.")
+	}
 
 	steps, err := client.GetBuildSteps()
 	if err != nil {
-		panic(err)
+		log.Error().WithError(err).Message("Getting build steps failed.")
+		return
 	}
 
 	fmt.Printf("%v\n", steps)

@@ -2,22 +2,37 @@ package workerhttpserver
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-core/pkg/cacertutil"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 )
 
+var cfg config.WorkerServerConfig
+
+type module interface {
+	register(g *gin.RouterGroup)
+}
+
+func init() {
+	c, err := config.LoadConfig()
+	if err != nil {
+		fmt.Println("Failed to read config:", err)
+		os.Exit(1)
+	}
+	cfg = c.Worker.Server
+}
+
 // Server lets us start an HTTP server asynchronously.
 type Server struct {
-	address             string
-	port                string
 	onServeErrorHandler func(error)
 
 	srv          *http.Server
@@ -26,10 +41,8 @@ type Server struct {
 }
 
 // NewServer creates a new server that can be started by calling Start.
-func NewServer(address, port string, builder worker.Builder) *Server {
+func NewServer(builder worker.Builder) *Server {
 	return &Server{
-		address:      address,
-		port:         port,
 		workerServer: newWorkerServer(builder),
 	}
 }
@@ -49,55 +62,16 @@ func (s *Server) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 func (s *Server) Serve() {
 	s.ForceStop()
 
-	gin.DefaultWriter = ginutil.DefaultLoggerWriter
-	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
-
+	applyTLSConfig()
 	r := gin.New()
-	r.Use(
-		ginutil.DefaultLoggerHandler,
-		ginutil.RecoverProblem,
-	)
+	applyGinHandlers(r)
+	applyCORSConfig(r)
 
 	g := r.Group("/api")
 	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 
-	{
-		buildModule := buildModule{s.workerServer}
-		artifactModule := artifactModule{s.workerServer}
-		buildModule.register(g)
-		artifactModule.register(g)
-	}
-
-	rootCAs, err := x509.SystemCertPool()
-	if err != nil {
-		log.Warn().Message("No system cert pool found. Disabling TLS.")
-	} else {
-		http.DefaultClient = &http.Client{
-			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{
-					RootCAs: rootCAs,
-				},
-			},
-		}
-	}
-
-	bindAddress := fmt.Sprintf("%s:%s", s.address, s.port)
-	s.srv = &http.Server{
-		Addr:    bindAddress,
-		Handler: r,
-	}
-
-	go func() {
-		log.Info().WithString("bindAddress", bindAddress).Message("Server starting.")
-		err := s.srv.ListenAndServeTLS("localhost.crt", "localhost.key")
-		if err != nil {
-			if errors.Is(err, http.ErrServerClosed) {
-				log.Info().Message("Closed server.")
-			} else if s.onServeErrorHandler != nil {
-				s.onServeErrorHandler(err)
-			}
-		}
-	}()
+	s.registerModules(g)
+	s.serve(r)
 }
 
 // GracefulStop stops the HTTP server gracefully, blocking new connections
@@ -135,4 +109,73 @@ func (s *Server) ForceStop() error {
 // requests.
 func (s *Server) IsRunning() bool {
 	return s.srv != nil && s.isRunning
+}
+
+func (s *Server) registerModules(r *gin.RouterGroup) {
+	modules := []module{
+		&buildModule{s.workerServer},
+		&artifactModule{s.workerServer},
+	}
+
+	for _, module := range modules {
+		module.register(r)
+	}
+}
+
+func (s *Server) serve(r *gin.Engine) {
+	s.srv = &http.Server{
+		Addr:    cfg.HTTP.BindAddress,
+		Handler: r,
+	}
+
+	go func() {
+		log.Debug().WithString("certsFile", cfg.CA.CertsFile).Message("")
+		log.Debug().WithString("certKeyFile", cfg.CA.CertKeyFile).Message("")
+		s.isRunning = true
+		if err := s.srv.ListenAndServeTLS(cfg.CA.CertsFile, cfg.CA.CertKeyFile); err != nil {
+			if errors.Is(err, http.ErrServerClosed) {
+				log.Info().Message("Closed server.")
+			} else if s.onServeErrorHandler != nil {
+				s.onServeErrorHandler(err)
+			}
+		}
+	}()
+}
+
+func applyTLSConfig() {
+	if cfg.CA.CertsFile != "" {
+		client, err := cacertutil.NewHTTPClientWithCerts(cfg.CA.CertsFile)
+		if err != nil {
+			log.Error().WithError(err).Message("Failed to get net/http.Client with certs")
+			os.Exit(1)
+		}
+		http.DefaultClient = client
+	}
+}
+
+func applyGinHandlers(r *gin.Engine) {
+	gin.DefaultWriter = ginutil.DefaultLoggerWriter
+	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
+	r.Use(
+		ginutil.DefaultLoggerHandler,
+		ginutil.RecoverProblem,
+	)
+}
+
+func applyCORSConfig(r *gin.Engine) {
+	if len(cfg.HTTP.CORS.AllowOrigins) > 0 {
+		log.Info().
+			WithStringf("origin", "%v", cfg.HTTP.CORS.AllowOrigins).
+			Message("Allowing origins in CORS.")
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowOrigins = cfg.HTTP.CORS.AllowOrigins
+		corsConfig.AddAllowHeaders("Authorization")
+		corsConfig.AllowCredentials = true
+		r.Use(cors.New(corsConfig))
+	} else if cfg.HTTP.CORS.AllowAllOrigins {
+		log.Info().Message("Allowing all origins in CORS.")
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowAllOrigins = true
+		r.Use(cors.New(corsConfig))
+	}
 }

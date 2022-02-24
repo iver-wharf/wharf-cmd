@@ -20,21 +20,25 @@ import (
 // configurations. For YAML they represent deeper nested maps. For environment
 // variables they are joined together by underscores.
 type Config struct {
-	WorkerHTTPServer WorkerHTTPServerConfig
+	Worker WorkerConfig
+}
 
-	// InstanceID may be an arbitrary string that is used to identify different
-	// Wharf installations from each other. Needed when you use multiple Wharf
-	// installations in the same environment, such as the same Kubernetes
-	// namespace or the same Jenkins instance, to let Wharf know which builds
-	// belong to which Wharf installation.
-	//
-	// Added in v0.8.0.
-	InstanceID string
+type WorkerConfig struct {
+	Server WorkerServerConfig
+	Client WorkerClientConfig
 }
 
 // WorkerHTTPServerConfig holds settings for the worker HTTP server.
-type WorkerHTTPServerConfig struct {
+type WorkerServerConfig struct {
 	HTTP HTTPConfig
+	RPC  RPCConfig
+	CA   CertConfig
+}
+
+// WorkerHTTPServerConfig holds settings for the worker HTTP server.
+type WorkerClientConfig struct {
+	HTTP HTTPConfig
+	RPC  RPCConfig
 	CA   CertConfig
 }
 
@@ -58,6 +62,8 @@ type HTTPConfig struct {
 	// Added in v0.8.0.
 	BasicAuth string
 }
+
+type RPCConfig struct{}
 
 // CORSConfig holds settings for an HTTP server's CORS settings.
 type CORSConfig struct {
@@ -90,11 +96,18 @@ type CertConfig struct {
 
 // DefaultConfig is the hard-coded default values for wharf-cmd's configs.
 var DefaultConfig = Config{
-	WorkerHTTPServer: WorkerHTTPServerConfig{
-		HTTP: HTTPConfig{
-			BindAddress: "0.0.0.0:8080",
-			CORS: CORSConfig{
-				AllowAllOrigins: true,
+	Worker: WorkerConfig{
+		Server: WorkerServerConfig{
+			HTTP: HTTPConfig{
+				BindAddress: "0.0.0.0:8080",
+				CORS: CORSConfig{
+					AllowAllOrigins: true,
+				},
+			},
+		},
+		Client: WorkerClientConfig{
+			HTTP: HTTPConfig{
+				BindAddress: "localhost:8080",
 			},
 		},
 	},
