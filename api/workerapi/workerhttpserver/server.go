@@ -131,13 +131,13 @@ func (s *Server) serve(r *gin.Engine) {
 		}
 		s.isRunning = true
 		if err := s.srv.Serve(ln); err != nil {
-			s.isRunning = false
 			if errors.Is(err, http.ErrServerClosed) {
 				log.Info().Message("Server closed.")
 			} else if s.onServeErrorHandler != nil {
 				s.onServeErrorHandler(err)
 			}
 		}
+		s.isRunning = false
 	}()
 	for !s.isRunning {
 		time.Sleep(1 * time.Millisecond)
