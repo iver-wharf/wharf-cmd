@@ -2,7 +2,6 @@ package workerrpcserver
 
 import (
 	"strconv"
-	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -19,7 +18,7 @@ func newWorkerServer(store resultstore.Store) *workerServer {
 	return &workerServer{store: store}
 }
 
-func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
+func (s *workerServer) StreamLogs(req *v1.LogStreamRequest, stream v1.Worker_StreamLogsServer) error {
 	bufferSize := 100
 	if req.ChunkSize > 0 {
 		bufferSize = int(req.ChunkSize)
@@ -34,14 +33,14 @@ func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_St
 		}
 	}()
 
-	logs := make([]*v1.LogLine, bufferSize, bufferSize)
-	resp := v1.StreamLogsResponse{}
+	lines := make([]*v1.LogLine, bufferSize, bufferSize)
+	resp := v1.LogStream{}
 
 	i := 0
 	send := func() error {
 		// Slice slice to avoid sending old objects when we don't have a full chunk.
-		resp.Logs = logs[:i]
-		if len(resp.Logs) > 0 {
+		resp.Lines = lines[:i]
+		if len(resp.Lines) > 0 {
 			if err := stream.Send(&resp); err != nil {
 				return err
 			}
@@ -49,15 +48,14 @@ func (s *workerServer) StreamLogs(req *v1.StreamLogsRequest, stream v1.Worker_St
 		}
 		return nil
 	}
-outer:
 	for {
 		for i < bufferSize {
 			select {
 			case line, ok := <-ch:
 				if !ok {
-					break outer
+					return send()
 				}
-				logs[i] = convertToLogLine(line)
+				lines[i] = convertToLogLine(line)
 				i++
 			default:
 				break
@@ -67,40 +65,9 @@ outer:
 			return err
 		}
 	}
-	return send()
 }
 
-func (s *workerServer) Log(_ *v1.LogRequest, stream v1.Worker_LogServer) error {
-	const bufferSize = 100
-	ch, err := s.store.SubAllLogLines(bufferSize)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if !s.store.UnsubAllLogLines(ch) {
-			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
-		}
-	}()
-
-	var resp *v1.LogResponse
-	for {
-		select {
-		case line, ok := <-ch:
-			if !ok {
-				return nil
-			}
-			resp = convertToLogResponse(line)
-		default:
-			continue
-		}
-
-		if err := stream.Send(resp); err != nil {
-			return err
-		}
-	}
-}
-
-func (s *workerServer) StatusEvent(_ *v1.StatusEventRequest, stream v1.Worker_StatusEventServer) error {
+func (s *workerServer) StreamStatusEvents(_ *v1.StatusEventRequest, stream v1.Worker_StreamStatusEventsServer) error {
 	const bufferSize = 100
 	ch, err := s.store.SubAllStatusUpdates(bufferSize)
 	if err != nil {
@@ -112,7 +79,7 @@ func (s *workerServer) StatusEvent(_ *v1.StatusEventRequest, stream v1.Worker_St
 		}
 	}()
 
-	var resp *v1.StatusEventResponse
+	var resp *v1.StatusEvent
 	for {
 		select {
 		case statusEvent, ok := <-ch:
@@ -130,14 +97,14 @@ func (s *workerServer) StatusEvent(_ *v1.StatusEventRequest, stream v1.Worker_St
 	}
 }
 
-func (s *workerServer) ArtifactEvent(_ *v1.ArtifactEventRequest, stream v1.Worker_ArtifactEventServer) error {
+func (s *workerServer) StreamArtifactEvents(_ *v1.ArtifactEventRequest, stream v1.Worker_StreamArtifactEventsServer) error {
 	// Doesn't exist in resultstore currently so mocking it directly here.
-	var ch <-chan *v1.ArtifactEventResponse
+	var ch <-chan *v1.ArtifactEvent
 	go func() {
-		sendCh := make(chan *v1.ArtifactEventResponse)
+		sendCh := make(chan *v1.ArtifactEvent)
 		ch = sendCh
 		for i := 1; i <= 10; i++ {
-			sendCh <- &v1.ArtifactEventResponse{
+			sendCh <- &v1.ArtifactEvent{
 				ArtifactID: uint32(i),
 				StepID:     uint32(i/3) + 1,
 				Name:       "Artifact " + strconv.Itoa(i),
@@ -146,7 +113,7 @@ func (s *workerServer) ArtifactEvent(_ *v1.ArtifactEventRequest, stream v1.Worke
 		close(sendCh)
 	}()
 
-	var resp *v1.ArtifactEventResponse
+	var resp *v1.ArtifactEvent
 	for {
 		select {
 		case artifactEvent, ok := <-ch:
@@ -164,62 +131,46 @@ func (s *workerServer) ArtifactEvent(_ *v1.ArtifactEventRequest, stream v1.Worke
 	}
 }
 
-func convertToTimestamppb(ts time.Time) *timestamppb.Timestamp {
-	return &timestamppb.Timestamp{
-		Seconds: ts.Unix(),
-		Nanos:   int32(ts.Nanosecond()),
-	}
-}
-
 func convertToLogLine(line resultstore.LogLine) *v1.LogLine {
 	return &v1.LogLine{
 		LogID:     line.LogID,
 		StepID:    line.StepID,
-		Timestamp: convertToTimestamppb(line.Timestamp),
-		Line:      line.Message,
+		Timestamp: timestamppb.New(line.Timestamp),
+		Message:   line.Message,
 	}
 }
 
-func convertToLogResponse(line resultstore.LogLine) *v1.LogResponse {
-	return &v1.LogResponse{
-		LogID:     line.LogID,
-		StepID:    line.StepID,
-		Timestamp: convertToTimestamppb(line.Timestamp),
-		Line:      line.Message,
-	}
-}
-
-func convertToStatus(status worker.Status) v1.StatusEventResponse_Status {
+func convertToStatus(status worker.Status) v1.StatusEventStatus {
 	switch status {
 	case worker.StatusNone:
-		return v1.StatusEventResponse_NONE
+		return v1.StatusEventNone
 	case worker.StatusScheduling:
-		return v1.StatusEventResponse_SCHEDULING
+		return v1.StatusEventScheduling
 	case worker.StatusInitializing:
-		return v1.StatusEventResponse_INITIALIZING
+		return v1.StatusEventInitializing
 	case worker.StatusRunning:
-		return v1.StatusEventResponse_RUNNING
+		return v1.StatusEventRunning
 	case worker.StatusSuccess:
-		return v1.StatusEventResponse_SUCCESS
+		return v1.StatusEventSuccess
 	case worker.StatusFailed:
-		return v1.StatusEventResponse_FAILED
+		return v1.StatusEventFailed
 	case worker.StatusCancelled:
-		return v1.StatusEventResponse_CANCELLED
+		return v1.StatusEventCancelled
 	default:
-		return v1.StatusEventResponse_UNKNOWN
+		return v1.StatusEventUnknown
 	}
 }
 
-func convertToStatusEvent(update resultstore.StatusUpdate) *v1.StatusEventResponse {
-	return &v1.StatusEventResponse{
+func convertToStatusEvent(update resultstore.StatusUpdate) *v1.StatusEvent {
+	return &v1.StatusEvent{
 		EventID: update.UpdateID,
 		StepID:  update.StepID,
 		Status:  convertToStatus(update.Status),
 	}
 }
 
-// func convertArtifactEvent(ev resultstore.ArtifactEvent) v1.ArtifactEventResponse {
-// 	return v1.ArtifactEventResponse{
+// func convertArtifactEvent(ev resultstore.ArtifactEvent) v1.ArtifactEvent {
+// 	return v1.ArtifactEvent{
 // 		ArtifactID: ev.ArtifactID,
 // 		StepID:     ev.StepID,
 // 		Name:       ev.Name,
