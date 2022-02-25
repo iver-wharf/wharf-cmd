@@ -64,5 +64,5 @@ func init() {
 
 	runCmd.Flags().StringVarP(&flagRunPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
 	runCmd.Flags().StringVarP(&flagStage, "stage", "s", "", "Stage to run (will run all stages if unset)")
-	runCmd.Flags().StringVarP(&flagStage, "environment", "e", "", "Environment selection")
+	runCmd.Flags().StringVarP(&flagEnv, "environment", "e", "", "Environment selection")
 }
