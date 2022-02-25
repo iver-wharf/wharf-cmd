@@ -1,6 +1,7 @@
 package main
 
 import (
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerrpcclient"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerrpcserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -59,20 +60,19 @@ func launchClient() *workerrpcclient.Client {
 }
 
 func testClientCalls(client *workerrpcclient.Client) {
-	log.Info().Message("-- PrintStreamedLogs")
-	if err := client.PrintStreamedLogs(); err != nil {
+	if err := client.HandleLogStream(func(line *v1.LogLine) {
+		log.Info().Messagef("%v", line)
+	}); err != nil {
 		log.Error().WithError(err).Message("")
 	}
-	log.Info().Message("-- PrintLogs")
-	if err := client.PrintLogs(); err != nil {
+	if err := client.HandleStatusEventStream(func(statusEvent *v1.StatusEvent) {
+		log.Info().Messagef("%v", statusEvent)
+	}); err != nil {
 		log.Error().WithError(err).Message("")
 	}
-	log.Info().Message("-- PrintStatusEvents")
-	if err := client.PrintStatusEvents(); err != nil {
-		log.Error().WithError(err).Message("")
-	}
-	log.Info().Message("-- PrintArtifactEvents")
-	if err := client.PrintArtifactEvents(); err != nil {
+	if err := client.HandleArtifactEventStream(func(artifactEvent *v1.ArtifactEvent) {
+		log.Info().Messagef("%v", artifactEvent)
+	}); err != nil {
 		log.Error().WithError(err).Message("")
 	}
 }
