@@ -52,91 +52,141 @@ func (c *Client) Close() error {
 	return nil
 }
 
-// PrintStreamedLogs prints logs received from the server.
-//
-// TEMPORARY: To test functionality.
-func (c *Client) PrintStreamedLogs() error {
-	stream, err := c.Client.StreamLogs(context.Background(), &v1.StreamLogsRequest{ChunkSize: 50})
+// StreamLogs returns a channel that will receive log lines from the worker.
+func (c *Client) StreamLogs() (<-chan *v1.LogLine, <-chan error) {
+	ch := make(chan *v1.LogLine)
+	errCh := make(chan error)
+	stream, err := c.Client.StreamLogs(context.Background(), &v1.LogStreamRequest{ChunkSize: 100})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
-		return err
+		errCh <- err
+		close(errCh)
+		close(ch)
+	} else {
+		go func() {
+			for {
+				logLines, err := stream.Recv()
+				if err != nil {
+					close(ch)
+					if err == io.EOF {
+						errCh <- nil
+					} else {
+						log.Error().WithError(err).Message("Error fetching from batched logs stream.")
+						errCh <- err
+					}
+					break
+				}
+				for _, v := range logLines.Lines {
+					ch <- v
+				}
+			}
+			close(errCh)
+		}()
 	}
-
-	for {
-		logLines, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			log.Error().WithError(err).Message("Error fetching from batched logs stream.")
-			return err
-		}
-		for _, v := range logLines.Logs {
-			log.Info().WithStringf("logLine", "%v", v).Message("")
-		}
-	}
+	return ch, errCh
 }
 
-// PrintLogs prints logs received from the server.
-//
-// TEMPORARY: To test functionality.
-func (c *Client) PrintLogs() error {
-	stream, err := c.Client.Log(context.Background(), &v1.LogRequest{}, grpc.FailFastCallOption{FailFast: true})
-	if err != nil {
-		log.Error().WithError(err).Message("Error fetching stream for logs.")
+// HandleLogStream is the functional equivalent of calling StreamLogs and
+// passing each log to the callback.
+func (c *Client) HandleLogStream(onLogLine func(*v1.LogLine)) error {
+	ch, errCh := c.StreamLogs()
+	for line, ok := <-ch; ok; line, ok = <-ch {
+		onLogLine(line)
+	}
+	for err := range errCh {
 		return err
 	}
-
-	for {
-		logLine, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			log.Error().WithError(err).Message("Error fetching from logs stream.")
-			return err
-		}
-		log.Info().WithStringf("logLine", "%v", logLine).Message("")
-	}
+	return nil
 }
 
-// PrintStatusEvents prints status events received from the server.
-//
-// TEMPORARY: To test functionality.
-func (c *Client) PrintStatusEvents() error {
-	stream, err := c.Client.StatusEvent(context.Background(), &v1.StatusEventRequest{})
+// StreamStatusEvents returns a channel that will receive status events from
+// the worker.
+func (c *Client) StreamStatusEvents() (<-chan *v1.StatusEvent, <-chan error) {
+	ch := make(chan *v1.StatusEvent)
+	errCh := make(chan error)
+	stream, err := c.Client.StreamStatusEvents(context.Background(), &v1.StatusEventRequest{})
 	if err != nil {
-		log.Error().WithError(err).Message("Error fetching stream for status events.")
+		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
+		errCh <- err
+		close(errCh)
+		close(ch)
+	} else {
+		go func() {
+			for {
+				statusEvent, err := stream.Recv()
+				if err != nil {
+					close(ch)
+					if err == io.EOF {
+						errCh <- nil
+					} else {
+						log.Error().WithError(err).Message("Error fetching from batched logs stream.")
+						errCh <- err
+					}
+					break
+				}
+				ch <- statusEvent
+			}
+			close(errCh)
+		}()
+	}
+	return ch, errCh
+}
+
+// HandleStatusEventStream is the functional equivalent of calling
+// StreamStatusEvents and passing each event to the callback.
+func (c *Client) HandleStatusEventStream(onStatusEvent func(*v1.StatusEvent)) error {
+	ch, errCh := c.StreamStatusEvents()
+	for statusEvent, ok := <-ch; ok; statusEvent, ok = <-ch {
+		onStatusEvent(statusEvent)
+	}
+	for err := range errCh {
 		return err
 	}
-
-	for {
-		statusEvent, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			log.Error().WithError(err).Message("Error fetching from status events stream.")
-			return err
-		}
-		log.Info().WithStringf("statusEvent", "%v", statusEvent).Message("")
-	}
+	return nil
 }
 
-// PrintArtifactEvents prints artifact events received from the server.
-//
-// TEMPORARY: To test functionality.
-func (c *Client) PrintArtifactEvents() error {
-	stream, err := c.Client.ArtifactEvent(context.Background(), &v1.ArtifactEventRequest{})
+// StreamArtifactEvents returns a channel that will receive artifact events
+// from the worker.
+func (c *Client) StreamArtifactEvents() (<-chan *v1.ArtifactEvent, <-chan error) {
+	ch := make(chan *v1.ArtifactEvent)
+	errCh := make(chan error)
+	stream, err := c.Client.StreamArtifactEvents(context.Background(), &v1.ArtifactEventRequest{})
 	if err != nil {
-		log.Error().WithError(err).Message("Error fetching stream for artifact events.")
+		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
+		errCh <- err
+		close(errCh)
+		close(ch)
+	} else {
+		go func() {
+			for {
+				artifactEvent, err := stream.Recv()
+				if err != nil {
+					close(ch)
+					if err == io.EOF {
+						errCh <- nil
+					} else {
+						log.Error().WithError(err).Message("Error fetching from batched logs stream.")
+						errCh <- err
+					}
+					break
+				}
+				ch <- artifactEvent
+			}
+			close(errCh)
+		}()
 	}
+	return ch, errCh
+}
 
-	for {
-		artifactEvent, err := stream.Recv()
-		if err == io.EOF {
-			return nil
-		} else if err != nil {
-			log.Error().WithError(err).Message("Error fetching from artifact events stream.")
-			return err
-		}
-		log.Info().WithStringf("artifactEvent", "%v", artifactEvent).Message("")
+// HandleArtifactEventStream is the functional equivalent of calling
+// StreamArtifactEvents and passing each event to the callback.
+func (c *Client) HandleArtifactEventStream(onArtifactEvent func(*v1.ArtifactEvent)) error {
+	ch, errCh := c.StreamArtifactEvents()
+	for artifactEvent, ok := <-ch; ok; artifactEvent, ok = <-ch {
+		onArtifactEvent(artifactEvent)
 	}
+	for err := range errCh {
+		return err
+	}
+	return nil
 }
