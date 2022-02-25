@@ -3,6 +3,7 @@ package workerrpcserver
 import (
 	"fmt"
 	"net"
+	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -69,6 +70,10 @@ func (s *Server) Serve() error {
 		}
 		s.isRunning = false
 	}()
+
+	for !s.isRunning {
+		time.Sleep(1 * time.Millisecond)
+	}
 
 	return nil
 }
