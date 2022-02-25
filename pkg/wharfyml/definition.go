@@ -58,6 +58,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	def.Stages = stages
 	errSlice.add(errs...)
 	errSlice.add(validateDefEnvironmentUsage(def)...)
+	// filtering intentionally performed after validation
+	def.Stages = filterStagesOnEnv(def.Stages, args.Env)
 	return
 }
 
@@ -104,4 +106,26 @@ func validateDefEnvironmentUsage(def Definition) Errors {
 		}
 	}
 	return errSlice
+}
+
+func filterStagesOnEnv(stages []Stage, envFilter string) []Stage {
+	var filtered []Stage
+	for _, stage := range stages {
+		if containsEnvFilter(stage.Envs, envFilter) {
+			filtered = append(filtered, stage)
+		}
+	}
+	return filtered
+}
+
+func containsEnvFilter(envRefs []EnvRef, envFilter string) bool {
+	if envFilter == "" && len(envRefs) == 0 {
+		return true
+	}
+	for _, ref := range envRefs {
+		if ref.Name == envFilter {
+			return true
+		}
+	}
+	return false
 }

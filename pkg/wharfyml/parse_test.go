@@ -52,10 +52,11 @@ myStage1:
       cmds: [echo hello]
 
 myStage2:
+  environments: [myEnvA]
   myKubectlStep:
     kubectl:
       file: deploy/pod.yaml
-`), Args{})
+`), Args{Env: "myEnvA"})
 	requireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
@@ -119,7 +120,9 @@ myStage2:
 
 		myStage2 := got.Stages[1]
 		assert.Equal(t, "myStage2", myStage2.Name, "myStage2.Name")
-		assert.Len(t, myStage2.Envs, 0, "myStage2.Envs")
+		if assert.Len(t, myStage2.Envs, 1, "myStage2.Envs") {
+			assert.Equal(t, "myEnvA", myStage2.Envs[0].Name, "myStage2.Envs[0].Name")
+		}
 
 		if assert.Len(t, myStage2.Steps, 1, "myStage2.Steps") {
 			assert.Equal(t, "myKubectlStep", myStage2.Steps[0].Name, "myStage2.myKubectlStep.Name")
@@ -337,41 +340,54 @@ myStage:
 }
 
 func TestParse_EnvVarSub(t *testing.T) {
-	const input = `
-environments:
-  myEnv:
-    myImage: ubuntu:latest
-    myCmd: echo hello world
-
-myStage:
-  myStep:
-    container:
-      image: ${myImage}
-      cmds:
-        - ${myCmd}
-`
 	testCases := []struct {
 		name      string
 		args      Args
 		wantImage string
 		wantCmd   string
+		input     string
 	}{
 		{
 			name:      "no env",
 			args:      Args{},
 			wantImage: "${myImage}",
 			wantCmd:   "${myCmd}",
+			input: `
+environments:
+  myEnv:
+    myImage: ubuntu:latest
+    myCmd: echo hello world
+myStage:
+  myStep:
+    container:
+      image: ${myImage}
+      cmds:
+        - ${myCmd}
+`,
 		},
 		{
 			name:      "with env",
 			args:      Args{Env: "myEnv"},
 			wantImage: "ubuntu:latest",
 			wantCmd:   "echo hello world",
+			input: `
+environments:
+  myEnv:
+    myImage: ubuntu:latest
+    myCmd: echo hello world
+myStage:
+  environments: [myEnv]
+  myStep:
+    container:
+      image: ${myImage}
+      cmds:
+        - ${myCmd}
+`,
 		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			def, errs := Parse(strings.NewReader(input), tc.args)
+			def, errs := Parse(strings.NewReader(tc.input), tc.args)
 			require.Empty(t, errs)
 			require.Len(t, def.Stages, 1, "stage count")
 			require.Len(t, def.Stages[0].Steps, 1, "step count")
