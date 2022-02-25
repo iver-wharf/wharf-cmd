@@ -122,13 +122,13 @@ func (s *Server) serve(r *gin.Engine) {
 		Addr:    fmt.Sprintf("%s:%s", s.address, s.port),
 		Handler: r,
 	}
+	ln, err := net.Listen("tcp", s.srv.Addr)
+	if err != nil {
+		s.onServeErrorHandler(err)
+		return
+	}
 	go func() {
 		log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
-		ln, err := net.Listen("tcp", s.srv.Addr)
-		if err != nil {
-			s.onServeErrorHandler(err)
-			return
-		}
 		s.isRunning = true
 		if err := s.srv.Serve(ln); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
