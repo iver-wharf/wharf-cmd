@@ -17,6 +17,8 @@ require (
 	k8s.io/client-go v0.23.3
 )
 
+require github.com/alta/protopatch v0.5.0
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.12.0 // indirect
