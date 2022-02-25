@@ -4,45 +4,37 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-core/pkg/cacertutil"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 )
 
-var cfg config.WorkerServerConfig
-
 type module interface {
 	register(g *gin.RouterGroup)
 }
 
-func init() {
-	c, err := config.LoadConfig()
-	if err != nil {
-		fmt.Println("Failed to read config:", err)
-		os.Exit(1)
-	}
-	cfg = c.Worker.Server
-}
-
 // Server lets us start an HTTP server asynchronously.
 type Server struct {
-	onServeErrorHandler func(error)
-
+	address      string
+	port         string
 	srv          *http.Server
 	workerServer *workerServer
 	isRunning    bool
+
+	onServeErrorHandler func(error)
 }
 
 // NewServer creates a new server that can be started by calling Start.
-func NewServer(builder worker.Builder) *Server {
+func NewServer(address string, port string, builder worker.Builder) *Server {
 	return &Server{
+		address:      address,
+		port:         port,
 		workerServer: newWorkerServer(builder),
 	}
 }
@@ -62,7 +54,11 @@ func (s *Server) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 func (s *Server) Serve() {
 	s.ForceStop()
 
-	applyTLSConfig()
+	if err := applyHTTPClient(); err != nil {
+		s.onServeErrorHandler(err)
+		return
+	}
+
 	r := gin.New()
 	applyGinHandlers(r)
 	applyCORSConfig(r)
@@ -116,7 +112,6 @@ func (s *Server) registerModules(r *gin.RouterGroup) {
 		&buildModule{s.workerServer},
 		&artifactModule{s.workerServer},
 	}
-
 	for _, module := range modules {
 		module.register(r)
 	}
@@ -124,33 +119,37 @@ func (s *Server) registerModules(r *gin.RouterGroup) {
 
 func (s *Server) serve(r *gin.Engine) {
 	s.srv = &http.Server{
-		Addr:    cfg.HTTP.BindAddress,
+		Addr:    fmt.Sprintf("%s:%s", s.address, s.port),
 		Handler: r,
 	}
-
 	go func() {
-		log.Debug().WithString("certsFile", cfg.CA.CertsFile).Message("")
-		log.Debug().WithString("certKeyFile", cfg.CA.CertKeyFile).Message("")
+		log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
+		ln, err := net.Listen("tcp", s.srv.Addr)
+		if err != nil {
+			s.onServeErrorHandler(err)
+			return
+		}
 		s.isRunning = true
-		if err := s.srv.ListenAndServeTLS(cfg.CA.CertsFile, cfg.CA.CertKeyFile); err != nil {
+		if err := s.srv.Serve(ln); err != nil {
+			s.isRunning = false
 			if errors.Is(err, http.ErrServerClosed) {
-				log.Info().Message("Closed server.")
+				log.Info().Message("Server closed.")
 			} else if s.onServeErrorHandler != nil {
 				s.onServeErrorHandler(err)
 			}
 		}
 	}()
+	for !s.isRunning {
+		time.Sleep(1 * time.Millisecond)
+	}
 }
 
-func applyTLSConfig() {
-	if cfg.CA.CertsFile != "" {
-		client, err := cacertutil.NewHTTPClientWithCerts(cfg.CA.CertsFile)
-		if err != nil {
-			log.Error().WithError(err).Message("Failed to get net/http.Client with certs")
-			os.Exit(1)
-		}
+func applyHTTPClient() error {
+	client, err := cacertutil.NewHTTPClientWithCerts("/etc/iver-wharf/wharf-cmd/localhost.crt")
+	if err == nil {
 		http.DefaultClient = client
 	}
+	return err
 }
 
 func applyGinHandlers(r *gin.Engine) {
@@ -163,19 +162,8 @@ func applyGinHandlers(r *gin.Engine) {
 }
 
 func applyCORSConfig(r *gin.Engine) {
-	if len(cfg.HTTP.CORS.AllowOrigins) > 0 {
-		log.Info().
-			WithStringf("origin", "%v", cfg.HTTP.CORS.AllowOrigins).
-			Message("Allowing origins in CORS.")
-		corsConfig := cors.DefaultConfig()
-		corsConfig.AllowOrigins = cfg.HTTP.CORS.AllowOrigins
-		corsConfig.AddAllowHeaders("Authorization")
-		corsConfig.AllowCredentials = true
-		r.Use(cors.New(corsConfig))
-	} else if cfg.HTTP.CORS.AllowAllOrigins {
-		log.Info().Message("Allowing all origins in CORS.")
-		corsConfig := cors.DefaultConfig()
-		corsConfig.AllowAllOrigins = true
-		r.Use(cors.New(corsConfig))
-	}
+	log.Info().Message("Allowing all origins in CORS.")
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = true
+	r.Use(cors.New(corsConfig))
 }
