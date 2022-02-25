@@ -1,5 +1,10 @@
 syntax = "proto3";
+
 import "google/protobuf/timestamp.proto";
+import "patch/go.proto";
+
+option (go.lint).all = true;
+option (go.lint).initialisms = "ID";
 
 // Versioning via package name, for future-proofing
 package wharf.worker.v1;
@@ -7,30 +12,28 @@ package wharf.worker.v1;
 option go_package = "github.com/iver-wharf/wharf-cmd/api/workerapi/v1";
 
 service Worker {
-  rpc StreamLogs(StreamLogsRequest) returns (stream StreamLogsResponse);
-  rpc Log(LogRequest) returns (stream LogResponse);
-  rpc StatusEvent(StatusEventRequest) returns (stream StatusEventResponse);
-  rpc ArtifactEvent(ArtifactEventRequest) returns (stream ArtifactEventResponse);
+  rpc StreamLogs(LogStreamRequest) returns (stream LogStream);
+  rpc StreamStatusEvents(StatusEventRequest) returns (stream StatusEvent);
+  rpc StreamArtifactEvents(ArtifactEventRequest) returns (stream ArtifactEvent);
 }
 
-// Empty messages, but exists for potential future usages
-message StreamLogsRequest {
+message LogStreamRequest {
   int32 chunkSize = 1;
 }
-message LogRequest { }
+// Empty messages, but exists for potential future usages
 message StatusEventRequest { }
 message ArtifactEventRequest { }
 
-message LogResponse {
-  uint64 logID = 1; // not DB value; worker's own ID of the log line
-  uint64 stepID = 2; // not DB value; worker's own ID of the step ID
-  google.protobuf.Timestamp timestamp = 3;
-  string line = 4;
+message LogStream {
+  // Lines is an array of log lines to allow chunking log line streams.
+  repeated LogLine lines = 1;
 }
 
-message StatusEventResponse {
-  uint64 eventID = 1; // not DB value; worker's own ID of the event
-  uint64 stepID = 2; // not DB value; worker's own ID of the step ID
+message StatusEvent {
+  // EventID is the worker's own ID of the event the status.
+  uint64 event_id = 1;
+  // StepID is the worker's own ID of the step.
+  uint64 step_id = 2;
 
   enum Status {
     UNKNOWN = 0;
@@ -45,19 +48,31 @@ message StatusEventResponse {
   Status status = 3;
 }
 
-message ArtifactEventResponse {
-  uint32 artifactID = 1; // not DB value; worker's own ID of the artifact
-  uint32 stepID = 2; // not DB value; worker's own ID of the step ID
+message ArtifactEvent {
+  // ArtifactID is the worker's own ID of the artifact. It's unique per build
+  // step for a given build, but may have collisons across multiple steps or
+  // builds.
+  uint32 artifact_id = 1;
+  // StepID is the worker's own ID of the build step that produced the
+  // artifact.
+  uint32 stepID = 2;
+  // Name is the name of the artifact.
   string name = 3;
 }
 
-message StreamLogsResponse {
-  repeated LogLine logs = 1;
-}
-
 message LogLine {
-  uint64 logID = 1; // not DB value; worker's own ID of the log line
-  uint64 stepID = 2; // not DB value; worker's own ID of the step ID
-  google.protobuf.Timestamp timestamp = 3;
-  string line = 4;
+  // BuildID is the database ID of the build this log line belongs to.
+  uint64 build_id = 1;
+  // LogID is the worker's own ID of the log line. It's unique per build step
+  // for a given build, but may have collisons across multiple steps or builds.
+  // Not database value, but instead worker's own ID of the log line.
+  uint64 log_id = 2;
+  // StepID is the worker's own ID of the step. It's unique for a given build,
+  // but may have collisions across multiple builds.
+  // Not database value, but instead worker's own ID of the step ID.
+  uint64 step_id = 3;
+  // Timestamp is when the log line was outputted from the build step.
+  google.protobuf.Timestamp timestamp = 4;
+  // Message is the log line text.
+  string message = 5;
 }
