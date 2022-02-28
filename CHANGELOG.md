@@ -66,6 +66,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Removed dependencies:
 
+  - `github.com/go-git/go-git` (#8)
   - `github.com/sirupsen/logrus` (#2)
   - `sigs.k8s.io/yaml` (#48)
 
@@ -78,10 +79,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
   - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0 (#8)
   - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
-
-- Removed dependencies:
-
-  - `github.com/go-git/go-git` (#8)
 
 - Changed Go runtime from v1.13 to v1.17. (#8)
 
