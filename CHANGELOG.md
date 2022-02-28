@@ -14,12 +14,14 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added new commands: (#46)
+- Added new commands: (#46, #59)
 
   - `wharf-cmd provisioner serve` that launches an HTTP REST api server with
     endpoints:
 
     - `GET /api` to check health.
+
+    - `GET /api/swagger/index.html` Swagger generated documentation.
 
     - `POST /api/worker` creates a new worker with certain labels.
 
