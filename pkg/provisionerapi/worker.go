@@ -51,7 +51,7 @@ func (m *workerModule) listWorkersHandler(c *gin.Context) {
 // @summary Creates a new wharf-cmd-worker
 // @description Added in v0.8.0.
 // @tags worker
-// @success 200 {object} provisioner.Worker
+// @success 201 {object} provisioner.Worker
 // @failure 500 {object} string "Failed"
 // @router /worker [post]
 func (m *workerModule) createWorkerHandler(c *gin.Context) {
@@ -70,7 +70,7 @@ func (m *workerModule) createWorkerHandler(c *gin.Context) {
 // @description Added in v0.8.0.
 // @tags worker
 // @param workerId path uint true "ID of worker to delete" minimum(0)
-// @success 200 {object} provisioner.Worker
+// @success 204 "OK"
 // @failure 500 {object} string "Failed"
 // @router /worker/{workerId} [delete]
 func (m *workerModule) deleteWorkerHandler(c *gin.Context) {
