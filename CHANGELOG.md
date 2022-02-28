@@ -61,6 +61,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
+  - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
+  - `github.com/swaggo/swag` v1.7.9 (#59)
 
 - Removed dependencies:
 
@@ -69,17 +71,17 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Removed commands `init`, `setup`, and `serve`. (#8)
 
-- Changed versions of numerous dependencies: (#8)
+- Changed versions of numerous dependencies:
 
-  - `k8s.io/api` from v0.0.0 to v0.23.3
-  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3
-  - `k8s.io/client-go` from v0.0.0 to v0.23.3
-  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0
+  - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
+  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3 (#8)
+  - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
+  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0 (#8)
+  - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
 
-- Removed dependencies: (#8)
+- Removed dependencies:
 
-  - `github.com/gin-gonic/gin`
-  - `github.com/go-git/go-git`
+  - `github.com/go-git/go-git` (#8)
 
 - Changed Go runtime from v1.13 to v1.17. (#8)
 
