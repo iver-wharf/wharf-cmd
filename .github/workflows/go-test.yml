@@ -23,6 +23,10 @@ jobs:
       - name: checkout
         uses: actions/checkout@v2
 
+      - name: Make swagger docs
+        run: |
+          make deps swag
+
       - name: Run tests
         run: |
           # One for GitHub Action logging purposes
