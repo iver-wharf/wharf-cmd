@@ -37,7 +37,7 @@ func Serve(cfg *rest.Config) error {
 
 	g := r.Group("/api")
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	g.GET("/", pingHandler)
+	g.GET("", pingHandler)
 
 	workerModule := workerModule{}
 	if err := workerModule.init(cfg); err != nil {
