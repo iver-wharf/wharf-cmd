@@ -45,6 +45,13 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)
 
+- Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
+  This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
+  among other things. (#63)
+
+- Fixed `wharf run` and `wharf provisioner` commands not using the namespace
+  defined in the kubeconfig. (#63)
+
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
 
@@ -56,9 +63,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added dependencies:
 
-  - `github.com/iver-wharf/wharf-core` (#2, #7)
-  - `gopkg.in/yaml.v3` v3.0.0 (#48)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
+  - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/spf13/pflag` v1.0.5 (#63)
+  - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:
 
