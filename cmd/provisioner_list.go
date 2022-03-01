@@ -9,9 +9,9 @@ import (
 
 var provisionerListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-`,
+	Short: "Lists current workers inside Kubernetes",
+	Long: `Lists wharf-cmd worker pods inside Kubernetes
+that are either scheduling, running, or completed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := provisioner.NewK8sProvisioner("default", Kubeconfig)
 		if err != nil {
