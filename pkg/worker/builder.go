@@ -77,7 +77,7 @@ func (b builder) Build(ctx context.Context, def wharfyml.Definition, opt BuildOp
 	return result, nil
 }
 
-func (b builder) GetBuildSteps() []wharfyml.Step {
+func (b builder) ListBuildSteps() []wharfyml.Step {
 	return b.steps
 }
 

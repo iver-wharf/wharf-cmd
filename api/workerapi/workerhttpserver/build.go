@@ -14,12 +14,12 @@ type buildModule struct {
 func (m *buildModule) register(g *gin.RouterGroup) {
 	build := g.Group("/build")
 	{
-		build.GET("/step", m.listStepsHandler)
+		build.GET("/step", m.listBuildStepsHandler)
 	}
 }
 
-func (m *buildModule) listStepsHandler(c *gin.Context) {
-	steps := m.builder.GetBuildSteps()
+func (m *buildModule) listBuildStepsHandler(c *gin.Context) {
+	steps := m.builder.ListBuildSteps()
 	responseSteps := modelconv.StepsToResponseSteps(steps)
 	c.JSON(http.StatusOK, responseSteps)
 }

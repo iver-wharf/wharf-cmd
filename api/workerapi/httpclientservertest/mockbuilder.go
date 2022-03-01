@@ -13,7 +13,7 @@ func (b *mockBuilder) Build(ctx context.Context, def wharfyml.Definition, opt wo
 	return worker.Result{}, nil
 }
 
-func (b *mockBuilder) GetBuildSteps() []wharfyml.Step {
+func (b *mockBuilder) ListBuildSteps() []wharfyml.Step {
 	return []wharfyml.Step{
 		{
 			Pos: wharfyml.Pos{
