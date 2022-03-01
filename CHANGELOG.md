@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added new commands: (#46)
+- Added provisioner commands: (#46)
 
   - `wharf-cmd provisioner serve` that launches an HTTP REST api server with
     endpoints:
@@ -36,6 +36,12 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `wharf-cmd provisioner delete` with flag `--id` to specify the worker that
     should be deleted, as long as it has certain labels as well.
 
+- Added watchdog commands: (#62)
+
+  - `wharf-cmd watchdog serve` checks stray builds from the wharf-api and
+    wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort
+    to clean up forgotten builds/workers.
+
 - Added new implementation for `wharf run`. (#33, #45)
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
@@ -56,9 +62,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added dependencies:
 
+  - `github.com/gin-gonic/gin` v1.7.1 (#46)
+  - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
-  - `github.com/gin-gonic/gin` v1.7.1 (#46)
 
 - Removed dependencies:
 
