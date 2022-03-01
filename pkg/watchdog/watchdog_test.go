@@ -68,13 +68,22 @@ func TestGetBuildsToKill(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := getBuildsToKill(tc.builds, tc.workers, testTimeSafeAfter)
-			if len(got) == 0 && len(tc.want) == 0 {
+			builds := getBuildsToKill(tc.builds, tc.workers, testTimeSafeAfter)
+			if len(builds) == 0 && len(tc.want) == 0 {
 				return
 			}
+			got := getBuildIDs(builds)
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func getBuildIDs(builds []response.Build) []uint {
+	ids := make([]uint, len(builds))
+	for i, b := range builds {
+		ids[i] = b.BuildID
+	}
+	return ids
 }
 
 func TestGetWorkersToKill(t *testing.T) {
@@ -120,11 +129,20 @@ func TestGetWorkersToKill(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got := getWorkersToKill(tc.builds, tc.workers, testTimeSafeAfter)
-			if len(got) == 0 && len(tc.want) == 0 {
+			workers := getWorkersToKill(tc.builds, tc.workers, testTimeSafeAfter)
+			if len(workers) == 0 && len(tc.want) == 0 {
 				return
 			}
+			got := getWorkerIDs(workers)
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+func getWorkerIDs(workers []provisioner.Worker) []string {
+	ids := make([]string, len(workers))
+	for i, w := range workers {
+		ids[i] = w.ID
+	}
+	return ids
 }
