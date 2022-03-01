@@ -32,7 +32,7 @@ func Serve(cfg *rest.Config) error {
 	}
 	workerModule.register(g)
 
-	const bindAddress = "0.0.0.0:8080"
+	const bindAddress = "0.0.0.0:5009"
 	if err := r.Run(bindAddress); err != nil {
 		log.Error().
 			WithError(err).

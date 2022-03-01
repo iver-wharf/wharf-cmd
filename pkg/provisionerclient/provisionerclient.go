@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )
 
@@ -17,6 +18,8 @@ type Client struct {
 	// 	http://wharf-cmd-provisioner.default.svc.cluster.local
 	APIURL string
 }
+
+var log = logger.NewScoped("PROVISIONER-CLIENT")
 
 func (c Client) ListWorkers() ([]provisioner.Worker, error) {
 	u, err := buildURL(c.APIURL, "api", "worker")
@@ -49,11 +52,19 @@ func (c Client) DeleteWorker(workerID string) error {
 }
 
 func doRequest(method string, u *url.URL) (*http.Response, error) {
-	req, err := http.NewRequest(method, u.String(), nil)
+	urlStr := u.String()
+	req, err := http.NewRequest(method, urlStr, nil)
 	if err != nil {
 		return nil, err
 	}
+	log.Debug().
+		WithString("method", method).
+		WithString("url", urlStr).
+		Message("")
 	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
 	if err := parseErrorResponse(resp); err != nil {
 		return nil, err
 	}
