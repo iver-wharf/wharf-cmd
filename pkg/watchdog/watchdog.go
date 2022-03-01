@@ -59,12 +59,56 @@ func (wd *watchdog) performCheck() error {
 	return nil
 }
 
-func getBuildsToKill(builds []response.Build, workers []provisioner.Worker) []response.Build {
-	return nil
+func getBuildsToKill(builds []response.Build, workers []provisioner.Worker, safeAfter time.Time) []uint {
+	workersMap := mapWorkersOnID(workers)
+	var toKill []uint
+	for _, b := range builds {
+		if b.WorkerID == "" {
+			continue
+		}
+		if _, ok := workersMap[b.WorkerID]; ok {
+			continue
+		}
+		if !b.ScheduledOn.Valid {
+			continue
+		}
+		if b.ScheduledOn.Time.After(safeAfter) {
+			continue
+		}
+		toKill = append(toKill, b.BuildID)
+	}
+	return toKill
 }
 
-func getWorkersToKill(builds []response.Build, workers []provisioner.Worker) []provisioner.Worker {
-	return nil
+func getWorkersToKill(builds []response.Build, workers []provisioner.Worker, safeAfter time.Time) []string {
+	buildsMap := mapBuildsOnWorkerID(builds)
+	var toKill []string
+	for _, w := range workers {
+		if _, ok := buildsMap[w.ID]; ok {
+			continue
+		}
+		if w.CreatedAt.After(safeAfter) {
+			continue
+		}
+		toKill = append(toKill, w.ID)
+	}
+	return toKill
+}
+
+func mapBuildsOnWorkerID(builds []response.Build) map[string]response.Build {
+	m := make(map[string]response.Build, len(builds))
+	for _, b := range builds {
+		m[b.WorkerID] = b
+	}
+	return m
+}
+
+func mapWorkersOnID(workers []provisioner.Worker) map[string]provisioner.Worker {
+	m := make(map[string]provisioner.Worker, len(workers))
+	for _, w := range workers {
+		m[w.ID] = w
+	}
+	return m
 }
 
 func (wd *watchdog) getRunningBuilds() ([]response.Build, error) {
