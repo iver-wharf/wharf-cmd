@@ -17,6 +17,7 @@ type workerClient struct {
 	client  *http.Client
 }
 
+// NewClient creates a client that can communicate with a Worker HTTP server.
 func NewClient(address, port string) (Client, error) {
 	client, err := cacertutil.NewHTTPClientWithCerts("/etc/iver-wharf/wharf-cmd/localhost.crt")
 	if err != nil {

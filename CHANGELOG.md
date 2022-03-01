@@ -61,7 +61,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `StatusEvent` serves status events to gRPC clients.
   - `ArtifactEvent` serves artifact events to gRPC clients.
 
-- Added gRPC client in `api/workerapi/workerclient` to interface with worker gRPC server. (#51)
+- Added gRPC client in `api/workerapi/workerclient` to interface with a worker
+  gRPC server. (#51)
 
 - Added dependencies:
 

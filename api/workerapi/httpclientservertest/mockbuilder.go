@@ -9,7 +9,7 @@ import (
 
 type mockBuilder struct{}
 
-func (b *mockBuilder) Build(ctx context.Context, def wharfyml.Definition, opt worker.BuildOptions) (worker.Result, error) {
+func (b *mockBuilder) Build(_ context.Context, _ wharfyml.Definition, _ worker.BuildOptions) (worker.Result, error) {
 	return worker.Result{}, nil
 }
 

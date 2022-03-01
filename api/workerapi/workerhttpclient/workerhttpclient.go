@@ -9,6 +9,7 @@ import (
 
 var log = logger.NewScoped("WORKER-HTTP-CLIENT")
 
+// Client is an interface with methods to communicate with a Wharf HTTP server.
 type Client interface {
 	ListBuildSteps() ([]response.Step, error)
 	ListArtifacts() ([]response.Artifact, error)
