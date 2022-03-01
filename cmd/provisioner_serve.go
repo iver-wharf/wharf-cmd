@@ -11,7 +11,7 @@ var provisionerServeCmd = &cobra.Command{
 	Long: `A longer description that spans multiple lines and likely contains examples
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return provisionerapi.Serve(Kubeconfig)
+		return provisionerapi.Serve(provisionerFlags.namespace, provisionerFlags.restConfig)
 	},
 }
 

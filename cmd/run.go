@@ -8,10 +8,14 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/spf13/cobra"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
-var flagRunPath string
-var flagStage string
+var runFlags = struct {
+	path         string
+	stage        string
+	k8sOverrides clientcmd.ConfigOverrides
+}{}
 
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -19,13 +23,17 @@ var runCmd = &cobra.Command{
 	Long: `A longer description that spans multiple lines and likely contains examples
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		stepRun, err := worker.NewK8sStepRunner("build", Kubeconfig)
+		kubeconfig, ns, err := loadKubeconfig(runFlags.k8sOverrides)
+		if err != nil {
+			return err
+		}
+		stepRun, err := worker.NewK8sStepRunner(ns, kubeconfig)
 		if err != nil {
 			return err
 		}
 		stageRun := worker.NewStageRunner(stepRun)
 		b := worker.New(stageRun)
-		def, errs := wharfyml.ParseFile(flagRunPath)
+		def, errs := wharfyml.ParseFile(runFlags.path)
 		if len(errs) > 0 {
 			log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
 			for _, err := range errs {
@@ -40,7 +48,7 @@ var runCmd = &cobra.Command{
 			return errors.New("failed to parse .wharf-ci.yml")
 		}
 		res, err := b.Build(context.Background(), def, worker.BuildOptions{
-			StageFilter: flagStage,
+			StageFilter: runFlags.stage,
 		})
 		if err != nil {
 			return err
@@ -59,6 +67,7 @@ var runCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().StringVarP(&flagRunPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
-	runCmd.Flags().StringVarP(&flagStage, "stage", "s", "", "Stage to run (will run all stages if unset)")
+	runCmd.Flags().StringVarP(&runFlags.path, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
+	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
+	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }

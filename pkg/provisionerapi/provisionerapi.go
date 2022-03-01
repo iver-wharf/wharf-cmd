@@ -10,7 +10,7 @@ import (
 var log = logger.NewScoped("PROVISIONER-API")
 
 // Serve starts an HTTP server.
-func Serve(cfg *rest.Config) error {
+func Serve(ns string, cfg *rest.Config) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
 	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
 
@@ -24,7 +24,7 @@ func Serve(cfg *rest.Config) error {
 	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 
 	workerModule := workerModule{}
-	if err := workerModule.init(cfg); err != nil {
+	if err := workerModule.init(ns, cfg); err != nil {
 		log.Error().
 			WithError(err).
 			Message("Failed to initialize worker module.")
