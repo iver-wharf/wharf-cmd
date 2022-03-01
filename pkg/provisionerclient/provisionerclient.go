@@ -21,6 +21,7 @@ type Client struct {
 
 var log = logger.NewScoped("PROVISIONER-CLIENT")
 
+// ListWorkers returns a slice of all workers.
 func (c Client) ListWorkers() ([]provisioner.Worker, error) {
 	u, err := buildURL(c.APIURL, "api", "worker")
 	if err != nil {
@@ -39,6 +40,7 @@ func (c Client) ListWorkers() ([]provisioner.Worker, error) {
 	return workers, nil
 }
 
+// DeleteWorker will terminate a worker based on its ID.
 func (c Client) DeleteWorker(workerID string) error {
 	u, err := buildURL(c.APIURL, "api", "worker", workerID)
 	if err != nil {
