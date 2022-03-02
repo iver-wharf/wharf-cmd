@@ -12,17 +12,17 @@ package wharf.worker.v1;
 option go_package = "github.com/iver-wharf/wharf-cmd/api/workerapi/v1";
 
 service Worker {
-  rpc StreamLogs(StreamLogLineRequest) returns (stream LogLine);
-  rpc StreamStatusEvents(StreamStatusEventRequest) returns (stream StatusEvent);
-  rpc StreamArtifactEvents(StreamArtifactEventRequest) returns (stream ArtifactEvent);
+  rpc StreamLogs(StreamLogsRequest) returns (stream StreamLogsResponse);
+  rpc StreamStatusEvents(StreamStatusEventsRequest) returns (stream StreamStatusEventsResponse);
+  rpc StreamArtifactEvents(StreamArtifactEventsRequest) returns (stream StreamArtifactEventsResponse);
 }
 
 // Empty messages, but exists for potential future usages
-message StreamLogLineRequest {}
-message StreamStatusEventRequest { }
-message StreamArtifactEventRequest { }
+message StreamLogsRequest {}
+message StreamStatusEventsRequest { }
+message StreamArtifactEventsRequest { }
 
-message LogLine {
+message StreamLogsResponse {
   // BuildID is the database ID of the build this log line belongs to.
   uint64 build_id = 1;
   // LogID is the worker's own ID of the log line. It's unique per build step
@@ -39,7 +39,7 @@ message LogLine {
   string message = 5;
 }
 
-message StatusEvent {
+message StreamStatusEventsResponse {
   // EventID is the worker's own ID of the event the status.
   uint64 event_id = 1;
   // StepID is the worker's own ID of the step.
@@ -55,17 +55,18 @@ message StatusEvent {
     FAILED = 6;
     CANCELLED = 7;
   }
+  // Status is the worker's status.
   Status status = 3;
 }
 
-message ArtifactEvent {
+message StreamArtifactEventsResponse {
   // ArtifactID is the worker's own ID of the artifact. It's unique per build
   // step for a given build, but may have collisons across multiple steps or
   // builds.
   uint32 artifact_id = 1;
   // StepID is the worker's own ID of the build step that produced the
   // artifact.
-  uint32 stepID = 2;
+  uint32 step_id = 2;
   // Name is the name of the artifact.
   string name = 3;
 }

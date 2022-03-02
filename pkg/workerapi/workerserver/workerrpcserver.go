@@ -23,8 +23,8 @@ func newWorkerRPCServer(store resultstore.Store) *workerRPCServer {
 	}
 }
 
-func (s *workerRPCServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker_StreamLogsServer) error {
-	bufferSize := 100
+func (s *workerRPCServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
+	const bufferSize = 100
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (s *workerRPCServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Wor
 	}
 }
 
-func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream v1.Worker_StreamStatusEventsServer) error {
+func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, stream v1.Worker_StreamStatusEventsServer) error {
 	const bufferSize = 100
 	ch, err := s.store.SubAllStatusUpdates(bufferSize)
 	if err != nil {
@@ -77,14 +77,14 @@ func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, str
 	}
 }
 
-func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventRequest, stream v1.Worker_StreamArtifactEventsServer) error {
+func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsRequest, stream v1.Worker_StreamArtifactEventsServer) error {
 	// Doesn't exist in resultstore currently so mocking it directly here.
-	var ch <-chan *v1.ArtifactEvent
+	var ch <-chan *v1.StreamArtifactEventsResponse
 	go func() {
-		sendCh := make(chan *v1.ArtifactEvent)
+		sendCh := make(chan *v1.StreamArtifactEventsResponse)
 		ch = sendCh
 		for i := 1; i <= 10; i++ {
-			sendCh <- &v1.ArtifactEvent{
+			sendCh <- &v1.StreamArtifactEventsResponse{
 				ArtifactID: uint32(i),
 				StepID:     uint32(i/3) + 1,
 				Name:       "Artifact " + strconv.Itoa(i),
@@ -108,8 +108,8 @@ func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventRequest,
 	}
 }
 
-func convertToResultStoreLogLine(line resultstore.LogLine) *v1.LogLine {
-	return &v1.LogLine{
+func convertToResultStoreLogLine(line resultstore.LogLine) *v1.StreamLogsResponse {
+	return &v1.StreamLogsResponse{
 		LogID:     line.LogID,
 		StepID:    line.StepID,
 		Timestamp: timestamppb.New(line.Timestamp),
@@ -117,37 +117,37 @@ func convertToResultStoreLogLine(line resultstore.LogLine) *v1.LogLine {
 	}
 }
 
-func convertToResultStoreStatusEvent(update resultstore.StatusUpdate) *v1.StatusEvent {
-	return &v1.StatusEvent{
+func convertToResultStoreStatusEvent(update resultstore.StatusUpdate) *v1.StreamStatusEventsResponse {
+	return &v1.StreamStatusEventsResponse{
 		EventID: update.UpdateID,
 		StepID:  update.StepID,
 		Status:  convertToWorkerStatus(update.Status),
 	}
 }
 
-func convertToWorkerStatus(status worker.Status) v1.StatusEventStatus {
+func convertToWorkerStatus(status worker.Status) v1.StreamStatusEventsResponseStatus {
 	switch status {
 	case worker.StatusNone:
-		return v1.StatusEventNone
+		return v1.StreamStatusEventsResponseNone
 	case worker.StatusScheduling:
-		return v1.StatusEventScheduling
+		return v1.StreamStatusEventsResponseScheduling
 	case worker.StatusInitializing:
-		return v1.StatusEventInitializing
+		return v1.StreamStatusEventsResponseInitializing
 	case worker.StatusRunning:
-		return v1.StatusEventRunning
+		return v1.StreamStatusEventsResponseRunning
 	case worker.StatusSuccess:
-		return v1.StatusEventSuccess
+		return v1.StreamStatusEventsResponseSuccess
 	case worker.StatusFailed:
-		return v1.StatusEventFailed
+		return v1.StreamStatusEventsResponseFailed
 	case worker.StatusCancelled:
-		return v1.StatusEventCancelled
+		return v1.StreamStatusEventsResponseCancelled
 	default:
-		return v1.StatusEventUnknown
+		return v1.StreamStatusEventsResponseUnknown
 	}
 }
 
-// func convertArtifactEvent(ev resultstore.ArtifactEvent) v1.ArtifactEvent {
-// 	return v1.ArtifactEvent{
+// func convertArtifactEvent(ev resultstore.ArtifactEvent) v1.StreamArtifactEventsResponse {
+// 	return v1.StreamArtifactEventsResponse{
 // 		ArtifactID: ev.ArtifactID,
 // 		StepID:     ev.StepID,
 // 		Name:       ev.Name,

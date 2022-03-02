@@ -19,9 +19,9 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerClient interface {
-	StreamLogs(ctx context.Context, in *StreamLogLineRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error)
-	StreamStatusEvents(ctx context.Context, in *StreamStatusEventRequest, opts ...grpc.CallOption) (Worker_StreamStatusEventsClient, error)
-	StreamArtifactEvents(ctx context.Context, in *StreamArtifactEventRequest, opts ...grpc.CallOption) (Worker_StreamArtifactEventsClient, error)
+	StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error)
+	StreamStatusEvents(ctx context.Context, in *StreamStatusEventsRequest, opts ...grpc.CallOption) (Worker_StreamStatusEventsClient, error)
+	StreamArtifactEvents(ctx context.Context, in *StreamArtifactEventsRequest, opts ...grpc.CallOption) (Worker_StreamArtifactEventsClient, error)
 }
 
 type workerClient struct {
@@ -32,7 +32,7 @@ func NewWorkerClient(cc grpc.ClientConnInterface) WorkerClient {
 	return &workerClient{cc}
 }
 
-func (c *workerClient) StreamLogs(ctx context.Context, in *StreamLogLineRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error) {
+func (c *workerClient) StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[0], "/wharf.worker.v1.Worker/StreamLogs", opts...)
 	if err != nil {
 		return nil, err
@@ -48,7 +48,7 @@ func (c *workerClient) StreamLogs(ctx context.Context, in *StreamLogLineRequest,
 }
 
 type Worker_StreamLogsClient interface {
-	Recv() (*LogLine, error)
+	Recv() (*StreamLogsResponse, error)
 	grpc.ClientStream
 }
 
@@ -56,15 +56,15 @@ type workerStreamLogsClient struct {
 	grpc.ClientStream
 }
 
-func (x *workerStreamLogsClient) Recv() (*LogLine, error) {
-	m := new(LogLine)
+func (x *workerStreamLogsClient) Recv() (*StreamLogsResponse, error) {
+	m := new(StreamLogsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *workerClient) StreamStatusEvents(ctx context.Context, in *StreamStatusEventRequest, opts ...grpc.CallOption) (Worker_StreamStatusEventsClient, error) {
+func (c *workerClient) StreamStatusEvents(ctx context.Context, in *StreamStatusEventsRequest, opts ...grpc.CallOption) (Worker_StreamStatusEventsClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[1], "/wharf.worker.v1.Worker/StreamStatusEvents", opts...)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (c *workerClient) StreamStatusEvents(ctx context.Context, in *StreamStatusE
 }
 
 type Worker_StreamStatusEventsClient interface {
-	Recv() (*StatusEvent, error)
+	Recv() (*StreamStatusEventsResponse, error)
 	grpc.ClientStream
 }
 
@@ -88,15 +88,15 @@ type workerStreamStatusEventsClient struct {
 	grpc.ClientStream
 }
 
-func (x *workerStreamStatusEventsClient) Recv() (*StatusEvent, error) {
-	m := new(StatusEvent)
+func (x *workerStreamStatusEventsClient) Recv() (*StreamStatusEventsResponse, error) {
+	m := new(StreamStatusEventsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
 	return m, nil
 }
 
-func (c *workerClient) StreamArtifactEvents(ctx context.Context, in *StreamArtifactEventRequest, opts ...grpc.CallOption) (Worker_StreamArtifactEventsClient, error) {
+func (c *workerClient) StreamArtifactEvents(ctx context.Context, in *StreamArtifactEventsRequest, opts ...grpc.CallOption) (Worker_StreamArtifactEventsClient, error) {
 	stream, err := c.cc.NewStream(ctx, &Worker_ServiceDesc.Streams[2], "/wharf.worker.v1.Worker/StreamArtifactEvents", opts...)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func (c *workerClient) StreamArtifactEvents(ctx context.Context, in *StreamArtif
 }
 
 type Worker_StreamArtifactEventsClient interface {
-	Recv() (*ArtifactEvent, error)
+	Recv() (*StreamArtifactEventsResponse, error)
 	grpc.ClientStream
 }
 
@@ -120,8 +120,8 @@ type workerStreamArtifactEventsClient struct {
 	grpc.ClientStream
 }
 
-func (x *workerStreamArtifactEventsClient) Recv() (*ArtifactEvent, error) {
-	m := new(ArtifactEvent)
+func (x *workerStreamArtifactEventsClient) Recv() (*StreamArtifactEventsResponse, error) {
+	m := new(StreamArtifactEventsResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -132,9 +132,9 @@ func (x *workerStreamArtifactEventsClient) Recv() (*ArtifactEvent, error) {
 // All implementations must embed UnimplementedWorkerServer
 // for forward compatibility
 type WorkerServer interface {
-	StreamLogs(*StreamLogLineRequest, Worker_StreamLogsServer) error
-	StreamStatusEvents(*StreamStatusEventRequest, Worker_StreamStatusEventsServer) error
-	StreamArtifactEvents(*StreamArtifactEventRequest, Worker_StreamArtifactEventsServer) error
+	StreamLogs(*StreamLogsRequest, Worker_StreamLogsServer) error
+	StreamStatusEvents(*StreamStatusEventsRequest, Worker_StreamStatusEventsServer) error
+	StreamArtifactEvents(*StreamArtifactEventsRequest, Worker_StreamArtifactEventsServer) error
 	mustEmbedUnimplementedWorkerServer()
 }
 
@@ -142,13 +142,13 @@ type WorkerServer interface {
 type UnimplementedWorkerServer struct {
 }
 
-func (UnimplementedWorkerServer) StreamLogs(*StreamLogLineRequest, Worker_StreamLogsServer) error {
+func (UnimplementedWorkerServer) StreamLogs(*StreamLogsRequest, Worker_StreamLogsServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamLogs not implemented")
 }
-func (UnimplementedWorkerServer) StreamStatusEvents(*StreamStatusEventRequest, Worker_StreamStatusEventsServer) error {
+func (UnimplementedWorkerServer) StreamStatusEvents(*StreamStatusEventsRequest, Worker_StreamStatusEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamStatusEvents not implemented")
 }
-func (UnimplementedWorkerServer) StreamArtifactEvents(*StreamArtifactEventRequest, Worker_StreamArtifactEventsServer) error {
+func (UnimplementedWorkerServer) StreamArtifactEvents(*StreamArtifactEventsRequest, Worker_StreamArtifactEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method StreamArtifactEvents not implemented")
 }
 func (UnimplementedWorkerServer) mustEmbedUnimplementedWorkerServer() {}
@@ -165,7 +165,7 @@ func RegisterWorkerServer(s grpc.ServiceRegistrar, srv WorkerServer) {
 }
 
 func _Worker_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(StreamLogLineRequest)
+	m := new(StreamLogsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func _Worker_StreamLogs_Handler(srv interface{}, stream grpc.ServerStream) error
 }
 
 type Worker_StreamLogsServer interface {
-	Send(*LogLine) error
+	Send(*StreamLogsResponse) error
 	grpc.ServerStream
 }
 
@@ -181,12 +181,12 @@ type workerStreamLogsServer struct {
 	grpc.ServerStream
 }
 
-func (x *workerStreamLogsServer) Send(m *LogLine) error {
+func (x *workerStreamLogsServer) Send(m *StreamLogsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _Worker_StreamStatusEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(StreamStatusEventRequest)
+	m := new(StreamStatusEventsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func _Worker_StreamStatusEvents_Handler(srv interface{}, stream grpc.ServerStrea
 }
 
 type Worker_StreamStatusEventsServer interface {
-	Send(*StatusEvent) error
+	Send(*StreamStatusEventsResponse) error
 	grpc.ServerStream
 }
 
@@ -202,12 +202,12 @@ type workerStreamStatusEventsServer struct {
 	grpc.ServerStream
 }
 
-func (x *workerStreamStatusEventsServer) Send(m *StatusEvent) error {
+func (x *workerStreamStatusEventsServer) Send(m *StreamStatusEventsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
 func _Worker_StreamArtifactEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(StreamArtifactEventRequest)
+	m := new(StreamArtifactEventsRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func _Worker_StreamArtifactEvents_Handler(srv interface{}, stream grpc.ServerStr
 }
 
 type Worker_StreamArtifactEventsServer interface {
-	Send(*ArtifactEvent) error
+	Send(*StreamArtifactEventsResponse) error
 	grpc.ServerStream
 }
 
@@ -223,7 +223,7 @@ type workerStreamArtifactEventsServer struct {
 	grpc.ServerStream
 }
 
-func (x *workerStreamArtifactEventsServer) Send(m *ArtifactEvent) error {
+func (x *workerStreamArtifactEventsServer) Send(m *StreamArtifactEventsResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
