@@ -51,12 +51,13 @@ func (s *Server) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 // already running, followed by attempting to launch it again.
 //
 // To stop the server you may use GracefulStop or ForceStop.
-func (s *Server) Serve() {
-	s.ForceStop()
+func (s *Server) Serve() error {
+	if err := s.ForceStop(); err != nil {
+		return err
+	}
 
 	if err := applyHTTPClient(); err != nil {
-		s.onServeErrorHandler(err)
-		return
+		return err
 	}
 
 	r := gin.New()
@@ -67,7 +68,7 @@ func (s *Server) Serve() {
 	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 
 	s.registerModules(g)
-	s.serve(r)
+	return s.serve(r)
 }
 
 // GracefulStop stops the HTTP server gracefully, blocking new connections
@@ -117,31 +118,32 @@ func (s *Server) registerModules(r *gin.RouterGroup) {
 	}
 }
 
-func (s *Server) serve(r *gin.Engine) {
+func (s *Server) serve(r *gin.Engine) error {
 	s.srv = &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", s.address, s.port),
 		Handler: r,
 	}
 	ln, err := net.Listen("tcp", s.srv.Addr)
 	if err != nil {
-		s.onServeErrorHandler(err)
-		return
+		return err
 	}
 	go func() {
 		log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
 		s.isRunning = true
-		if err := s.srv.Serve(ln); err != nil {
+		err := s.srv.Serve(ln)
+		s.isRunning = false
+		if err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				log.Info().Message("Server closed.")
 			} else if s.onServeErrorHandler != nil {
 				s.onServeErrorHandler(err)
 			}
 		}
-		s.isRunning = false
 	}()
 	for !s.isRunning {
 		time.Sleep(1 * time.Millisecond)
 	}
+	return nil
 }
 
 func applyHTTPClient() error {

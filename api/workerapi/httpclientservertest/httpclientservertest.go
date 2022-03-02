@@ -31,9 +31,14 @@ func main() {
 	server.SetOnServeErrorHandler(func(err error) {
 		log.Error().WithError(err).Message("Serve error occurred.")
 		time.Sleep(1 * time.Second)
-		server.Serve()
+		if err := server.Serve(); err != nil {
+			log.Error().WithError(err).Message("Auto-restart of server failed.")
+		}
 	})
-	server.Serve()
+	if err := server.Serve(); err != nil {
+		log.Error().WithError(err).Message("Starting server failed.")
+		return
+	}
 
 	var err error
 	client, err = workerhttpclient.NewClient("127.0.0.1", "8080")

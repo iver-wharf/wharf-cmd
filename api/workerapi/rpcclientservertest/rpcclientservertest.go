@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerrpcclient"
 	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerrpcserver"
@@ -36,13 +38,15 @@ func launchServer() *workerrpcserver.Server {
 	bindAddress, bindPort := "0.0.0.0", "8081"
 	server := workerrpcserver.NewServer(bindAddress, bindPort, &mockStore{})
 	server.SetOnServeErrorHandler(func(err error) {
-		log.Error().WithError(err).Message("OnServeError called. Restarting server.")
-		// Try to auto-recover by restarting
-		server.Serve()
+		log.Error().WithError(err).Message("Serve error occurred.")
+		time.Sleep(1 * time.Second)
+		if err := server.Serve(); err != nil {
+			log.Error().WithError(err).Message("Auto-restart of server failed.")
+		}
 	})
-	err := server.Serve()
-	if err != nil {
-		log.Error().WithError(err).Message("Creating server failed.")
+
+	if err := server.Serve(); err != nil {
+		log.Error().WithError(err).Message("Starting server failed.")
 		return nil
 	}
 	return server
