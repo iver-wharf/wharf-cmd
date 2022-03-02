@@ -37,7 +37,7 @@ func launchServer() workerserver.Server {
 	server := workerserver.NewRPCServer("0.0.0.0:8081", &mockStore{})
 	go func() {
 		if err := server.Serve(); err != nil {
-			log.Error().WithError(err).Message("Starting server failed.")
+			log.Error().WithError(err).Message("Error occurred during serving gRPC.")
 		}
 	}()
 	for !server.IsRunning() {

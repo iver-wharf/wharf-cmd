@@ -30,7 +30,7 @@ func main() {
 	server := workerserver.NewHTTPServer("0.0.0.0:8080", &mockBuildStepLister{})
 	go func() {
 		if err := server.Serve(); err != nil {
-			log.Error().WithError(err).Message("Starting server failed.")
+			log.Error().WithError(err).Message("Error occurred during serving HTTP.")
 			return
 		}
 	}()
