@@ -11,16 +11,13 @@ var log = logger.NewScoped("WORKER-SERVER")
 //   Stopping
 //   Setting an error handler.
 type Server interface {
-	// Serve starts the server, and starts listening to it in a goroutine.
+	// Serve starts the server.
 	//
 	// Also functions as a force-restart by calling ForceStop if the server is
 	// already running, followed by attempting to launch it again.
 	//
 	// To stop the server you may use GracefulStop or ForceStop.
 	Serve() error
-	// SetOnServeErrorHandler sets the handler to call when an error occurs during
-	// serving.
-	SetOnServeErrorHandler(func(error))
 	// ForceStop forcefully stops the server, not promising to take care of
 	// existing connections.
 	ForceStop() error

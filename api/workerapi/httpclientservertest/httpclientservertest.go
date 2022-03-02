@@ -28,16 +28,15 @@ func main() {
 	logger.AddOutput(logger.LevelDebug, consolepretty.New(consolepretty.DefaultConfig))
 
 	server := workerserver.NewHTTPServer("0.0.0.0:8080", &mockBuildStepLister{})
-	server.SetOnServeErrorHandler(func(err error) {
-		log.Error().WithError(err).Message("Serve error occurred.")
-		time.Sleep(1 * time.Second)
+	go func() {
 		if err := server.Serve(); err != nil {
-			log.Error().WithError(err).Message("Auto-restart of server failed.")
+			log.Error().WithError(err).Message("Starting server failed.")
+			return
 		}
-	})
-	if err := server.Serve(); err != nil {
-		log.Error().WithError(err).Message("Starting server failed.")
-		return
+	}()
+
+	for !server.IsRunning() {
+		time.Sleep(time.Millisecond)
 	}
 
 	var err error

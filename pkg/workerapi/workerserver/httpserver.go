@@ -5,7 +5,6 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -23,8 +22,6 @@ type httpServer struct {
 	srv          *http.Server
 	workerServer *workerHTTPServer
 	isRunning    bool
-
-	onServeErrorHandler func(error)
 }
 
 // NewHTTPServer creates a new HTTP server that can be started by calling Start.
@@ -33,10 +30,6 @@ func NewHTTPServer(bindAddress string, buildStepLister wharfyml.BuildStepLister)
 		bindAddress:  bindAddress,
 		workerServer: newWorkerHTTPServer(buildStepLister),
 	}
-}
-
-func (s *httpServer) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
-	s.onServeErrorHandler = onServeErrorHandler
 }
 
 func (s *httpServer) Serve() error {
@@ -102,22 +95,15 @@ func (s *httpServer) serve(r *gin.Engine) error {
 	if err != nil {
 		return err
 	}
-	go func() {
-		log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
-		s.isRunning = true
-		if err := s.srv.Serve(ln); err != nil {
-			if errors.Is(err, http.ErrServerClosed) {
-				log.Info().Message("Server closed.")
-			} else if s.onServeErrorHandler != nil {
-				s.onServeErrorHandler(err)
-			}
-		}
-		s.isRunning = false
-	}()
-	for !s.isRunning {
-		time.Sleep(1 * time.Millisecond)
+	s.isRunning = true
+	log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
+	err = s.srv.Serve(ln)
+	s.isRunning = false
+	if errors.Is(err, http.ErrServerClosed) {
+		log.Info().Message("Server closed.")
+		return nil
 	}
-	return nil
+	return err
 }
 
 func applyHTTPClient() error {

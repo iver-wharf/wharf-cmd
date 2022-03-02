@@ -35,17 +35,13 @@ func main() {
 
 func launchServer() workerserver.Server {
 	server := workerserver.NewRPCServer("0.0.0.0:8081", &mockStore{})
-	server.SetOnServeErrorHandler(func(err error) {
-		log.Error().WithError(err).Message("Serve error occurred.")
-		time.Sleep(1 * time.Second)
+	go func() {
 		if err := server.Serve(); err != nil {
-			log.Error().WithError(err).Message("Auto-restart of server failed.")
+			log.Error().WithError(err).Message("Starting server failed.")
 		}
-	})
-
-	if err := server.Serve(); err != nil {
-		log.Error().WithError(err).Message("Starting server failed.")
-		return nil
+	}()
+	for !server.IsRunning() {
+		time.Sleep(time.Millisecond)
 	}
 	return server
 }

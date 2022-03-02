@@ -2,7 +2,6 @@ package workerserver
 
 import (
 	"net"
-	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -10,8 +9,7 @@ import (
 )
 
 type rpcServer struct {
-	bindAddress         string
-	onServeErrorHandler func(error)
+	bindAddress string
 
 	grpcServer   *grpc.Server
 	workerServer *workerRPCServer
@@ -26,10 +24,6 @@ func NewRPCServer(bindAddress string, store resultstore.Store) Server {
 	}
 }
 
-func (s *rpcServer) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
-	s.onServeErrorHandler = onServeErrorHandler
-}
-
 func (s *rpcServer) Serve() error {
 	s.ForceStop()
 
@@ -42,24 +36,15 @@ func (s *rpcServer) Serve() error {
 	s.grpcServer = grpc.NewServer(opts...)
 	v1.RegisterWorkerServer(s.grpcServer, s.workerServer)
 
-	go func() {
-		s.isRunning = true
-		if err := s.grpcServer.Serve(listener); err != nil {
-			log.Error().
-				WithError(err).
-				Message("Error during serving led to gRPC server closing unexpectedly.")
-			if s.onServeErrorHandler != nil {
-				s.onServeErrorHandler(err)
-			}
-		}
-		s.isRunning = false
-	}()
-
-	for !s.isRunning {
-		time.Sleep(1 * time.Millisecond)
+	s.isRunning = true
+	log.Info().Messagef("Listening and serving gRPC on %s", s.bindAddress)
+	err = s.grpcServer.Serve(listener)
+	s.isRunning = false
+	if err == grpc.ErrServerStopped {
+		log.Info().Message("gRPC server stopped.")
+		return nil
 	}
-
-	return nil
+	return err
 }
 
 func (s *rpcServer) GracefulStop() error {
