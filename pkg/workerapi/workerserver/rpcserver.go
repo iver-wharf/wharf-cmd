@@ -1,6 +1,7 @@
 package workerserver
 
 import (
+	"errors"
 	"net"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
@@ -40,7 +41,7 @@ func (s *rpcServer) Serve() error {
 	log.Info().Messagef("Listening and serving gRPC on %s", s.bindAddress)
 	err = s.grpcServer.Serve(listener)
 	s.isRunning = false
-	if err == grpc.ErrServerStopped {
+	if errors.Is(err, grpc.ErrServerStopped) {
 		log.Info().Message("gRPC server stopped.")
 		return nil
 	}
