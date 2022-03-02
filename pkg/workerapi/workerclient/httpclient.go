@@ -13,25 +13,23 @@ import (
 
 type workerHTTPClient struct {
 	address string
-	port    string
 	client  *http.Client
 }
 
 // NewClient creates a client that can communicate with a Worker HTTP server.
-func NewClient(address, port string) (HTTPClient, error) {
+func NewClient(address string) (HTTPClient, error) {
 	client, err := cacertutil.NewHTTPClientWithCerts("/etc/iver-wharf/wharf-cmd/localhost.crt")
 	if err != nil {
 		return nil, err
 	}
 	return &workerHTTPClient{
 		address: address,
-		port:    port,
 		client:  client,
 	}, nil
 }
 
 func (c *workerHTTPClient) ListBuildSteps() ([]response.Step, error) {
-	res, err := c.client.Get(fmt.Sprintf("http://%s:%s/api/build/step", c.address, c.port))
+	res, err := c.client.Get(fmt.Sprintf("http://%s/api/build/step", c.address))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err
 	}
@@ -55,7 +53,7 @@ func (c *workerHTTPClient) ListBuildSteps() ([]response.Step, error) {
 }
 
 func (c *workerHTTPClient) ListArtifacts() ([]response.Artifact, error) {
-	res, err := c.client.Get(fmt.Sprintf("http://%s:%s/api/artifact", c.address, c.port))
+	res, err := c.client.Get(fmt.Sprintf("http://%s/api/artifact", c.address))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err
 	}
@@ -79,7 +77,7 @@ func (c *workerHTTPClient) ListArtifacts() ([]response.Artifact, error) {
 }
 
 func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
-	res, err := c.client.Get(fmt.Sprintf("http://%s:%s/api/artifact/%d/download", c.address, c.port, artifactID))
+	res, err := c.client.Get(fmt.Sprintf("http://%s/api/artifact/%d/download", c.address, artifactID))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err
 	}

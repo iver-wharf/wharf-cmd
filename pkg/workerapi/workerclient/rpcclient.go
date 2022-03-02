@@ -21,8 +21,7 @@ type ArtifactEvent = v1.StreamArtifactEventsResponse
 
 // RPCClient is used to communicate with the Worker gRPC server.
 type RPCClient struct {
-	targetAddress string
-	targetPort    string
+	address string
 
 	Client v1.WorkerClient
 	conn   *grpc.ClientConn
@@ -30,10 +29,9 @@ type RPCClient struct {
 
 // NewRPCClient creates a new gRPC Client that can communicate with the Worker
 // gRPC server.
-func NewRPCClient(targetAddress, targetPort string) *RPCClient {
+func NewRPCClient(address string) *RPCClient {
 	return &RPCClient{
-		targetAddress: targetAddress,
-		targetPort:    targetPort,
+		address: address,
 	}
 }
 
@@ -41,7 +39,7 @@ func NewRPCClient(targetAddress, targetPort string) *RPCClient {
 func (c *RPCClient) Open() error {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", c.targetAddress, c.targetPort), opts...)
+	conn, err := grpc.Dial(c.address, opts...)
 	if err != nil {
 		return fmt.Errorf("failed connecting to server: %v", err)
 	}

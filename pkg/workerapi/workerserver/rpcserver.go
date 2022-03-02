@@ -1,7 +1,6 @@
 package workerserver
 
 import (
-	"fmt"
 	"net"
 	"time"
 
@@ -11,8 +10,7 @@ import (
 )
 
 type rpcServer struct {
-	address             string
-	port                string
+	bindAddress         string
 	onServeErrorHandler func(error)
 
 	grpcServer   *grpc.Server
@@ -21,10 +19,9 @@ type rpcServer struct {
 }
 
 // NewRPCServer creates a new server that can be started by calling Start.
-func NewRPCServer(address, port string, store resultstore.Store) Server {
+func NewRPCServer(bindAddress string, store resultstore.Store) Server {
 	return &rpcServer{
-		address:      address,
-		port:         port,
+		bindAddress:  bindAddress,
 		workerServer: newWorkerRPCServer(store),
 	}
 }
@@ -36,7 +33,7 @@ func (s *rpcServer) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 func (s *rpcServer) Serve() error {
 	s.ForceStop()
 
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%s", s.address, s.port))
+	listener, err := net.Listen("tcp", s.bindAddress)
 	if err != nil {
 		return err
 	}

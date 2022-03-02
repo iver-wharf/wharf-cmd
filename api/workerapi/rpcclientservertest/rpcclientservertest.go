@@ -3,7 +3,6 @@ package main
 import (
 	"time"
 
-	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -35,8 +34,7 @@ func main() {
 }
 
 func launchServer() workerserver.Server {
-	bindAddress, bindPort := "0.0.0.0", "8081"
-	server := workerserver.NewRPCServer(bindAddress, bindPort, &mockStore{})
+	server := workerserver.NewRPCServer("0.0.0.0:8081", &mockStore{})
 	server.SetOnServeErrorHandler(func(err error) {
 		log.Error().WithError(err).Message("Serve error occurred.")
 		time.Sleep(1 * time.Second)
@@ -53,8 +51,7 @@ func launchServer() workerserver.Server {
 }
 
 func launchClient() *workerclient.RPCClient {
-	targetAddress, targetPort := "127.0.0.1", "8081"
-	client := workerclient.NewRPCClient(targetAddress, targetPort)
+	client := workerclient.NewRPCClient("127.0.0.1:8081")
 	err := client.Open()
 	if err != nil {
 		log.Error().WithError(err).Message("Creating client failed.")
@@ -64,17 +61,17 @@ func launchClient() *workerclient.RPCClient {
 }
 
 func testClientCalls(client *workerclient.RPCClient) {
-	if err := client.HandleLogStream(func(line *v1.LogLine) {
+	if err := client.HandleLogStream(func(line *workerclient.LogLine) {
 		log.Info().Messagef("%v", line)
 	}); err != nil {
 		log.Error().WithError(err).Message("")
 	}
-	if err := client.HandleStatusEventStream(func(statusEvent *v1.StatusEvent) {
+	if err := client.HandleStatusEventStream(func(statusEvent *workerclient.StatusEvent) {
 		log.Info().Messagef("%v", statusEvent)
 	}); err != nil {
 		log.Error().WithError(err).Message("")
 	}
-	if err := client.HandleArtifactEventStream(func(artifactEvent *v1.ArtifactEvent) {
+	if err := client.HandleArtifactEventStream(func(artifactEvent *workerclient.ArtifactEvent) {
 		log.Info().Messagef("%v", artifactEvent)
 	}); err != nil {
 		log.Error().WithError(err).Message("")

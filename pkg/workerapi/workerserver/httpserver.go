@@ -3,7 +3,6 @@ package workerserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"time"
@@ -20,8 +19,7 @@ type module interface {
 }
 
 type httpServer struct {
-	address      string
-	port         string
+	bindAddress  string
 	srv          *http.Server
 	workerServer *workerHTTPServer
 	isRunning    bool
@@ -30,10 +28,9 @@ type httpServer struct {
 }
 
 // NewHTTPServer creates a new HTTP server that can be started by calling Start.
-func NewHTTPServer(address string, port string, builder worker.Builder) Server {
+func NewHTTPServer(bindAddress string, builder worker.Builder) Server {
 	return &httpServer{
-		address:      address,
-		port:         port,
+		bindAddress:  bindAddress,
 		workerServer: newWorkerHTTPServer(builder),
 	}
 }
@@ -98,7 +95,7 @@ func (s *httpServer) registerModules(r *gin.RouterGroup) {
 
 func (s *httpServer) serve(r *gin.Engine) error {
 	s.srv = &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", s.address, s.port),
+		Addr:    s.bindAddress,
 		Handler: r,
 	}
 	ln, err := net.Listen("tcp", s.srv.Addr)
