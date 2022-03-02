@@ -105,10 +105,8 @@ func mockFile(c *gin.Context) (*os.File, bool) {
 	return file, true
 }
 
-func removeMockFile(file *os.File) bool {
+func removeMockFile(file *os.File) {
 	if err := os.Remove(file.Name()); err != nil {
 		log.Error().WithError(err).Message("Failed removing temporary file.")
-		return false
 	}
-	return true
 }
