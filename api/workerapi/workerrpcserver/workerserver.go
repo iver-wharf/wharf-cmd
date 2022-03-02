@@ -18,11 +18,8 @@ func newWorkerServer(store resultstore.Store) *workerServer {
 	return &workerServer{store: store}
 }
 
-func (s *workerServer) StreamLogs(req *v1.LogStreamRequest, stream v1.Worker_StreamLogsServer) error {
+func (s *workerServer) StreamLogs(req *v1.LogLineRequest, stream v1.Worker_StreamLogsServer) error {
 	bufferSize := 100
-	if req.ChunkSize > 0 {
-		bufferSize = int(req.ChunkSize)
-	}
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
 		return err
@@ -33,35 +30,19 @@ func (s *workerServer) StreamLogs(req *v1.LogStreamRequest, stream v1.Worker_Str
 		}
 	}()
 
-	lines := make([]*v1.LogLine, bufferSize, bufferSize)
-	resp := v1.LogStream{}
-
-	i := 0
-	send := func() error {
-		// Slice slice to avoid sending old objects when we don't have a full chunk.
-		resp.Lines = lines[:i]
-		if len(resp.Lines) > 0 {
-			if err := stream.Send(&resp); err != nil {
-				return err
-			}
-			i = 0
-		}
-		return nil
-	}
+	var resp *v1.LogLine
 	for {
-		for i < bufferSize {
-			select {
-			case line, ok := <-ch:
-				if !ok {
-					return send()
-				}
-				lines[i] = convertToLogLine(line)
-				i++
-			default:
-				break
+		select {
+		case logLine, ok := <-ch:
+			if !ok {
+				return nil
 			}
+			resp = convertToLogLine(logLine)
+		default:
+			continue
 		}
-		if err := send(); err != nil {
+
+		if err := stream.Send(resp); err != nil {
 			return err
 		}
 	}

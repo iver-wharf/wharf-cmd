@@ -56,29 +56,27 @@ func (c *Client) Close() error {
 func (c *Client) StreamLogs() (<-chan *v1.LogLine, <-chan error) {
 	ch := make(chan *v1.LogLine)
 	errCh := make(chan error)
-	stream, err := c.Client.StreamLogs(context.Background(), &v1.LogStreamRequest{ChunkSize: 100})
+	stream, err := c.Client.StreamLogs(context.Background(), &v1.LogLineRequest{})
 	if err != nil {
-		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
+		log.Error().WithError(err).Message("Error fetching stream for logs.")
 		errCh <- err
 		close(errCh)
 		close(ch)
 	} else {
 		go func() {
 			for {
-				logLines, err := stream.Recv()
+				logLine, err := stream.Recv()
 				if err != nil {
 					close(ch)
 					if err == io.EOF {
 						errCh <- nil
 					} else {
-						log.Error().WithError(err).Message("Error fetching from batched logs stream.")
+						log.Error().WithError(err).Message("Error fetching from logs stream.")
 						errCh <- err
 					}
 					break
 				}
-				for _, v := range logLines.Lines {
-					ch <- v
-				}
+				ch <- logLine
 			}
 			close(errCh)
 		}()
