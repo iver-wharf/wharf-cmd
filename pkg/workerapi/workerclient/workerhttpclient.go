@@ -3,7 +3,7 @@ package workerclient
 import (
 	"io"
 
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
 )
 
 // HTTPClient is an interface with methods to communicate with a Wharf HTTP server.

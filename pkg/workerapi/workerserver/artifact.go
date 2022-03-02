@@ -8,7 +8,7 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )

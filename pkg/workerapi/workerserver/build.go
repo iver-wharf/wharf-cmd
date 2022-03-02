@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/modelconv"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/modelconv"
 )
 
 type buildModule struct {

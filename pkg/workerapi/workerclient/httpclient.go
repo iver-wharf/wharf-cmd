@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-core/pkg/cacertutil"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )

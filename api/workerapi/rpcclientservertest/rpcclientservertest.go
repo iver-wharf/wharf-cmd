@@ -4,8 +4,8 @@ import (
 	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerclient"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 )

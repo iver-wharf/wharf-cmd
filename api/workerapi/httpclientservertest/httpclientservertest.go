@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerclient"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/iver-wharf/wharf-core/pkg/problem"

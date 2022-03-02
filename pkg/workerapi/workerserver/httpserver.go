@@ -38,18 +38,10 @@ func NewHTTPServer(address string, port string, builder worker.Builder) Server {
 	}
 }
 
-// SetOnServeErrorHandler sets the handler to call when an error occurs during
-// serving.
 func (s *httpServer) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 	s.onServeErrorHandler = onServeErrorHandler
 }
 
-// Serve starts the HTTP server in a goroutine.
-//
-// Also functions as a force-restart by calling ForceStop if the server is
-// already running, followed by attempting to launch it again.
-//
-// To stop the server you may use GracefulStop or ForceStop.
 func (s *httpServer) Serve() error {
 	if err := s.ForceStop(); err != nil {
 		return err
@@ -70,8 +62,6 @@ func (s *httpServer) Serve() error {
 	return s.serve(r)
 }
 
-// GracefulStop stops the HTTP server gracefully, blocking new connections
-// and closing idle connections, then waiting until active ones have finished.
 func (s *httpServer) GracefulStop() error {
 	defer func() {
 		s.isRunning = false
@@ -82,7 +72,6 @@ func (s *httpServer) GracefulStop() error {
 	return s.srv.Shutdown(context.Background())
 }
 
-// ForceStop forcefully stops the server.
 func (s *httpServer) ForceStop() error {
 	defer func() {
 		s.isRunning = false
@@ -93,8 +82,6 @@ func (s *httpServer) ForceStop() error {
 	return s.srv.Close()
 }
 
-// IsRunning returns true if the HTTP server is currently running and
-// processing requests.
 func (s *httpServer) IsRunning() bool {
 	return s.srv != nil && s.isRunning
 }
