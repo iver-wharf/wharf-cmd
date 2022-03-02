@@ -233,7 +233,8 @@ func (wd *watchdog) getRunningWorkers() ([]provisioner.Worker, error) {
 		switch w.Status {
 		case worker.StatusInitializing,
 			worker.StatusScheduling,
-			worker.StatusRunning:
+			worker.StatusRunning,
+			worker.StatusNone:
 			allWorkers = append(allWorkers, w)
 		}
 	}
