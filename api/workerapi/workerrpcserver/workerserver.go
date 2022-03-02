@@ -30,20 +30,17 @@ func (s *workerServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker
 		}
 	}()
 
-	var resp *v1.LogLine
 	for {
 		select {
 		case logLine, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			resp = convertToLogLine(logLine)
+			if err := stream.Send(convertToResultStoreLogLine(logLine)); err != nil {
+				return err
+			}
 		default:
 			continue
-		}
-
-		if err := stream.Send(resp); err != nil {
-			return err
 		}
 	}
 }
@@ -60,20 +57,17 @@ func (s *workerServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream
 		}
 	}()
 
-	var resp *v1.StatusEvent
 	for {
 		select {
 		case statusEvent, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			resp = convertToStatusEvent(statusEvent)
+			if err := stream.Send(convertToResultStoreStatusEvent(statusEvent)); err != nil {
+				return err
+			}
 		default:
 			continue
-		}
-
-		if err := stream.Send(resp); err != nil {
-			return err
 		}
 	}
 }
@@ -94,25 +88,22 @@ func (s *workerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventRequest, st
 		close(sendCh)
 	}()
 
-	var resp *v1.ArtifactEvent
 	for {
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
 				return nil
 			}
-			resp = artifactEvent
+			if err := stream.Send(artifactEvent); err != nil {
+				return err
+			}
 		default:
 			continue
-		}
-
-		if err := stream.Send(resp); err != nil {
-			return err
 		}
 	}
 }
 
-func convertToLogLine(line resultstore.LogLine) *v1.LogLine {
+func convertToResultStoreLogLine(line resultstore.LogLine) *v1.LogLine {
 	return &v1.LogLine{
 		LogID:     line.LogID,
 		StepID:    line.StepID,
@@ -121,7 +112,15 @@ func convertToLogLine(line resultstore.LogLine) *v1.LogLine {
 	}
 }
 
-func convertToStatus(status worker.Status) v1.StatusEventStatus {
+func convertToResultStoreStatusEvent(update resultstore.StatusUpdate) *v1.StatusEvent {
+	return &v1.StatusEvent{
+		EventID: update.UpdateID,
+		StepID:  update.StepID,
+		Status:  convertToWorkerStatus(update.Status),
+	}
+}
+
+func convertToWorkerStatus(status worker.Status) v1.StatusEventStatus {
 	switch status {
 	case worker.StatusNone:
 		return v1.StatusEventNone
@@ -139,14 +138,6 @@ func convertToStatus(status worker.Status) v1.StatusEventStatus {
 		return v1.StatusEventCancelled
 	default:
 		return v1.StatusEventUnknown
-	}
-}
-
-func convertToStatusEvent(update resultstore.StatusUpdate) *v1.StatusEvent {
-	return &v1.StatusEvent{
-		EventID: update.UpdateID,
-		StepID:  update.StepID,
-		Status:  convertToStatus(update.Status),
 	}
 }
 
