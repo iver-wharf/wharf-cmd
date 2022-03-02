@@ -57,12 +57,20 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added gRPC server for worker in `api/workerapi/workerserver`: (#51)
 
   - `StreamLogs` batches logs into chunks and serves to gRPC clients.
-  - `Log` serves logs to gRPC clients.
-  - `StatusEvent` serves status events to gRPC clients.
-  - `ArtifactEvent` serves artifact events to gRPC clients.
+  - `StreamStatusEvents` serves status events to gRPC clients.
+  - `StreamArtifactEvents` serves artifact events to gRPC clients.
 
 - Added gRPC client in `api/workerapi/workerclient` to interface with a worker
   gRPC server. (#51)
+
+- Added HTTP server for worker in `api/workerapi/workerhttpserver`: (#51)
+
+  - `GET /api/build/step` Lists build steps.
+  - `GET /api/artifact` Lists artifacts.
+  - `GET /api/artifact/:artifactId/download` Downloads an artifact.
+
+- Added HTTP client in `api/workerapi/workerhttpclient` to interface with
+  worker HTTP server. (#51)
 
 - Added dependencies:
 
@@ -72,6 +80,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/golang/protobuf` v1.5.2 (#51)
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
+  - `github.com/gin-contrib/cors` v1.3.1 (#51)
+  - `github.com/alta/protopatch` v0.5.0 (#51)
 
 - Removed dependencies:
 
