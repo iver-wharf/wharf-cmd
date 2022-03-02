@@ -1,19 +1,11 @@
 package main
 
-import (
-	"context"
+import "github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
-)
-
-type mockBuilder struct{}
-
-func (b *mockBuilder) Build(_ context.Context, _ wharfyml.Definition, _ worker.BuildOptions) (worker.Result, error) {
-	return worker.Result{}, nil
+type mockBuildStepLister struct {
 }
 
-func (b *mockBuilder) ListBuildSteps() []wharfyml.Step {
+func (b *mockBuildStepLister) ListBuildSteps() []wharfyml.Step {
 	return []wharfyml.Step{
 		{
 			Pos: wharfyml.Pos{

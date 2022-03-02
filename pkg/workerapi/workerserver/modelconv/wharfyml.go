@@ -1,8 +1,8 @@
 package modelconv
 
 import (
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
 )
 
 // StepsToResponseSteps converts a slice of wharfyml Steps so it can be used

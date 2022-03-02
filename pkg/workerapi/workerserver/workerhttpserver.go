@@ -1,15 +1,15 @@
 package workerserver
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 )
 
 type workerHTTPServer struct {
-	builder worker.Builder
+	buildStepLister wharfyml.BuildStepLister
 }
 
-func newWorkerHTTPServer(builder worker.Builder) *workerHTTPServer {
+func newWorkerHTTPServer(buildStepLister wharfyml.BuildStepLister) *workerHTTPServer {
 	return &workerHTTPServer{
-		builder: builder,
+		buildStepLister: buildStepLister,
 	}
 }

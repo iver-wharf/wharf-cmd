@@ -27,7 +27,7 @@ const (
 func main() {
 	logger.AddOutput(logger.LevelDebug, consolepretty.New(consolepretty.DefaultConfig))
 
-	server := workerserver.NewHTTPServer("0.0.0.0:8080", &mockBuilder{})
+	server := workerserver.NewHTTPServer("0.0.0.0:8080", &mockBuildStepLister{})
 	server.SetOnServeErrorHandler(func(err error) {
 		log.Error().WithError(err).Message("Serve error occurred.")
 		time.Sleep(1 * time.Second)

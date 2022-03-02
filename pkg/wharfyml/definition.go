@@ -19,6 +19,17 @@ type Definition struct {
 	Stages []Stage
 }
 
+// ListBuildSteps aggregates steps from all stages into a single slice.
+//
+// Makes Definition comply to the BuildStepLister interface.
+func (d *Definition) ListBuildSteps() []Step {
+	var steps []Step
+	for _, stage := range d.Stages {
+		steps = append(steps, stage.Steps...)
+	}
+	return steps
+}
+
 func visitDefNode(node *yaml.Node) (def Definition, errSlice Errors) {
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)

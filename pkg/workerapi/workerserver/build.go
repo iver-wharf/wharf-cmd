@@ -19,7 +19,7 @@ func (m *buildModule) register(g *gin.RouterGroup) {
 }
 
 func (m *buildModule) listBuildStepsHandler(c *gin.Context) {
-	steps := m.builder.ListBuildSteps()
+	steps := m.buildStepLister.ListBuildSteps()
 	responseSteps := modelconv.StepsToResponseSteps(steps)
 	c.JSON(http.StatusOK, responseSteps)
 }
