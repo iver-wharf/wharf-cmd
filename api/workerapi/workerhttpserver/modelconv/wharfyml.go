@@ -20,7 +20,6 @@ func StepsToResponseSteps(steps []wharfyml.Step) []response.Step {
 // response.
 func StepToResponseStep(step wharfyml.Step) response.Step {
 	return response.Step{
-		Pos:      PosToResponsePos(step.Pos),
 		Name:     step.Name,
 		StepType: StepTypeToResponseStepType(step.Type),
 	}
@@ -31,14 +30,5 @@ func StepToResponseStep(step wharfyml.Step) response.Step {
 func StepTypeToResponseStepType(stepType wharfyml.StepType) response.StepType {
 	return response.StepType{
 		Name: stepType.StepTypeName(),
-	}
-}
-
-// PosToResponsePos converts a wharfyml Pos so it can be used in an HTTP
-// response.
-func PosToResponsePos(pos wharfyml.Pos) response.Pos {
-	return response.Pos{
-		Line:   pos.Line,
-		Column: pos.Column,
 	}
 }
