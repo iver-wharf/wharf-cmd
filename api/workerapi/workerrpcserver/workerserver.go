@@ -18,7 +18,7 @@ func newWorkerServer(store resultstore.Store) *workerServer {
 	return &workerServer{store: store}
 }
 
-func (s *workerServer) StreamLogs(req *v1.LogLineRequest, stream v1.Worker_StreamLogsServer) error {
+func (s *workerServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker_StreamLogsServer) error {
 	bufferSize := 100
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
@@ -48,7 +48,7 @@ func (s *workerServer) StreamLogs(req *v1.LogLineRequest, stream v1.Worker_Strea
 	}
 }
 
-func (s *workerServer) StreamStatusEvents(_ *v1.StatusEventRequest, stream v1.Worker_StreamStatusEventsServer) error {
+func (s *workerServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream v1.Worker_StreamStatusEventsServer) error {
 	const bufferSize = 100
 	ch, err := s.store.SubAllStatusUpdates(bufferSize)
 	if err != nil {
@@ -78,7 +78,7 @@ func (s *workerServer) StreamStatusEvents(_ *v1.StatusEventRequest, stream v1.Wo
 	}
 }
 
-func (s *workerServer) StreamArtifactEvents(_ *v1.ArtifactEventRequest, stream v1.Worker_StreamArtifactEventsServer) error {
+func (s *workerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventRequest, stream v1.Worker_StreamArtifactEventsServer) error {
 	// Doesn't exist in resultstore currently so mocking it directly here.
 	var ch <-chan *v1.ArtifactEvent
 	go func() {

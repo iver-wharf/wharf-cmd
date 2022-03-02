@@ -12,15 +12,15 @@ package wharf.worker.v1;
 option go_package = "github.com/iver-wharf/wharf-cmd/api/workerapi/v1";
 
 service Worker {
-  rpc StreamLogs(LogLineRequest) returns (stream LogLine);
-  rpc StreamStatusEvents(StatusEventRequest) returns (stream StatusEvent);
-  rpc StreamArtifactEvents(ArtifactEventRequest) returns (stream ArtifactEvent);
+  rpc StreamLogs(StreamLogLineRequest) returns (stream LogLine);
+  rpc StreamStatusEvents(StreamStatusEventRequest) returns (stream StatusEvent);
+  rpc StreamArtifactEvents(StreamArtifactEventRequest) returns (stream ArtifactEvent);
 }
 
 // Empty messages, but exists for potential future usages
-message LogLineRequest {}
-message StatusEventRequest { }
-message ArtifactEventRequest { }
+message StreamLogLineRequest {}
+message StreamStatusEventRequest { }
+message StreamArtifactEventRequest { }
 
 message LogLine {
   // BuildID is the database ID of the build this log line belongs to.

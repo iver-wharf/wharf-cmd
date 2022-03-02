@@ -56,7 +56,7 @@ func (c *Client) Close() error {
 func (c *Client) StreamLogs() (<-chan *v1.LogLine, <-chan error) {
 	ch := make(chan *v1.LogLine)
 	errCh := make(chan error)
-	stream, err := c.Client.StreamLogs(context.Background(), &v1.LogLineRequest{})
+	stream, err := c.Client.StreamLogs(context.Background(), &v1.StreamLogLineRequest{})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for logs.")
 		errCh <- err
@@ -102,7 +102,7 @@ func (c *Client) HandleLogStream(onLogLine func(*v1.LogLine)) error {
 func (c *Client) StreamStatusEvents() (<-chan *v1.StatusEvent, <-chan error) {
 	ch := make(chan *v1.StatusEvent)
 	errCh := make(chan error)
-	stream, err := c.Client.StreamStatusEvents(context.Background(), &v1.StatusEventRequest{})
+	stream, err := c.Client.StreamStatusEvents(context.Background(), &v1.StreamStatusEventRequest{})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
 		errCh <- err
@@ -148,7 +148,7 @@ func (c *Client) HandleStatusEventStream(onStatusEvent func(*v1.StatusEvent)) er
 func (c *Client) StreamArtifactEvents() (<-chan *v1.ArtifactEvent, <-chan error) {
 	ch := make(chan *v1.ArtifactEvent)
 	errCh := make(chan error)
-	stream, err := c.Client.StreamArtifactEvents(context.Background(), &v1.ArtifactEventRequest{})
+	stream, err := c.Client.StreamArtifactEvents(context.Background(), &v1.StreamArtifactEventRequest{})
 	if err != nil {
 		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
 		errCh <- err
