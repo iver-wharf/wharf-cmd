@@ -37,9 +37,15 @@ func TestErrorIfBad(t *testing.T) {
 			err:     errNormal,
 		},
 		{
-			name:    "nil gives nil",
+			name:    "no problem response and nil error gives nil",
 			wantErr: nil,
 			resp:    &http.Response{},
+			err:     nil,
+		},
+		{
+			name:    "all nil gives nil",
+			wantErr: nil,
+			resp:    nil,
 			err:     nil,
 		},
 		{

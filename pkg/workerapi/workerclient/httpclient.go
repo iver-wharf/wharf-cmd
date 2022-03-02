@@ -85,6 +85,9 @@ func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, err
 }
 
 func errorIfBad(res *http.Response, err error) error {
+	if res == nil {
+		return err
+	}
 	if problem.IsHTTPResponse(res) {
 		prob, parseErr := problem.ParseHTTPResponse(res)
 		if parseErr == nil {
