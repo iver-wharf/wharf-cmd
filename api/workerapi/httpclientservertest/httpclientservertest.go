@@ -7,8 +7,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerhttpclient"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerhttpserver"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
@@ -16,7 +16,7 @@ import (
 
 var log = logger.NewScoped("HTTP-CLIENT-SERVER-TEST")
 
-var client workerhttpclient.Client
+var client workerclient.HTTPClient
 
 const (
 	validArtifactID1  = 34
@@ -27,7 +27,7 @@ const (
 func main() {
 	logger.AddOutput(logger.LevelDebug, consolepretty.New(consolepretty.DefaultConfig))
 
-	server := workerhttpserver.NewServer("0.0.0.0", "8080", &mockBuilder{})
+	server := workerserver.NewHTTPServer("0.0.0.0", "8080", &mockBuilder{})
 	server.SetOnServeErrorHandler(func(err error) {
 		log.Error().WithError(err).Message("Serve error occurred.")
 		time.Sleep(1 * time.Second)
@@ -41,7 +41,7 @@ func main() {
 	}
 
 	var err error
-	client, err = workerhttpclient.NewClient("127.0.0.1", "8080")
+	client, err = workerclient.NewClient("127.0.0.1", "8080")
 	if err != nil {
 		log.Error().WithError(err).Message("Creating client failed.")
 		os.Exit(1)

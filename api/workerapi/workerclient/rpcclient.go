@@ -1,4 +1,4 @@
-package workerrpcclient
+package workerclient
 
 import (
 	"context"
@@ -6,13 +6,12 @@ import (
 	"io"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// Client is used to communicate with the Worker gRPC server.
-type Client struct {
+// RPCClient is used to communicate with the Worker gRPC server.
+type RPCClient struct {
 	targetAddress string
 	targetPort    string
 
@@ -20,19 +19,17 @@ type Client struct {
 	conn   *grpc.ClientConn
 }
 
-var log = logger.NewScoped("WORKER-RPC-CLIENT")
-
-// NewClient creates a new gRPC Client that can communicate with the Worker
+// NewRPCClient creates a new gRPC Client that can communicate with the Worker
 // gRPC server.
-func NewClient(targetAddress, targetPort string) *Client {
-	return &Client{
+func NewRPCClient(targetAddress, targetPort string) *RPCClient {
+	return &RPCClient{
 		targetAddress: targetAddress,
 		targetPort:    targetPort,
 	}
 }
 
 // Open initializes the connection to the server.
-func (c *Client) Open() error {
+func (c *RPCClient) Open() error {
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", c.targetAddress, c.targetPort), opts...)
@@ -45,7 +42,7 @@ func (c *Client) Open() error {
 }
 
 // Close tears down the connection to the server.
-func (c *Client) Close() error {
+func (c *RPCClient) Close() error {
 	if c.conn != nil {
 		return c.conn.Close()
 	}
@@ -53,7 +50,7 @@ func (c *Client) Close() error {
 }
 
 // StreamLogs returns a channel that will receive log lines from the worker.
-func (c *Client) StreamLogs() (<-chan *v1.LogLine, <-chan error) {
+func (c *RPCClient) StreamLogs() (<-chan *v1.LogLine, <-chan error) {
 	ch := make(chan *v1.LogLine)
 	errCh := make(chan error)
 	stream, err := c.Client.StreamLogs(context.Background(), &v1.StreamLogLineRequest{})
@@ -86,7 +83,7 @@ func (c *Client) StreamLogs() (<-chan *v1.LogLine, <-chan error) {
 
 // HandleLogStream is the functional equivalent of calling StreamLogs and
 // passing each log to the callback.
-func (c *Client) HandleLogStream(onLogLine func(*v1.LogLine)) error {
+func (c *RPCClient) HandleLogStream(onLogLine func(*v1.LogLine)) error {
 	ch, errCh := c.StreamLogs()
 	for line, ok := <-ch; ok; line, ok = <-ch {
 		onLogLine(line)
@@ -99,7 +96,7 @@ func (c *Client) HandleLogStream(onLogLine func(*v1.LogLine)) error {
 
 // StreamStatusEvents returns a channel that will receive status events from
 // the worker.
-func (c *Client) StreamStatusEvents() (<-chan *v1.StatusEvent, <-chan error) {
+func (c *RPCClient) StreamStatusEvents() (<-chan *v1.StatusEvent, <-chan error) {
 	ch := make(chan *v1.StatusEvent)
 	errCh := make(chan error)
 	stream, err := c.Client.StreamStatusEvents(context.Background(), &v1.StreamStatusEventRequest{})
@@ -132,7 +129,7 @@ func (c *Client) StreamStatusEvents() (<-chan *v1.StatusEvent, <-chan error) {
 
 // HandleStatusEventStream is the functional equivalent of calling
 // StreamStatusEvents and passing each event to the callback.
-func (c *Client) HandleStatusEventStream(onStatusEvent func(*v1.StatusEvent)) error {
+func (c *RPCClient) HandleStatusEventStream(onStatusEvent func(*v1.StatusEvent)) error {
 	ch, errCh := c.StreamStatusEvents()
 	for statusEvent, ok := <-ch; ok; statusEvent, ok = <-ch {
 		onStatusEvent(statusEvent)
@@ -145,7 +142,7 @@ func (c *Client) HandleStatusEventStream(onStatusEvent func(*v1.StatusEvent)) er
 
 // StreamArtifactEvents returns a channel that will receive artifact events
 // from the worker.
-func (c *Client) StreamArtifactEvents() (<-chan *v1.ArtifactEvent, <-chan error) {
+func (c *RPCClient) StreamArtifactEvents() (<-chan *v1.ArtifactEvent, <-chan error) {
 	ch := make(chan *v1.ArtifactEvent)
 	errCh := make(chan error)
 	stream, err := c.Client.StreamArtifactEvents(context.Background(), &v1.StreamArtifactEventRequest{})
@@ -178,7 +175,7 @@ func (c *Client) StreamArtifactEvents() (<-chan *v1.ArtifactEvent, <-chan error)
 
 // HandleArtifactEventStream is the functional equivalent of calling
 // StreamArtifactEvents and passing each event to the callback.
-func (c *Client) HandleArtifactEventStream(onArtifactEvent func(*v1.ArtifactEvent)) error {
+func (c *RPCClient) HandleArtifactEventStream(onArtifactEvent func(*v1.ArtifactEvent)) error {
 	ch, errCh := c.StreamArtifactEvents()
 	for artifactEvent, ok := <-ch; ok; artifactEvent, ok = <-ch {
 		onArtifactEvent(artifactEvent)

@@ -1,4 +1,4 @@
-package workerrpcserver
+package workerserver
 
 import (
 	"strconv"
@@ -6,19 +6,24 @@ import (
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type workerServer struct {
+type workerRPCServer struct {
 	v1.UnimplementedWorkerServer
 	store resultstore.Store
+	log   logger.Logger
 }
 
-func newWorkerServer(store resultstore.Store) *workerServer {
-	return &workerServer{store: store}
+func newWorkerRPCServer(store resultstore.Store) *workerRPCServer {
+	return &workerRPCServer{
+		store: store,
+		log:   logger.NewScoped("WORKER-RPC-SERVER"),
+	}
 }
 
-func (s *workerServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker_StreamLogsServer) error {
+func (s *workerRPCServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker_StreamLogsServer) error {
 	bufferSize := 100
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
@@ -26,7 +31,7 @@ func (s *workerServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker
 	}
 	defer func() {
 		if !s.store.UnsubAllLogLines(ch) {
-			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
+			s.log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
 		}
 	}()
 
@@ -45,7 +50,7 @@ func (s *workerServer) StreamLogs(req *v1.StreamLogLineRequest, stream v1.Worker
 	}
 }
 
-func (s *workerServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream v1.Worker_StreamStatusEventsServer) error {
+func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream v1.Worker_StreamStatusEventsServer) error {
 	const bufferSize = 100
 	ch, err := s.store.SubAllStatusUpdates(bufferSize)
 	if err != nil {
@@ -53,7 +58,7 @@ func (s *workerServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream
 	}
 	defer func() {
 		if !s.store.UnsubAllStatusUpdates(ch) {
-			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
+			s.log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
 		}
 	}()
 
@@ -72,7 +77,7 @@ func (s *workerServer) StreamStatusEvents(_ *v1.StreamStatusEventRequest, stream
 	}
 }
 
-func (s *workerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventRequest, stream v1.Worker_StreamArtifactEventsServer) error {
+func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventRequest, stream v1.Worker_StreamArtifactEventsServer) error {
 	// Doesn't exist in resultstore currently so mocking it directly here.
 	var ch <-chan *v1.ArtifactEvent
 	go func() {

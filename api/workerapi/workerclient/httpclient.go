@@ -1,4 +1,4 @@
-package workerhttpclient
+package workerclient
 
 import (
 	"encoding/json"
@@ -6,31 +6,31 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerhttpserver/model/response"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-core/pkg/cacertutil"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )
 
-type workerClient struct {
+type workerHTTPClient struct {
 	address string
 	port    string
 	client  *http.Client
 }
 
 // NewClient creates a client that can communicate with a Worker HTTP server.
-func NewClient(address, port string) (Client, error) {
+func NewClient(address, port string) (HTTPClient, error) {
 	client, err := cacertutil.NewHTTPClientWithCerts("/etc/iver-wharf/wharf-cmd/localhost.crt")
 	if err != nil {
 		return nil, err
 	}
-	return &workerClient{
+	return &workerHTTPClient{
 		address: address,
 		port:    port,
 		client:  client,
 	}, nil
 }
 
-func (c *workerClient) ListBuildSteps() ([]response.Step, error) {
+func (c *workerHTTPClient) ListBuildSteps() ([]response.Step, error) {
 	res, err := c.client.Get(fmt.Sprintf("http://%s:%s/api/build/step", c.address, c.port))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err
@@ -54,7 +54,7 @@ func (c *workerClient) ListBuildSteps() ([]response.Step, error) {
 	return steps, nil
 }
 
-func (c *workerClient) ListArtifacts() ([]response.Artifact, error) {
+func (c *workerHTTPClient) ListArtifacts() ([]response.Artifact, error) {
 	res, err := c.client.Get(fmt.Sprintf("http://%s:%s/api/artifact", c.address, c.port))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (c *workerClient) ListArtifacts() ([]response.Artifact, error) {
 	return artifacts, nil
 }
 
-func (c *workerClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
+func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
 	res, err := c.client.Get(fmt.Sprintf("http://%s:%s/api/artifact/%d/download", c.address, c.port, artifactID))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err

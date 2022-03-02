@@ -1,4 +1,4 @@
-package workerhttpserver
+package workerserver
 
 import (
 	"bytes"
@@ -8,13 +8,13 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerhttpserver/model/response"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )
 
 type artifactModule struct {
-	*workerServer
+	*workerHTTPServer
 }
 
 var artifacts = []response.Artifact{

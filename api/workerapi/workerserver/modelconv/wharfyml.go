@@ -1,7 +1,7 @@
 package modelconv
 
 import (
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerhttpserver/model/response"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 )
 

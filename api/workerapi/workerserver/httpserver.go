@@ -1,4 +1,4 @@
-package workerhttpserver
+package workerserver
 
 import (
 	"context"
@@ -19,29 +19,28 @@ type module interface {
 	register(g *gin.RouterGroup)
 }
 
-// Server lets us start an HTTP server asynchronously.
-type Server struct {
+type httpServer struct {
 	address      string
 	port         string
 	srv          *http.Server
-	workerServer *workerServer
+	workerServer *workerHTTPServer
 	isRunning    bool
 
 	onServeErrorHandler func(error)
 }
 
-// NewServer creates a new server that can be started by calling Start.
-func NewServer(address string, port string, builder worker.Builder) *Server {
-	return &Server{
+// NewHTTPServer creates a new HTTP server that can be started by calling Start.
+func NewHTTPServer(address string, port string, builder worker.Builder) Server {
+	return &httpServer{
 		address:      address,
 		port:         port,
-		workerServer: newWorkerServer(builder),
+		workerServer: newWorkerHTTPServer(builder),
 	}
 }
 
 // SetOnServeErrorHandler sets the handler to call when an error occurs during
 // serving.
-func (s *Server) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
+func (s *httpServer) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 	s.onServeErrorHandler = onServeErrorHandler
 }
 
@@ -51,7 +50,7 @@ func (s *Server) SetOnServeErrorHandler(onServeErrorHandler func(error)) {
 // already running, followed by attempting to launch it again.
 //
 // To stop the server you may use GracefulStop or ForceStop.
-func (s *Server) Serve() error {
+func (s *httpServer) Serve() error {
 	if err := s.ForceStop(); err != nil {
 		return err
 	}
@@ -72,27 +71,19 @@ func (s *Server) Serve() error {
 }
 
 // GracefulStop stops the HTTP server gracefully, blocking new connections
-// and closing idle connections, then waiting until active ones have finished
-// or the timeout duration has elapsed.
-//
-// If 0 is passed as the timeout, a default value of 30 seconds will be used.
-func (s *Server) GracefulStop(timeout time.Duration) error {
+// and closing idle connections, then waiting until active ones have finished.
+func (s *httpServer) GracefulStop() error {
 	defer func() {
 		s.isRunning = false
 	}()
 	if s.srv == nil {
 		return nil
 	}
-	if timeout == 0 {
-		timeout = 30 * time.Second
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout*time.Second)
-	defer cancel()
-	return s.srv.Shutdown(ctx)
+	return s.srv.Shutdown(context.Background())
 }
 
 // ForceStop forcefully stops the server.
-func (s *Server) ForceStop() error {
+func (s *httpServer) ForceStop() error {
 	defer func() {
 		s.isRunning = false
 	}()
@@ -102,13 +93,13 @@ func (s *Server) ForceStop() error {
 	return s.srv.Close()
 }
 
-// IsRunning returns true if the server is currently running and processing
-// requests.
-func (s *Server) IsRunning() bool {
+// IsRunning returns true if the HTTP server is currently running and
+// processing requests.
+func (s *httpServer) IsRunning() bool {
 	return s.srv != nil && s.isRunning
 }
 
-func (s *Server) registerModules(r *gin.RouterGroup) {
+func (s *httpServer) registerModules(r *gin.RouterGroup) {
 	modules := []module{
 		&buildModule{s.workerServer},
 		&artifactModule{s.workerServer},
@@ -118,7 +109,7 @@ func (s *Server) registerModules(r *gin.RouterGroup) {
 	}
 }
 
-func (s *Server) serve(r *gin.Engine) error {
+func (s *httpServer) serve(r *gin.Engine) error {
 	s.srv = &http.Server{
 		Addr:    fmt.Sprintf("%s:%s", s.address, s.port),
 		Handler: r,
@@ -130,15 +121,14 @@ func (s *Server) serve(r *gin.Engine) error {
 	go func() {
 		log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
 		s.isRunning = true
-		err := s.srv.Serve(ln)
-		s.isRunning = false
-		if err != nil {
+		if err := s.srv.Serve(ln); err != nil {
 			if errors.Is(err, http.ErrServerClosed) {
 				log.Info().Message("Server closed.")
 			} else if s.onServeErrorHandler != nil {
 				s.onServeErrorHandler(err)
 			}
 		}
+		s.isRunning = false
 	}()
 	for !s.isRunning {
 		time.Sleep(1 * time.Millisecond)

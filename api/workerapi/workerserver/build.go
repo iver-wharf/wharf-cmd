@@ -1,14 +1,14 @@
-package workerhttpserver
+package workerserver
 
 import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerhttpserver/modelconv"
+	"github.com/iver-wharf/wharf-cmd/api/workerapi/workerserver/modelconv"
 )
 
 type buildModule struct {
-	*workerServer
+	*workerHTTPServer
 }
 
 func (m *buildModule) register(g *gin.RouterGroup) {
