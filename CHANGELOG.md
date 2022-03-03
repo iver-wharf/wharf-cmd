@@ -42,7 +42,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
-  line & column of each parse error. (#48)
+  line & column of each parse error. (#48, #58)
 
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)

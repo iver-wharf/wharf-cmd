@@ -30,13 +30,6 @@ const (
 	shortTagMerge     = "!!merge"
 )
 
-func unwrapNode(node *yaml.Node) *yaml.Node {
-	for node.Alias != nil {
-		node = node.Alias
-	}
-	return node
-}
-
 func verifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 	if node.Kind != wantKind {
 		return wrapPosErrorNode(fmt.Errorf("%w: expected %s, but was %s",
@@ -62,7 +55,6 @@ func verifyKindAndTag(node *yaml.Node, wantStr string, wantKind yaml.Kind, wantT
 }
 
 func visitString(node *yaml.Node) (string, error) {
-	node = unwrapNode(node)
 	if err := verifyKindAndTag(node, "string", yaml.ScalarNode, shortTagString); err != nil {
 		return "", err
 	}
@@ -70,7 +62,6 @@ func visitString(node *yaml.Node) (string, error) {
 }
 
 func visitInt(node *yaml.Node) (int, error) {
-	node = unwrapNode(node)
 	if err := verifyKindAndTag(node, "integer", yaml.ScalarNode, shortTagInt); err != nil {
 		return 0, err
 	}
@@ -82,7 +73,6 @@ func visitInt(node *yaml.Node) (int, error) {
 }
 
 func visitFloat64(node *yaml.Node) (float64, error) {
-	node = unwrapNode(node)
 	if node.Kind == yaml.ScalarNode && node.ShortTag() == shortTagInt {
 		num, err := visitInt(node)
 		if err != nil {
@@ -101,7 +91,6 @@ func visitFloat64(node *yaml.Node) (float64, error) {
 }
 
 func visitBool(node *yaml.Node) (bool, error) {
-	node = unwrapNode(node)
 	if err := verifyKindAndTag(node, "boolean", yaml.ScalarNode, shortTagBool); err != nil {
 		return false, err
 	}
@@ -132,7 +121,6 @@ type strNode struct {
 }
 
 func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
-	node = unwrapNode(node)
 	var errSlice Errors
 
 	if err := verifyKind(node, "map", yaml.MappingNode); err != nil {
@@ -174,7 +162,6 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 }
 
 func visitSequence(node *yaml.Node) ([]*yaml.Node, error) {
-	node = unwrapNode(node)
 	if err := verifyKind(node, "sequence", yaml.SequenceNode); err != nil {
 		return nil, err
 	}

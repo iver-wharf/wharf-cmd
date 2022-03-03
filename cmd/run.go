@@ -12,6 +12,7 @@ import (
 
 var flagRunPath string
 var flagStage string
+var flagEnv string
 
 var runCmd = &cobra.Command{
 	Use:   "run",
@@ -25,7 +26,9 @@ var runCmd = &cobra.Command{
 		}
 		stageRun := worker.NewStageRunner(stepRun)
 		b := worker.New(stageRun)
-		def, errs := wharfyml.ParseFile(flagRunPath)
+		def, errs := wharfyml.ParseFile(flagRunPath, wharfyml.Args{
+			Env: flagEnv,
+		})
 		if len(errs) > 0 {
 			log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
 			for _, err := range errs {
@@ -61,4 +64,5 @@ func init() {
 
 	runCmd.Flags().StringVarP(&flagRunPath, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
 	runCmd.Flags().StringVarP(&flagStage, "stage", "s", "", "Stage to run (will run all stages if unset)")
+	runCmd.Flags().StringVarP(&flagEnv, "environment", "e", "", "Environment selection")
 }
