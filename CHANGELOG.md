@@ -47,6 +47,16 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)
 
+- Added CLI completions via Cobra. See the completion command's help text for
+  your shell for more info: (#64)
+
+  ```bash
+  wharf-cmd completion bash --help
+  wharf-cmd completion fish --help
+  wharf-cmd completion powershell --help
+  wharf-cmd completion zsh --help
+  ```
+
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
 
@@ -74,11 +84,12 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed versions of numerous dependencies:
 
+  - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
+  - `github.com/spf13/cobra` v1.1.3 to v1.3.0 (#64)
   - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
   - `k8s.io/apimachinery` from v0.0.0 to v0.23.3 (#8)
   - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
   - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0 (#8)
-  - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
 
 - Changed Go runtime from v1.13 to v1.17. (#8)
 
