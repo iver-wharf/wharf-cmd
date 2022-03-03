@@ -7,8 +7,15 @@ import (
 
 var provisionerServeCmd = &cobra.Command{
 	Use:   "serve",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
+	Short: "Starts serving HTTP REST API",
+	Long: `Starts serving a HTTP REST API that the wharf-api uses to
+provision new builds inside Kubernetes. The endpoints available are
+equivalent to the "wharf-cmd provisioner" subcommands.
+
+You can see an offline Swagger documentation of the API by visiting
+the following URL path on a running wharf-cmd provisioner server:
+
+	/api/swagger/index.html
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return provisionerapi.Serve(provisionerFlags.namespace, provisionerFlags.restConfig)

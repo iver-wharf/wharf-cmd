@@ -14,12 +14,14 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added new commands: (#46)
+- Added new commands: (#46, #59)
 
   - `wharf-cmd provisioner serve` that launches an HTTP REST api server with
     endpoints:
 
     - `GET /api` to check health.
+
+    - `GET /api/swagger/index.html` Swagger generated documentation.
 
     - `POST /api/worker` creates a new worker with certain labels.
 
@@ -40,17 +42,29 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
-  line & column of each parse error. (#48)
+  line & column of each parse error. (#48, #58)
 
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)
 
+<<<<<<< HEAD
 - Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
   This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
   among other things. (#63)
 
 - Fixed `wharf run` and `wharf provisioner` commands not using the namespace
   defined in the kubeconfig. (#63)
+=======
+- Added CLI completions via Cobra. See the completion command's help text for
+  your shell for more info: (#64)
+
+  ```bash
+  wharf-cmd completion bash --help
+  wharf-cmd completion fish --help
+  wharf-cmd completion powershell --help
+  wharf-cmd completion zsh --help
+  ```
+>>>>>>> origin/master
 
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
@@ -67,25 +81,29 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
+<<<<<<< HEAD
+=======
+  - `github.com/gin-gonic/gin` v1.7.1 (#46)
+  - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
+  - `github.com/swaggo/swag` v1.7.9 (#59)
+>>>>>>> origin/master
 
 - Removed dependencies:
 
+  - `github.com/go-git/go-git` (#8)
   - `github.com/sirupsen/logrus` (#2)
   - `sigs.k8s.io/yaml` (#48)
 
 - Removed commands `init`, `setup`, and `serve`. (#8)
 
-- Changed versions of numerous dependencies: (#8)
+- Changed versions of numerous dependencies:
 
-  - `k8s.io/api` from v0.0.0 to v0.23.3
-  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3
-  - `k8s.io/client-go` from v0.0.0 to v0.23.3
-  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0
-
-- Removed dependencies: (#8)
-
-  - `github.com/gin-gonic/gin`
-  - `github.com/go-git/go-git`
+  - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
+  - `github.com/spf13/cobra` v1.1.3 to v1.3.0 (#64)
+  - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
+  - `k8s.io/apimachinery` from v0.0.0 to v0.23.3 (#8)
+  - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
+  - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0 (#8)
 
 - Changed Go runtime from v1.13 to v1.17. (#8)
 
