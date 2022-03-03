@@ -38,6 +38,12 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `wharf-cmd provisioner delete` with flag `--id` to specify the worker that
     should be deleted, as long as it has certain labels as well.
 
+- Added watchdog commands: (#62)
+
+  - `wharf-cmd watchdog serve` checks stray builds from the wharf-api and
+    wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort
+    to clean up forgotten builds/workers.
+
 - Added new implementation for `wharf run`. (#33, #45)
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
@@ -47,14 +53,13 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)
 
-<<<<<<< HEAD
 - Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
   This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
   among other things. (#63)
 
 - Fixed `wharf run` and `wharf provisioner` commands not using the namespace
   defined in the kubeconfig. (#63)
-=======
+
 - Added CLI completions via Cobra. See the completion command's help text for
   your shell for more info: (#64)
 
@@ -64,7 +69,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   wharf-cmd completion powershell --help
   wharf-cmd completion zsh --help
   ```
->>>>>>> origin/master
 
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
@@ -78,15 +82,12 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added dependencies:
 
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
+  - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/spf13/pflag` v1.0.5 (#63)
-  - `gopkg.in/yaml.v3` v3.0.0 (#48)
-<<<<<<< HEAD
-=======
-  - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
   - `github.com/swaggo/swag` v1.7.9 (#59)
->>>>>>> origin/master
+  - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:
 

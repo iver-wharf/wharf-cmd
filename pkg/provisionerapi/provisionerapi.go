@@ -48,7 +48,7 @@ func Serve(ns string, cfg *rest.Config) error {
 	}
 	workerModule.register(g)
 
-	const bindAddress = "0.0.0.0:8080"
+	const bindAddress = "0.0.0.0:5009"
 	log.Info().WithString("address", bindAddress).Message("Starting server.")
 	if err := r.Run(bindAddress); err != nil {
 		log.Error().
