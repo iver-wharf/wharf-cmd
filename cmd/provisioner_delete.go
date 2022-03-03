@@ -10,9 +10,9 @@ import (
 var deleteWorkerID string
 var provisionerDeleteCmd = &cobra.Command{
 	Use:   "delete",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-`,
+	Short: "Terminates a worker in Kubernetes",
+	Long: `Terminates a wharf-cmd worker pod in Kubernetes, effectively
+cancelling the build.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := provisioner.NewK8sProvisioner("default", Kubeconfig)
 		if err != nil {

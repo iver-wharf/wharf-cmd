@@ -52,10 +52,11 @@ myStage1:
       cmds: [echo hello]
 
 myStage2:
+  environments: [myEnvA]
   myKubectlStep:
     kubectl:
       file: deploy/pod.yaml
-`))
+`), Args{Env: "myEnvA"})
 	requireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
@@ -119,7 +120,9 @@ myStage2:
 
 		myStage2 := got.Stages[1]
 		assert.Equal(t, "myStage2", myStage2.Name, "myStage2.Name")
-		assert.Len(t, myStage2.Envs, 0, "myStage2.Envs")
+		if assert.Len(t, myStage2.Envs, 1, "myStage2.Envs") {
+			assert.Equal(t, "myEnvA", myStage2.Envs[0].Name, "myStage2.Envs[0].Name")
+		}
 
 		if assert.Len(t, myStage2.Steps, 1, "myStage2.Steps") {
 			assert.Equal(t, "myKubectlStep", myStage2.Steps[0].Name, "myStage2.myKubectlStep.Name")
@@ -137,7 +140,7 @@ environments:
   myEnv:
     myStr: !!str 123
     myInt: !!int 123
-`))
+`), Args{})
 	requireNoErr(t, errs)
 	myEnv, ok := def.Envs["myEnv"]
 	require.True(t, ok, "myEnv environment exists")
@@ -153,7 +156,7 @@ myStage1: &reused
     helm-package: {}
 
 myStage2: *reused
-`))
+`), Args{})
 	requireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -175,7 +178,7 @@ myStage2:
   <<: *reused
   myOtherStep:
     helm-package: {}
-`))
+`), Args{})
 	requireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -227,7 +230,7 @@ C:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse(strings.NewReader(tc.input))
+			got, errs := Parse(strings.NewReader(tc.input), Args{})
 			require.Empty(t, errs)
 			var gotOrder []string
 			for _, s := range got.Stages {
@@ -273,7 +276,7 @@ myStage:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse(strings.NewReader(tc.input))
+			got, errs := Parse(strings.NewReader(tc.input), Args{})
 			requireNoErr(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
@@ -292,7 +295,7 @@ a: 1
 b: 2
 ---
 c: 3
-`))
+`), Args{})
 	requireContainsErr(t, errs, ErrTooManyDocs)
 }
 
@@ -300,31 +303,31 @@ func TestParse_OneDocWithDocSeparator(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 ---
 c: 3
-`))
+`), Args{})
 	requireNotContainsErr(t, errs, ErrTooManyDocs)
 }
 
 func TestParse_MissingDoc(t *testing.T) {
-	_, errs := Parse(strings.NewReader(``))
+	_, errs := Parse(strings.NewReader(``), Args{})
 	requireContainsErr(t, errs, ErrMissingDoc)
 }
 
 func TestParse_ErrIfDocNotMap(t *testing.T) {
-	_, errs := Parse(strings.NewReader(`123`))
+	_, errs := Parse(strings.NewReader(`123`), Args{})
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestParse_ErrIfNonStringKey(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 123: {}
-`))
+`), Args{})
 	requireContainsErr(t, errs, ErrKeyNotString)
 }
 
 func TestParse_ErrIfEmptyStageName(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 "": {}
-`))
+`), Args{})
 	requireContainsErr(t, errs, ErrKeyEmpty)
 }
 
@@ -332,8 +335,69 @@ func TestParse_ErrIfUseOfUnknownEnv(t *testing.T) {
 	_, errs := Parse(strings.NewReader(`
 myStage:
   environments: [myEnv]
-`))
+`), Args{})
 	requireContainsErr(t, errs, ErrUseOfUndefinedEnv)
+}
+
+func TestParse_EnvVarSub(t *testing.T) {
+	testCases := []struct {
+		name      string
+		args      Args
+		wantImage string
+		wantCmd   string
+		input     string
+	}{
+		{
+			name:      "no env",
+			args:      Args{},
+			wantImage: "${myImage}",
+			wantCmd:   "${myCmd}",
+			input: `
+environments:
+  myEnv:
+    myImage: ubuntu:latest
+    myCmd: echo hello world
+myStage:
+  myStep:
+    container:
+      image: ${myImage}
+      cmds:
+        - ${myCmd}
+`,
+		},
+		{
+			name:      "with env",
+			args:      Args{Env: "myEnv"},
+			wantImage: "ubuntu:latest",
+			wantCmd:   "echo hello world",
+			input: `
+environments:
+  myEnv:
+    myImage: ubuntu:latest
+    myCmd: echo hello world
+myStage:
+  environments: [myEnv]
+  myStep:
+    container:
+      image: ${myImage}
+      cmds:
+        - ${myCmd}
+`,
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			def, errs := Parse(strings.NewReader(tc.input), tc.args)
+			require.Empty(t, errs)
+			require.Len(t, def.Stages, 1, "stage count")
+			require.Len(t, def.Stages[0].Steps, 1, "step count")
+			myStep, ok := def.Stages[0].Steps[0].Type.(StepContainer)
+			require.True(t, ok, "step type is container")
+
+			assert.Equal(t, tc.wantImage, myStep.Image, "container.image")
+			assert.Equal(t, []string{tc.wantCmd}, myStep.Cmds, "container.cmds")
+		})
+	}
 }
 
 func getKeyedNode(t *testing.T, content string) (strNode, *yaml.Node) {
