@@ -14,7 +14,7 @@ var provisionerDeleteCmd = &cobra.Command{
 	Long: `Terminates a wharf-cmd worker pod in Kubernetes, effectively
 cancelling the build.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := provisioner.NewK8sProvisioner("default", Kubeconfig)
+		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)
 		if err != nil {
 			return err
 		}

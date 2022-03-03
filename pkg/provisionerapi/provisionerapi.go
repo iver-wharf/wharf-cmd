@@ -25,7 +25,7 @@ var log = logger.NewScoped("PROVISIONER-API")
 // @contact.email wharf@iver.se
 // @basePath /api
 // @query.collection.format multi
-func Serve(cfg *rest.Config) error {
+func Serve(ns string, cfg *rest.Config) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
 	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
 
@@ -40,7 +40,7 @@ func Serve(cfg *rest.Config) error {
 	g.GET("", pingHandler)
 
 	workerModule := workerModule{}
-	if err := workerModule.init(cfg); err != nil {
+	if err := workerModule.init(ns, cfg); err != nil {
 		log.Error().
 			WithError(err).
 			Message("Failed to initialize worker module.")

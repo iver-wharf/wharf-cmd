@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added new commands: (#46, #59)
+- Added provisioner commands: (#46, #59)
 
   - `wharf-cmd provisioner serve` that launches an HTTP REST api server with
     endpoints:
@@ -53,6 +53,13 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43)
 
+- Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
+  This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
+  among other things. (#63)
+
+- Fixed `wharf run` and `wharf provisioner` commands not using the namespace
+  defined in the kubeconfig. (#63)
+
 - Added CLI completions via Cobra. See the completion command's help text for
   your shell for more info: (#64)
 
@@ -77,6 +84,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
   - `github.com/swaggo/swag` v1.7.9 (#59)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)

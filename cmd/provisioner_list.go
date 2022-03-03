@@ -13,7 +13,7 @@ var provisionerListCmd = &cobra.Command{
 	Long: `Lists wharf-cmd worker pods inside Kubernetes
 that are either scheduling, running, or completed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := provisioner.NewK8sProvisioner("default", Kubeconfig)
+		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)
 		if err != nil {
 			return err
 		}
