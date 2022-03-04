@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/cacertutil"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 )
@@ -25,10 +24,14 @@ type httpServer struct {
 }
 
 // NewHTTPServer creates a new HTTP server that can be started by calling Start.
-func NewHTTPServer(bindAddress string, buildStepLister wharfyml.BuildStepLister) Server {
+func NewHTTPServer(
+	bindAddress string,
+	buildStepLister BuildStepLister,
+	artifactLister ArtifactLister,
+	artifactDownloader ArtifactDownloader) Server {
 	return &httpServer{
 		bindAddress:  bindAddress,
-		workerServer: newWorkerHTTPServer(buildStepLister),
+		workerServer: newWorkerHTTPServer(buildStepLister, artifactLister, artifactDownloader),
 	}
 }
 

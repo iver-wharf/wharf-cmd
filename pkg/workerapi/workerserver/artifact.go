@@ -1,33 +1,17 @@
 package workerserver
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )
 
 type artifactModule struct {
 	*workerHTTPServer
-}
-
-var artifacts = []response.Artifact{
-	{
-		ArtifactID: 34,
-		StepID:     1,
-		Name:       "Artifact-34",
-	},
-	{
-		ArtifactID: 35,
-		StepID:     1,
-		Name:       "Artifact-35",
-	},
 }
 
 func (m *artifactModule) register(g *gin.RouterGroup) {
@@ -37,24 +21,26 @@ func (m *artifactModule) register(g *gin.RouterGroup) {
 		{
 			artifactID := artifact.Group(":artifactId")
 			{
-				artifactID.GET("/download", m.downloadArtifact)
+				artifactID.GET("/download", m.downloadArtifactHandler)
 			}
 		}
 	}
 }
 
 func (m *artifactModule) listArtifactsHandler(c *gin.Context) {
+	artifacts := m.artifactLister.ListArtifacts()
 	c.JSON(http.StatusOK, artifacts)
 }
 
-func (m *artifactModule) downloadArtifact(c *gin.Context) {
+func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
 	artifactID, ok := ginutil.ParseParamUint(c, "artifactId")
 	if !ok {
 		return
 	}
 
-	if artifactID != 34 && artifactID != 35 {
-		ginutil.WriteProblemError(c, fmt.Errorf("artifact not found"), problem.Response{
+	ioBody, err := m.artifactDownloader.DownloadArtifact(artifactID)
+	if err != nil {
+		ginutil.WriteProblemError(c, err, problem.Response{
 			Type:   "/prob/workerapi/record-not-found",
 			Title:  "Record not found.",
 			Status: http.StatusNotFound,
@@ -63,50 +49,12 @@ func (m *artifactModule) downloadArtifact(c *gin.Context) {
 		return
 	}
 
-	file, ok := mockFile(c)
-	stat, err := file.Stat()
+	c.Header("Content-Type", "application/octet-stream")
+	written, err := io.Copy(c.Writer, ioBody)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
-
-	defer removeMockFile(file)
-
-	data, err := io.ReadAll(file)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-	c.DataFromReader(http.StatusOK, stat.Size(), "application/octet-stream", bytes.NewReader(data), nil)
-}
-
-func mockFile(c *gin.Context) (*os.File, bool) {
-	file, err := os.CreateTemp("", "file_*")
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return nil, false
-	}
-
-	if _, err := file.WriteString("Hello, Blob!\r\n"); err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return nil, false
-	}
-
-	if err := file.Sync(); err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return nil, false
-	}
-
-	if _, err := file.Seek(0, 0); err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return nil, false
-	}
-
-	return file, true
-}
-
-func removeMockFile(file *os.File) {
-	if err := os.Remove(file.Name()); err != nil {
-		log.Error().WithError(err).Message("Failed removing temporary file.")
-	}
+	log.Debug().WithInt64("written", written).Message("Successfully wrote from server to client.")
+	c.Status(http.StatusOK)
 }
