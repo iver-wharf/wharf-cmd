@@ -1,16 +1,17 @@
 .PHONY: install tidy deps \
+	swag swag-force \
 	proto lint lint-md lint-go \
 	lint-fix lint-fix-md lint-fix-go
 
 ifeq ($(OS),Windows_NT)
-wharf.exe:
+wharf.exe: swag
 	go build -o wharf.exe
 else
-wharf:
+wharf: swag
 	go build -o wharf
 endif
 
-install:
+install: swag
 	go install
 
 tidy:
@@ -22,6 +23,7 @@ deps:
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
 	go install github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.0
+	go install github.com/swaggo/swag/cmd/swag@v1.8.0
 	npm install
 
 proto:
@@ -33,6 +35,18 @@ proto:
 		./api/workerapi/v1/worker.proto
 # Generated files have some non-standard formatting, so let's format it.
 	goimports -w ./api/workerapi/v1/.
+
+swag-force:
+	swag init \
+		--dir pkg/provisionerapi,pkg/provisioner,pkg/worker \
+		--generalInfo provisionerapi.go --output pkg/provisionerapi/docs
+
+swag: pkg/provisionerapi/docs/docs.go
+
+pkg/provisionerapi/docs/docs.go:
+	swag init \
+		--dir pkg/provisionerapi,pkg/provisioner,pkg/worker \
+		--generalInfo provisionerapi.go --output pkg/provisionerapi/docs
 
 lint: lint-md lint-go
 lint-fix: lint-fix-md lint-fix-go

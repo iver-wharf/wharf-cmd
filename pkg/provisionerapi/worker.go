@@ -13,8 +13,8 @@ type workerModule struct {
 	prov provisioner.Provisioner
 }
 
-func (m *workerModule) init(cfg *rest.Config) error {
-	p, err := provisioner.NewK8sProvisioner("default", cfg)
+func (m *workerModule) init(ns string, cfg *rest.Config) error {
+	p, err := provisioner.NewK8sProvisioner(ns, cfg)
 	if err != nil {
 		return err
 	}
@@ -28,6 +28,14 @@ func (m *workerModule) register(g *gin.RouterGroup) {
 	g.DELETE("/worker/:workerId", m.deleteWorkerHandler)
 }
 
+// listWorkersHandler godoc
+// @id listWorkers
+// @summary List provisioned wharf-cmd-workers
+// @description Added in v0.8.0.
+// @tags worker
+// @success 200 {object} []provisioner.Worker
+// @failure 500 {object} string "Failed"
+// @router /worker [get]
 func (m *workerModule) listWorkersHandler(c *gin.Context) {
 	workers, err := m.prov.ListWorkers(c.Request.Context())
 	if err != nil {
@@ -38,6 +46,14 @@ func (m *workerModule) listWorkersHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, workers)
 }
 
+// createWorkerHandler godoc
+// @id createWorker
+// @summary Creates a new wharf-cmd-worker
+// @description Added in v0.8.0.
+// @tags worker
+// @success 201 {object} provisioner.Worker
+// @failure 500 {object} string "Failed"
+// @router /worker [post]
 func (m *workerModule) createWorkerHandler(c *gin.Context) {
 	worker, err := m.prov.CreateWorker(c.Request.Context())
 	if err != nil {
@@ -48,6 +64,15 @@ func (m *workerModule) createWorkerHandler(c *gin.Context) {
 	c.JSON(http.StatusCreated, worker)
 }
 
+// deleteWorkerHandler godoc
+// @id deleteWorker
+// @summary Deletes a wharf-cmd-worker
+// @description Added in v0.8.0.
+// @tags worker
+// @param workerId path uint true "ID of worker to delete" minimum(0)
+// @success 204 "OK"
+// @failure 500 {object} string "Failed"
+// @router /worker/{workerId} [delete]
 func (m *workerModule) deleteWorkerHandler(c *gin.Context) {
 	workerID, ok := ginutil.RequireParamString(c, "workerId")
 	if !ok {

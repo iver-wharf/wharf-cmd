@@ -3,19 +3,18 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var isLoggingInitialized bool
 var loglevel string
-var Kubeconfig *rest.Config
 var kubeconfigPath string
 var Namespace string
 
@@ -25,15 +24,29 @@ var rootCmd = &cobra.Command{
 	Use:           "wharf-cmd",
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
-		var err error
-		Kubeconfig, err = clientcmd.BuildConfigFromFlags("", kubeconfigPath)
-		if err != nil {
-			log.Warn().WithError(err).Message("Failed to load kube-config")
-		} else {
-			log.Debug().WithString("host", Kubeconfig.Host).Message("Loaded kube-config")
-		}
-	},
+}
+
+func addKubernetesFlags(flagSet *pflag.FlagSet, overrides *clientcmd.ConfigOverrides) {
+	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
+	clientcmd.BindOverrideFlags(overrides, flagSet, overrideFlags)
+}
+
+func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, error) {
+	loader := clientcmd.NewDefaultClientConfigLoadingRules()
+	clientConf := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, &overrides)
+	restConf, err := clientConf.ClientConfig()
+	if err != nil {
+		return nil, "", fmt.Errorf("load kubeconfig: %w", err)
+	}
+	ns, _, err := clientConf.Namespace()
+	if err != nil {
+		return nil, "", fmt.Errorf("get namespace to use: %w", err)
+	}
+	log.Debug().
+		WithString("namespace", ns).
+		WithString("host", restConf.Host).
+		Message("Loaded kube-config")
+	return restConf, ns, nil
 }
 
 func Execute() {
@@ -46,10 +59,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initLogging)
-	home := homeDir()
 	rootCmd.PersistentFlags().StringVar(&loglevel, "loglevel", "info", "Show debug information")
-	rootCmd.PersistentFlags().StringVar(&kubeconfigPath, "kubeconfig", filepath.Join(home, ".kube", "config"), "Path to kubeconfig file")
-	rootCmd.PersistentFlags().StringVar(&Namespace, "namespace", "default", "Namespace to spawn resources in")
 }
 
 func initLoggingIfNeeded() {

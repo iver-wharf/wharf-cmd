@@ -2,6 +2,7 @@ package provisioner
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	v1 "k8s.io/api/core/v1"
@@ -11,9 +12,10 @@ import (
 // rougly comparable to a group of Docker containers sharing
 // namespaces/volumes.
 type Worker struct {
-	ID     string
-	Name   string
-	Status worker.Status
+	ID        string
+	Name      string
+	Status    worker.Status
+	CreatedAt time.Time
 }
 
 func convertPodsToWorkers(pods []v1.Pod) []Worker {
@@ -44,9 +46,10 @@ func convertPodToWorker(pod *v1.Pod) Worker {
 	}
 
 	return Worker{
-		ID:     string(pod.UID),
-		Name:   fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
-		Status: status,
+		ID:        string(pod.UID),
+		Name:      fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+		Status:    status,
+		CreatedAt: pod.CreationTimestamp.Time,
 	}
 }
 
