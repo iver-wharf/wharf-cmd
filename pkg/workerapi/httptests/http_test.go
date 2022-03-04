@@ -64,7 +64,7 @@ func TestListArtifacts(t *testing.T) {
 
 func TestDownloadArtifact(t *testing.T) {
 	server := launchServer()
-	defer server.GracefulStop()
+	defer server.ForceStop()
 	client := newClient(t)
 
 	testCases := []struct {
@@ -109,6 +109,21 @@ func TestDownloadArtifact(t *testing.T) {
 	}
 }
 
+func TestServerStoppingAndRestarting(t *testing.T) {
+	server := launchServer()
+	assert.True(t, server.IsRunning())
+	assert.NoError(t, server.ForceStop())
+	assert.False(t, server.IsRunning())
+	go server.Serve()
+	for !server.IsRunning() {
+		time.Sleep(time.Millisecond)
+	}
+	// sanity
+	assert.True(t, server.IsRunning())
+	assert.NoError(t, server.GracefulStop())
+	assert.False(t, server.IsRunning())
+}
+
 func launchServer() workerserver.Server {
 	server := workerserver.NewHTTPServer(serverBindAddress, &mockBuildStepLister{}, &mockArtifactLister{}, &mockArtifactDownloader{})
 	go func() {
@@ -116,7 +131,6 @@ func launchServer() workerserver.Server {
 			return
 		}
 	}()
-
 	for !server.IsRunning() {
 		time.Sleep(time.Millisecond)
 	}

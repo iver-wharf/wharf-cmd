@@ -1,4 +1,4 @@
-package main
+package rpctests
 
 import (
 	"time"
@@ -27,16 +27,14 @@ func (s *mockStore) OpenLogReader(_ uint64) (resultstore.LogLineReadCloser, erro
 // from this result store since the beginning, and keeps on streaming new
 // updates until unsubscribed.
 func (s *mockStore) SubAllLogLines(buffer int) (<-chan resultstore.LogLine, error) {
-	log.Info().WithInt("buffer", buffer).Message("SubAllLogLines - mockStore")
 	ch := make(chan resultstore.LogLine, buffer)
 
 	go func() {
-		for i := 1; i <= 1000; i++ {
+		for i := 1; i <= 10; i++ {
 			ch <- resultstore.LogLine{
-				StepID:    uint64(i/100) + 1,
-				LogID:     uint64(i),
-				Message:   "-",
-				Timestamp: time.Now(),
+				StepID:  uint64(i),
+				LogID:   uint64(i),
+				Message: "-",
 			}
 		}
 
@@ -49,7 +47,6 @@ func (s *mockStore) SubAllLogLines(buffer int) (<-chan resultstore.LogLine, erro
 // UnsubAllLogLines unsubscribes a subscription of all status updates
 // created via SubAllLogLines.
 func (s *mockStore) UnsubAllLogLines(_ <-chan resultstore.LogLine) bool {
-	log.Info().Message("UnsubAllLogLines - mockStore")
 	return true
 }
 
@@ -65,7 +62,6 @@ func (s *mockStore) AddStatusUpdate(_ uint64, _ time.Time, _ worker.Status) erro
 // from this result store since the beginning, and keeps on streaming new
 // updates until unsubscribed.
 func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUpdate, error) {
-	log.Info().WithInt("buffer", buffer).Message("SubAllStatusUpdates - mockStore")
 	ch := make(chan resultstore.StatusUpdate, buffer)
 
 	statuses := []worker.Status{
@@ -80,12 +76,11 @@ func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUp
 	}
 
 	go func() {
-		for i := 1; i <= len(statuses)*4; i++ {
+		for i := 1; i <= len(statuses); i++ {
 			ch <- resultstore.StatusUpdate{
-				StepID:    uint64(i/100) + 1,
-				UpdateID:  uint64(i),
-				Status:    statuses[(i-1)%len(statuses)],
-				Timestamp: time.Now(),
+				StepID:   uint64(i),
+				UpdateID: uint64(i),
+				Status:   statuses[(i-1)%len(statuses)],
 			}
 		}
 
@@ -98,6 +93,5 @@ func (s *mockStore) SubAllStatusUpdates(buffer int) (<-chan resultstore.StatusUp
 // UnsubAllStatusUpdates unsubscribes a subscription of all status updates
 // created via SubAllStatusUpdates.
 func (s *mockStore) UnsubAllStatusUpdates(_ <-chan resultstore.StatusUpdate) bool {
-	log.Info().Message("UnsubAllStatusUpdates - mockStore")
 	return true
 }

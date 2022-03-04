@@ -41,7 +41,7 @@ func (s *workerRPCServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_S
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(convertToResultStoreLogLine(logLine)); err != nil {
+			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
 				return err
 			}
 		default:
@@ -68,7 +68,7 @@ func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, st
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(convertToResultStoreStatusEvent(statusEvent)); err != nil {
+			if err := stream.Send(ConvertToStreamStatusEventsResponse(statusEvent)); err != nil {
 				return err
 			}
 		default:
@@ -108,7 +108,8 @@ func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsRequest
 	}
 }
 
-func convertToResultStoreLogLine(line resultstore.LogLine) *v1.StreamLogsResponse {
+// ConvertToStreamLogsResponse converts a resultstore log line to the equivalent response type.
+func ConvertToStreamLogsResponse(line resultstore.LogLine) *v1.StreamLogsResponse {
 	return &v1.StreamLogsResponse{
 		LogID:     line.LogID,
 		StepID:    line.StepID,
@@ -117,15 +118,16 @@ func convertToResultStoreLogLine(line resultstore.LogLine) *v1.StreamLogsRespons
 	}
 }
 
-func convertToResultStoreStatusEvent(update resultstore.StatusUpdate) *v1.StreamStatusEventsResponse {
+// ConvertToStreamStatusEventsResponse converts a resultstore status update to the equivalent response type.
+func ConvertToStreamStatusEventsResponse(update resultstore.StatusUpdate) *v1.StreamStatusEventsResponse {
 	return &v1.StreamStatusEventsResponse{
 		EventID: update.UpdateID,
 		StepID:  update.StepID,
-		Status:  convertToWorkerStatus(update.Status),
+		Status:  convertToStreamStatusEventsResponseStatus(update.Status),
 	}
 }
 
-func convertToWorkerStatus(status worker.Status) v1.StreamStatusEventsResponseStatus {
+func convertToStreamStatusEventsResponseStatus(status worker.Status) v1.StreamStatusEventsResponseStatus {
 	switch status {
 	case worker.StatusNone:
 		return v1.StreamStatusEventsResponseNone
