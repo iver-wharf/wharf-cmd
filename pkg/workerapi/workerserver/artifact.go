@@ -50,11 +50,10 @@ func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
 	}
 
 	c.Header("Content-Type", "application/octet-stream")
-	written, err := io.Copy(c.Writer, ioBody)
+	_, err = io.Copy(c.Writer, ioBody)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
-	log.Debug().WithInt64("written", written).Message("Successfully wrote from server to client.")
 	c.Status(http.StatusOK)
 }
