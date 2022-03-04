@@ -113,7 +113,7 @@ func launchServer() workerserver.Server {
 	server := workerserver.NewHTTPServer(serverBindAddress, &mockBuildStepLister{}, &mockArtifactLister{}, &mockArtifactDownloader{})
 	go func() {
 		if err := server.Serve(); err != nil {
-			panic(err)
+			return
 		}
 	}()
 

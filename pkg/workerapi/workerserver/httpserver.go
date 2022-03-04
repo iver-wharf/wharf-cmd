@@ -23,6 +23,8 @@ type httpServer struct {
 	isRunning    bool
 }
 
+const insecure = true
+
 // NewHTTPServer creates a new HTTP server that can be started by calling Start.
 func NewHTTPServer(
 	bindAddress string,
@@ -40,8 +42,10 @@ func (s *httpServer) Serve() error {
 		return err
 	}
 
-	if err := applyHTTPClient(); err != nil {
-		return err
+	if !insecure {
+		if err := applyHTTPClient(); err != nil {
+			return err
+		}
 	}
 
 	r := gin.New()
