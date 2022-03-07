@@ -1,7 +1,11 @@
 // Package workerserver has an HTTP server and a gRPC server implementation.
 package workerserver
 
-import "github.com/iver-wharf/wharf-core/pkg/logger"
+import (
+	"time"
+
+	"github.com/iver-wharf/wharf-core/pkg/logger"
+)
 
 var log = logger.NewScoped("WORKER-SERVER")
 
@@ -26,4 +30,9 @@ type Server interface {
 	GracefulStop() error
 	// IsRunning returns true if the server is currently running.
 	IsRunning() bool
+	// WaitUntilRunningWithTimeout waits until the server is running, or the
+	// specified duration has elapsed.
+	//
+	// Returns true if the server is running when this method returns.
+	WaitUntilRunningWithTimeout(timeout time.Duration) bool
 }

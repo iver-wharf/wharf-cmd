@@ -15,7 +15,7 @@ const (
 )
 
 func TestStreamStatusEvents(t *testing.T) {
-	server := launchServer()
+	server := launchServer(t)
 	defer server.ForceStop()
 	client, err := launchClient()
 	assert.NoError(t, err)
@@ -53,7 +53,7 @@ func TestStreamStatusEvents(t *testing.T) {
 }
 
 func TestStreamLogs(t *testing.T) {
-	server := launchServer()
+	server := launchServer(t)
 	defer server.ForceStop()
 	client, err := launchClient()
 	assert.NoError(t, err)
@@ -92,19 +92,25 @@ func TestStreamLogs(t *testing.T) {
 	}
 }
 
-func TestServerStopping(t *testing.T) {
-	server := launchServer()
+func TestServerStoppingAndRestarting(t *testing.T) {
+	server := launchServer(t)
 	assert.True(t, server.IsRunning())
+	assert.NoError(t, server.GracefulStop())
+	assert.False(t, server.IsRunning())
+
+	go server.Serve()
+	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
+
+	go server.Serve() // forceful restart
+	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
 	assert.NoError(t, server.ForceStop())
 	assert.False(t, server.IsRunning())
 }
 
-func launchServer() workerserver.Server {
+func launchServer(t *testing.T) workerserver.Server {
 	server := workerserver.NewRPCServer(serverBindAddress, &mockStore{})
 	go server.Serve()
-	for !server.IsRunning() {
-		time.Sleep(time.Millisecond)
-	}
+	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
 	return server
 }
 

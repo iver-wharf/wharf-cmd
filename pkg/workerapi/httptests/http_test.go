@@ -9,6 +9,8 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +21,7 @@ const (
 )
 
 func TestListBuildSteps(t *testing.T) {
-	server := launchServer()
+	server := launchServer(t)
 	defer server.ForceStop()
 	client := newClient(t)
 
@@ -40,7 +42,7 @@ func TestListBuildSteps(t *testing.T) {
 }
 
 func TestListArtifacts(t *testing.T) {
-	server := launchServer()
+	server := launchServer(t)
 	defer server.ForceStop()
 	client := newClient(t)
 
@@ -63,7 +65,7 @@ func TestListArtifacts(t *testing.T) {
 }
 
 func TestDownloadArtifact(t *testing.T) {
-	server := launchServer()
+	server := launchServer(t)
 	defer server.ForceStop()
 	client := newClient(t)
 
@@ -110,30 +112,24 @@ func TestDownloadArtifact(t *testing.T) {
 }
 
 func TestServerStoppingAndRestarting(t *testing.T) {
-	server := launchServer()
-	assert.True(t, server.IsRunning())
-	assert.NoError(t, server.ForceStop())
-	assert.False(t, server.IsRunning())
-	go server.Serve()
-	for !server.IsRunning() {
-		time.Sleep(time.Millisecond)
-	}
-	// sanity
+	server := launchServer(t)
 	assert.True(t, server.IsRunning())
 	assert.NoError(t, server.GracefulStop())
 	assert.False(t, server.IsRunning())
+
+	go server.Serve()
+	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
+
+	go server.Serve() // forceful restart
+	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
+	assert.NoError(t, server.ForceStop())
+	assert.False(t, server.IsRunning())
 }
 
-func launchServer() workerserver.Server {
+func launchServer(t *testing.T) workerserver.Server {
 	server := workerserver.NewHTTPServer(serverBindAddress, &mockBuildStepLister{}, &mockArtifactLister{}, &mockArtifactDownloader{})
-	go func() {
-		if err := server.Serve(); err != nil {
-			return
-		}
-	}()
-	for !server.IsRunning() {
-		time.Sleep(time.Millisecond)
-	}
+	go server.Serve()
+	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
 	return server
 }
 
@@ -141,4 +137,8 @@ func newClient(t *testing.T) workerclient.HTTPClient {
 	client, err := workerclient.NewClient(clientTargetAddress, insecureSkipVerify)
 	assert.NoError(t, err)
 	return client
+}
+
+func init() {
+	logger.AddOutput(logger.LevelDebug, consolepretty.Default)
 }
