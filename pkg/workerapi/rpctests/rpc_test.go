@@ -1,6 +1,8 @@
 package rpctests
 
 import (
+	"context"
+	"io"
 	"testing"
 	"time"
 
@@ -27,28 +29,22 @@ func TestStreamStatusEvents(t *testing.T) {
 		wantStatusEvents = append(wantStatusEvents, workerserver.ConvertToStreamStatusEventsResponse(statusEvent))
 	}
 
-	gotStatusEventsCh, errCh := client.StreamStatusEvents()
-
-	t.Log("1")
+	stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
 	assert.NoError(t, err)
+
 	var gotStatusEvents []*workerclient.StatusEvent
-	for statusEvent := range gotStatusEventsCh {
+	for {
+		statusEvent, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
 		gotStatusEvents = append(gotStatusEvents, statusEvent)
 	}
-	assert.Empty(t, errCh)
-
-	var gotStatusEvents2 []*workerclient.StatusEvent
-	assert.NoError(t, client.HandleStatusEventStream(func(statusEvent *workerclient.StatusEvent) {
-		gotStatusEvents2 = append(gotStatusEvents2, statusEvent)
-	}))
-
 	for k, v := range wantStatusEvents {
 		assert.Equal(t, v.EventID, gotStatusEvents[k].EventID)
 		assert.Equal(t, v.Status, gotStatusEvents[k].Status)
 		assert.Equal(t, v.StepID, gotStatusEvents[k].StepID)
-		assert.Equal(t, v.EventID, gotStatusEvents2[k].EventID)
-		assert.Equal(t, v.Status, gotStatusEvents2[k].Status)
-		assert.Equal(t, v.StepID, gotStatusEvents2[k].StepID)
 	}
 }
 
@@ -65,30 +61,24 @@ func TestStreamLogs(t *testing.T) {
 		wantLogs = append(wantLogs, workerserver.ConvertToStreamLogsResponse(line))
 	}
 
-	gotLogsCh, errCh := client.StreamLogs()
-
-	t.Log("1")
+	stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
 	assert.NoError(t, err)
+
 	var gotLogs []*workerclient.LogLine
-	for line := range gotLogsCh {
+	for {
+		line, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		assert.NoError(t, err)
 		gotLogs = append(gotLogs, line)
 	}
-	assert.Empty(t, errCh)
-
-	var gotLogs2 []*workerclient.LogLine
-	assert.NoError(t, client.HandleLogStream(func(line *workerclient.LogLine) {
-		gotLogs2 = append(gotLogs2, line)
-	}))
 
 	for k, v := range wantLogs {
 		assert.Equal(t, v.BuildID, gotLogs[k].BuildID)
 		assert.Equal(t, v.LogID, gotLogs[k].LogID)
 		assert.Equal(t, v.Message, gotLogs[k].Message)
 		assert.Equal(t, v.StepID, gotLogs[k].StepID)
-		assert.Equal(t, v.BuildID, gotLogs2[k].BuildID)
-		assert.Equal(t, v.LogID, gotLogs2[k].LogID)
-		assert.Equal(t, v.Message, gotLogs2[k].Message)
-		assert.Equal(t, v.StepID, gotLogs2[k].StepID)
 	}
 }
 
