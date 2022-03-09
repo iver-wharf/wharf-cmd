@@ -12,10 +12,7 @@ type buildModule struct {
 }
 
 func (m *buildModule) register(g *gin.RouterGroup) {
-	build := g.Group("/build")
-	{
-		build.GET("/step", m.listBuildStepsHandler)
-	}
+	g.GET("/build/step", m.listBuildStepsHandler)
 }
 
 func (m *buildModule) listBuildStepsHandler(c *gin.Context) {
