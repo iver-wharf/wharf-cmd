@@ -15,14 +15,16 @@ import (
 )
 
 const (
-	serverBindAddress      = "0.0.0.0:8080"
-	clientTargetAddress    = "127.0.0.1:8080"
-	disableTLSVerification = true
+	serverBindAddress       = "0.0.0.0:8080"
+	clientTargetAddress     = "127.0.0.1:8080"
+	disableCertVerification = true
 )
 
 func TestListBuildSteps(t *testing.T) {
 	server := launchServer(t)
-	defer server.ForceStop()
+	defer func() {
+		assert.NoError(t, server.ForceStop())
+	}()
 	client := newClient(t)
 
 	wantSteps := []response.Step{
@@ -43,7 +45,9 @@ func TestListBuildSteps(t *testing.T) {
 
 func TestListArtifacts(t *testing.T) {
 	server := launchServer(t)
-	defer server.ForceStop()
+	defer func() {
+		assert.NoError(t, server.ForceStop())
+	}()
 	client := newClient(t)
 
 	wantArtifacts := []response.Artifact{
@@ -117,10 +121,14 @@ func TestServerStoppingAndRestarting(t *testing.T) {
 	assert.NoError(t, server.GracefulStop())
 	assert.False(t, server.IsRunning())
 
-	go server.Serve()
+	go func() {
+		assert.NoError(t, server.Serve())
+	}()
 	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
 
-	go server.Serve() // forceful restart
+	go func() {
+		assert.NoError(t, server.Serve()) // forceful restart
+	}()
 	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
 	assert.NoError(t, server.ForceStop())
 	assert.False(t, server.IsRunning())
@@ -128,14 +136,16 @@ func TestServerStoppingAndRestarting(t *testing.T) {
 
 func launchServer(t *testing.T) workerserver.Server {
 	server := workerserver.NewHTTPServer(serverBindAddress, &mockBuildStepLister{}, &mockArtifactLister{}, &mockArtifactDownloader{})
-	go server.Serve()
+	go func() {
+		assert.NoError(t, server.Serve())
+	}()
 	assert.True(t, server.WaitUntilRunningWithTimeout(2*time.Second))
 	return server
 }
 
 func newClient(t *testing.T) workerclient.HTTPClient {
 	client, err := workerclient.NewHTTPClient(clientTargetAddress, workerclient.ClientOptions{
-		InsecureSkipVerify: disableTLSVerification,
+		InsecureSkipVerify: disableCertVerification,
 	})
 	assert.NoError(t, err)
 	return client

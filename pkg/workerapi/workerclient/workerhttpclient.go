@@ -22,7 +22,9 @@ type workerHTTPClient struct {
 // ClientOptions contains options that can be used in the creation
 // of a new client.
 type ClientOptions struct {
-	// InsecureSkipVerify disables TLS verification if set to true.
+	// InsecureSkipVerify disables cert verification if set to true.
+	//
+	// Should NOT be true in a production environment.
 	InsecureSkipVerify bool
 }
 
@@ -35,8 +37,7 @@ type ClientOptions struct {
 func NewHTTPClient(address string, opts ClientOptions) (HTTPClient, error) {
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil && !opts.InsecureSkipVerify {
-		log.Debug().Message("Getting system cert pool failed, and insecure skip verify is false.")
-		return nil, err
+		return nil, fmt.Errorf("load system cert pool: %w", err)
 	}
 	if opts.InsecureSkipVerify {
 		log.Warn().Message("Client is running without cert verification, this is insecure and should" +
@@ -71,52 +72,46 @@ func NewClientWithCerts(address, certFilePath string) (HTTPClient, error) {
 	}, nil
 }
 
-func (c *workerHTTPClient) ListBuildSteps() ([]response.Step, error) {
+func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError error) {
 	res, err := c.client.Get(fmt.Sprintf("http://%s/api/build/step", c.address))
 	if err := errorIfBad(res, err); err != nil {
-		return nil, err
+		finalError = err
+		return
 	}
 
 	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		finalError = err
+		return
 	}
-	defer func() {
-		if err := res.Body.Close(); err != nil {
-			log.Error().WithError(err).Message("Failed closing response body reader.")
-		}
-	}()
-
-	var steps []response.Step
+	defer closeAndSetError(res.Body, &finalError)
 	if err := json.Unmarshal(bytes, &steps); err != nil {
-		return nil, err
+		finalError = err
+		return
 	}
-
-	return steps, nil
+	finalError = err
+	return
 }
 
-func (c *workerHTTPClient) ListArtifacts() ([]response.Artifact, error) {
+func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, finalError error) {
 	res, err := c.client.Get(fmt.Sprintf("http://%s/api/artifact", c.address))
 	if err := errorIfBad(res, err); err != nil {
-		return nil, err
+		finalError = err
+		return
 	}
 
 	bytes, err := io.ReadAll(res.Body)
 	if err != nil {
-		return nil, err
+		finalError = err
+		return
 	}
-	defer func() {
-		if err := res.Body.Close(); err != nil {
-			log.Error().WithError(err).Message("Failed closing response body reader.")
-		}
-	}()
-
-	var artifacts []response.Artifact
+	defer closeAndSetError(res.Body, &finalError)
 	if err := json.Unmarshal(bytes, &artifacts); err != nil {
-		return nil, err
+		finalError = err
+		return
 	}
 
-	return artifacts, nil
+	return
 }
 
 func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
@@ -139,4 +134,16 @@ func errorIfBad(res *http.Response, err error) error {
 		return parseErr
 	}
 	return err
+}
+
+// closeAndSetError may be used to set the named return variable inside a
+// deferred call if that deferred call failed.
+//
+// NOTE: The errPtr argument must be a pointer to a named result parameters,
+// otherwise it will not affect the calling function's returned value.
+func closeAndSetError(closer io.Closer, errPtr *error) {
+	closeErr := closer.Close()
+	if errPtr != nil && *errPtr == nil {
+		*errPtr = closeErr
+	}
 }

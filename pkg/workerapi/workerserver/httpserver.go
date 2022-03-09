@@ -138,6 +138,10 @@ func (s *httpServer) serve(r *gin.Engine) error {
 }
 
 func (s *httpServer) setRunningOnSuccessfulRequest() {
+	if s.isRunning {
+		return
+	}
+
 	parts := strings.Split(s.srv.Addr, ":")
 	numParts := len(parts)
 	var port string
@@ -150,7 +154,6 @@ func (s *httpServer) setRunningOnSuccessfulRequest() {
 		if err == nil {
 			break
 		}
-		log.Error().WithError(err).Message("Request failed")
 		time.Sleep(time.Millisecond)
 	}
 	log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
