@@ -21,7 +21,7 @@ var errProblem = problem.Response{
 	Status: 500,
 }
 
-func TestErrorIfBad(t *testing.T) {
+func TestAssertResponseOK(t *testing.T) {
 	probBytes, err := json.Marshal(&errProblem)
 	assert.Nil(t, err)
 	testCases := []struct {
@@ -74,7 +74,7 @@ func TestErrorIfBad(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			gotErr := errorIfBad(tc.resp, tc.err)
+			gotErr := assertResponseOK(tc.resp, tc.err)
 			assert.Equal(t, fmt.Sprintf("%v", tc.wantErr), fmt.Sprintf("%v", gotErr))
 		})
 	}

@@ -82,7 +82,7 @@ func NewClientWithCerts(address, certFilePath string) (HTTPClient, error) {
 
 func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError error) {
 	res, err := c.client.Get(fmt.Sprintf("%s/api/build/step", c.address))
-	if err := errorIfBad(res, err); err != nil {
+	if err := assertResponseOK(res, err); err != nil {
 		finalError = err
 		return
 	}
@@ -103,7 +103,7 @@ func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError e
 
 func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, finalError error) {
 	res, err := c.client.Get(fmt.Sprintf("%s/api/artifact", c.address))
-	if err := errorIfBad(res, err); err != nil {
+	if err := assertResponseOK(res, err); err != nil {
 		finalError = err
 		return
 	}
@@ -124,13 +124,13 @@ func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, final
 
 func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
 	res, err := c.client.Get(fmt.Sprintf("%s/api/artifact/%d/download", c.address, artifactID))
-	if err := errorIfBad(res, err); err != nil {
+	if err := assertResponseOK(res, err); err != nil {
 		return nil, err
 	}
 	return res.Body, nil
 }
 
-func errorIfBad(res *http.Response, err error) error {
+func assertResponseOK(res *http.Response, err error) error {
 	if res == nil {
 		return err
 	}
