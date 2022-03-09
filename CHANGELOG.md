@@ -79,22 +79,22 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
-- Added gRPC server for worker in `api/workerapi/workerserver`: (#51)
+- Added gRPC server for worker in `pkg/workerapi/workerserver`: (#51)
 
   - `StreamLogs` batches logs into chunks and serves to gRPC clients.
   - `StreamStatusEvents` serves status events to gRPC clients.
   - `StreamArtifactEvents` serves artifact events to gRPC clients.
 
-- Added gRPC client in `api/workerapi/workerclient` to interface with a worker
+- Added gRPC client in `pkg/workerapi/workerclient` to interface with a worker
   gRPC server. (#51)
 
-- Added HTTP server for worker in `api/workerapi/workerhttpserver`: (#51)
+- Added HTTP server for worker in `pkg/workerapi/workerserver`: (#51)
 
   - `GET /api/build/step` Lists build steps.
   - `GET /api/artifact` Lists artifacts.
   - `GET /api/artifact/:artifactId/download` Downloads an artifact.
 
-- Added HTTP client in `api/workerapi/workerhttpclient` to interface with
+- Added HTTP client in `pkg/workerapi/workerclient` to interface with
   worker HTTP server. (#51)
 
 - Added dependencies:
