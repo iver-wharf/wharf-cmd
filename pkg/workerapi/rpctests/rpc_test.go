@@ -104,7 +104,7 @@ func launchServer(t *testing.T) workerserver.Server {
 	return server
 }
 
-func launchClient() (*workerclient.RPCClient, error) {
+func launchClient() (workerclient.RPC, error) {
 	client := workerclient.NewRPCClient(clientTargetAddress)
 	err := client.Open()
 	return client, err
