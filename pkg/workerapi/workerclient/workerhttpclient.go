@@ -16,21 +16,29 @@ import (
 type workerHTTPClient struct {
 	address string
 	client  *http.Client
+	opts    ClientOptions
 }
 
-// NewClient creates a client that can communicate with a worker HTTP server.
+// ClientOptions contains options that can be used in the creation
+// of a new client.
+type ClientOptions struct {
+	// InsecureSkipVerify disables TLS verification if set to true.
+	InsecureSkipVerify bool
+}
+
+// NewHTTPClient creates a client that can communicate with a worker HTTP server.
 //
 // Uses the system cert pool, and optionally allows skipping cert verification,
 //
 // Note that skipping verification is insecure and should not be done in a
 // production environment!
-func NewClient(address string, insecureSkipVerify bool) (HTTPClient, error) {
+func NewHTTPClient(address string, opts ClientOptions) (HTTPClient, error) {
 	rootCAs, err := x509.SystemCertPool()
-	if err != nil && !insecureSkipVerify {
+	if err != nil && !opts.InsecureSkipVerify {
 		log.Debug().Message("Getting system cert pool failed, and insecure skip verify is false.")
 		return nil, err
 	}
-	if insecureSkipVerify {
+	if opts.InsecureSkipVerify {
 		log.Warn().Message("Client is running without cert verification, this is insecure and should" +
 			" not be done in production.")
 		rootCAs = nil
@@ -40,11 +48,12 @@ func NewClient(address string, insecureSkipVerify bool) (HTTPClient, error) {
 		client: &http.Client{
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{
-					InsecureSkipVerify: insecureSkipVerify,
+					InsecureSkipVerify: opts.InsecureSkipVerify,
 					RootCAs:            rootCAs,
 				},
 			},
 		},
+		opts: opts,
 	}, nil
 }
 

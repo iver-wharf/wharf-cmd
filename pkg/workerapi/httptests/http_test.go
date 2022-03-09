@@ -15,9 +15,9 @@ import (
 )
 
 const (
-	serverBindAddress   = "0.0.0.0:8080"
-	clientTargetAddress = "127.0.0.1:8080"
-	insecureSkipVerify  = true
+	serverBindAddress      = "0.0.0.0:8080"
+	clientTargetAddress    = "127.0.0.1:8080"
+	disableTLSVerification = true
 )
 
 func TestListBuildSteps(t *testing.T) {
@@ -134,7 +134,9 @@ func launchServer(t *testing.T) workerserver.Server {
 }
 
 func newClient(t *testing.T) workerclient.HTTPClient {
-	client, err := workerclient.NewClient(clientTargetAddress, insecureSkipVerify)
+	client, err := workerclient.NewHTTPClient(clientTargetAddress, workerclient.ClientOptions{
+		InsecureSkipVerify: disableTLSVerification,
+	})
 	assert.NoError(t, err)
 	return client
 }
