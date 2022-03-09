@@ -3,6 +3,7 @@ module github.com/iver-wharf/wharf-cmd
 go 1.17
 
 require (
+	github.com/alta/protopatch v0.5.0
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang/protobuf v1.5.2
@@ -21,8 +22,6 @@ require (
 	k8s.io/apimachinery v0.23.3
 	k8s.io/client-go v0.23.3
 )
-
-require github.com/alta/protopatch v0.5.0
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
