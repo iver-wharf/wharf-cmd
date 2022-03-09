@@ -10,13 +10,14 @@ import (
 )
 
 type builder struct {
+	opts         BuildOptions
 	def          wharfyml.Definition
 	stageRunners []StageRunner
 }
 
 // New returns a new Builder implementation that uses the provided StageRunner
 // to run all build stages in series.
-func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.Definition) (Builder, error) {
+func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.Definition, opts BuildOptions) (Builder, error) {
 	stageRunners := make([]StageRunner, len(def.Stages))
 	for i, stage := range def.Stages {
 		r, err := stageRunFactory.NewStageRunner(ctx, stage)
@@ -28,6 +29,10 @@ func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.D
 	return builder{
 		stageRunners: stageRunners,
 	}, nil
+}
+
+func (b builder) BuildOptions() BuildOptions {
+	return b.opts
 }
 
 func (b builder) Definition() wharfyml.Definition {

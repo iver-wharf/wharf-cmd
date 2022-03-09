@@ -25,12 +25,12 @@ import (
 var podInitWaitArgs = []string{"/bin/sh", "-c", "sleep infinite || true"}
 var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 
-func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config) (Builder, error) {
+func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config, opts BuildOptions) (Builder, error) {
 	stageFactory, err := NewK8sStageRunnerFactory(ctx, namespace, restConfig)
 	if err != nil {
 		return nil, err
 	}
-	return New(ctx, stageFactory, def)
+	return New(ctx, stageFactory, def, opts)
 }
 
 func NewK8sStageRunnerFactory(ctx context.Context, namespace string, restConfig *rest.Config) (StageRunnerFactory, error) {

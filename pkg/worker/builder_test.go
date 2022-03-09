@@ -51,7 +51,7 @@ func TestBuilder_runsAllSuccess(t *testing.T) {
 			{Name: "moo"},
 		},
 	}
-	b, err := New(context.Background(), factory, def)
+	b, err := New(context.Background(), factory, def, BuildOptions{})
 	require.NoError(t, err)
 
 	result, err := b.Build(context.Background())
@@ -75,7 +75,7 @@ func TestBuilder_runsMiddleFails(t *testing.T) {
 			{Name: "moo"},
 		},
 	}
-	b, err := New(context.Background(), factory, def)
+	b, err := New(context.Background(), factory, def, BuildOptions{})
 	require.NoError(t, err)
 
 	result, err := b.Build(context.Background())
