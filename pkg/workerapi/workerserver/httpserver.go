@@ -3,12 +3,9 @@ package workerserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -23,7 +20,6 @@ type httpServer struct {
 	bindAddress  string
 	srv          *http.Server
 	workerServer *workerHTTPServer
-	isRunning    bool
 	serveMutex   *sync.Mutex
 }
 
@@ -41,37 +37,25 @@ func NewHTTPServer(
 }
 
 func (s *httpServer) GracefulStop() error {
-	defer func() {
-		s.isRunning = false
-		s.srv = nil
-	}()
 	if s.srv == nil {
 		return nil
 	}
-	return s.srv.Shutdown(context.Background())
+	err := s.srv.Shutdown(context.Background())
+	s.srv = nil
+	return err
 }
 
 func (s *httpServer) ForceStop() error {
-	defer func() {
-		s.isRunning = false
-		s.srv = nil
-	}()
 	if s.srv == nil {
 		return nil
 	}
-	return s.srv.Close()
+	err := s.srv.Close()
+	s.srv = nil
+	return err
 }
 
 func (s *httpServer) IsRunning() bool {
-	return s.srv != nil && s.isRunning
-}
-
-func (s *httpServer) WaitUntilRunningWithTimeout(timeout time.Duration) bool {
-	end := time.Now().Add(timeout)
-	for !s.IsRunning() && time.Now().Before(end) {
-		time.Sleep(time.Microsecond)
-	}
-	return s.IsRunning()
+	return s.srv != nil
 }
 
 func (s *httpServer) registerModules(r *gin.RouterGroup) {
@@ -127,35 +111,10 @@ func (s *httpServer) serve(r *gin.Engine) error {
 	if err != nil {
 		return err
 	}
-	go s.setRunningOnSuccessfulRequest()
 	err = s.srv.Serve(ln)
-	s.isRunning = false
 	if errors.Is(err, http.ErrServerClosed) {
 		log.Info().Message("Server closed.")
 		return nil
 	}
 	return err
-}
-
-func (s *httpServer) setRunningOnSuccessfulRequest() {
-	if s.isRunning {
-		return
-	}
-
-	parts := strings.Split(s.srv.Addr, ":")
-	numParts := len(parts)
-	var port string
-	if numParts > 1 {
-		port = fmt.Sprintf(":%s", parts[numParts-1])
-	}
-	end := time.Now().Add(2 * time.Second)
-	for time.Now().Before(end) {
-		_, err := http.Get(fmt.Sprintf("http://127.0.0.1%s/api", port))
-		if err == nil {
-			break
-		}
-		time.Sleep(time.Millisecond)
-	}
-	log.Info().Messagef("Listening and serving HTTP on %s", s.srv.Addr)
-	s.isRunning = true
 }

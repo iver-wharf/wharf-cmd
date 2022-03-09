@@ -4,7 +4,6 @@ import (
 	"errors"
 	"net"
 	"sync"
-	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -16,7 +15,6 @@ type rpcServer struct {
 
 	grpcServer   *grpc.Server
 	workerServer *workerRPCServer
-	isRunning    bool
 	serveMutex   *sync.Mutex
 }
 
@@ -43,9 +41,7 @@ func (s *rpcServer) Serve() error {
 	v1.RegisterWorkerServer(s.grpcServer, s.workerServer)
 
 	log.Info().Messagef("Listening and serving gRPC on %s", s.bindAddress)
-	s.isRunning = true
 	err = s.grpcServer.Serve(listener)
-	s.isRunning = false
 	if errors.Is(err, grpc.ErrServerStopped) {
 		log.Info().Message("gRPC server stopped.")
 		return nil
@@ -58,7 +54,6 @@ func (s *rpcServer) GracefulStop() error {
 		s.grpcServer.GracefulStop()
 		s.grpcServer = nil
 	}
-	s.isRunning = false
 	return nil
 }
 
@@ -67,18 +62,9 @@ func (s *rpcServer) ForceStop() error {
 		s.grpcServer.Stop()
 		s.grpcServer = nil
 	}
-	s.isRunning = false
 	return nil
 }
 
 func (s *rpcServer) IsRunning() bool {
-	return s.grpcServer != nil && s.isRunning
-}
-
-func (s *rpcServer) WaitUntilRunningWithTimeout(timeout time.Duration) bool {
-	end := time.Now().Add(timeout)
-	for !s.IsRunning() && time.Now().Before(end) {
-		time.Sleep(time.Microsecond)
-	}
-	return s.IsRunning()
+	return s.grpcServer != nil
 }

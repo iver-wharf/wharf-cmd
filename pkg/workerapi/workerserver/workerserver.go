@@ -2,8 +2,6 @@
 package workerserver
 
 import (
-	"time"
-
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
@@ -30,9 +28,4 @@ type Server interface {
 	GracefulStop() error
 	// IsRunning returns true if the server is currently running.
 	IsRunning() bool
-	// WaitUntilRunningWithTimeout waits until the server is running, or the
-	// specified duration has elapsed.
-	//
-	// Returns true if the server is running when this method returns.
-	WaitUntilRunningWithTimeout(timeout time.Duration) bool
 }
