@@ -12,7 +12,7 @@ import (
 type workerRPC struct {
 	address string
 
-	Client v1.WorkerClient
+	client v1.WorkerClient
 	conn   *grpc.ClientConn
 }
 
@@ -32,7 +32,7 @@ func (c *workerRPC) Open() error {
 	if err != nil {
 		return fmt.Errorf("failed connecting to server: %v", err)
 	}
-	c.Client = v1.NewWorkerClient(conn)
+	c.client = v1.NewWorkerClient(conn)
 	c.conn = conn
 	return nil
 }
@@ -47,17 +47,17 @@ func (c *workerRPC) Close() error {
 
 // StreamLogs returns a stream that will receive log lines from the worker.
 func (c *workerRPC) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error) {
-	return c.Client.StreamLogs(ctx, req, opts...)
+	return c.client.StreamLogs(ctx, req, opts...)
 }
 
 // StreamStatusEvents returns a stream that will receive status events from the
 // worker.
 func (c *workerRPC) StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error) {
-	return c.Client.StreamStatusEvents(ctx, req, opts...)
+	return c.client.StreamStatusEvents(ctx, req, opts...)
 }
 
 // StreamArtifactEvents returns a stream that will receive status events from the
 // worker.
 func (c *workerRPC) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error) {
-	return c.Client.StreamArtifactEvents(ctx, req, opts...)
+	return c.client.StreamArtifactEvents(ctx, req, opts...)
 }
