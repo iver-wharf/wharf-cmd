@@ -1,8 +1,8 @@
 package worker
 
 import (
-	"container/ring"
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -10,22 +10,40 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type mockStageRunner struct {
-	results *ring.Ring
+type mockStageRunFactory struct {
+	runners map[string]mockStageRunner
 }
 
-func (r *mockStageRunner) RunStage(_ context.Context, def wharfyml.Stage) StageResult {
-	result := r.results.Value.(StageResult)
-	r.results = r.results.Next()
-	result.Name = def.Name
-	return result
+func (f mockStageRunFactory) NewStageRunner(
+	_ context.Context, stage wharfyml.Stage) (StageRunner, error) {
+	runner, ok := f.runners[stage.Name]
+	if !ok {
+		return nil, fmt.Errorf("no stage runner found for %q", stage.Name)
+	}
+	runner.stage.Name = stage.Name
+	runner.result.Name = stage.Name
+	return runner, nil
+}
+
+type mockStageRunner struct {
+	stage  wharfyml.Stage
+	result StageResult
+}
+
+func (r mockStageRunner) Stage() wharfyml.Stage {
+	return r.stage
+}
+
+func (r mockStageRunner) RunStage(context.Context) StageResult {
+	return r.result
 }
 
 func TestBuilder_runsAllSuccess(t *testing.T) {
-	stageRun := &mockStageRunner{results: ringOfStageResults(
-		StageResult{Status: StatusSuccess},
-	)}
-	b := New(stageRun)
+	factory := &mockStageRunFactory{runners: map[string]mockStageRunner{
+		"foo": {result: StageResult{Status: StatusSuccess}},
+		"bar": {result: StageResult{Status: StatusSuccess}},
+		"moo": {result: StageResult{Status: StatusSuccess}},
+	}}
 	def := wharfyml.Definition{
 		Stages: []wharfyml.Stage{
 			{Name: "foo"},
@@ -33,7 +51,10 @@ func TestBuilder_runsAllSuccess(t *testing.T) {
 			{Name: "moo"},
 		},
 	}
-	result, err := b.Build(context.Background(), def, BuildOptions{})
+	b, err := New(context.Background(), factory, def)
+	require.NoError(t, err)
+
+	result, err := b.Build(context.Background())
 	require.NoError(t, err, "builder.Build")
 	assert.Equal(t, StatusSuccess, result.Status, "result.Status")
 	gotNames := getNamesFromStageResults(result.Stages)
@@ -42,12 +63,11 @@ func TestBuilder_runsAllSuccess(t *testing.T) {
 }
 
 func TestBuilder_runsMiddleFails(t *testing.T) {
-	stageRun := &mockStageRunner{results: ringOfStageResults(
-		StageResult{Status: StatusSuccess},
-		StageResult{Status: StatusFailed},
-		StageResult{Status: StatusSuccess},
-	)}
-	b := New(stageRun)
+	factory := &mockStageRunFactory{runners: map[string]mockStageRunner{
+		"foo": {result: StageResult{Status: StatusSuccess}},
+		"bar": {result: StageResult{Status: StatusFailed}},
+		"moo": {result: StageResult{Status: StatusSuccess}},
+	}}
 	def := wharfyml.Definition{
 		Stages: []wharfyml.Stage{
 			{Name: "foo"},
@@ -55,7 +75,10 @@ func TestBuilder_runsMiddleFails(t *testing.T) {
 			{Name: "moo"},
 		},
 	}
-	result, err := b.Build(context.Background(), def, BuildOptions{})
+	b, err := New(context.Background(), factory, def)
+	require.NoError(t, err)
+
+	result, err := b.Build(context.Background())
 	require.NoError(t, err, "builder.Build")
 	assert.Equal(t, StatusFailed, result.Status, "result.Status")
 	require.Len(t, result.Stages, 2, "result.Stages")
@@ -69,13 +92,4 @@ func getNamesFromStageResults(stages []StageResult) []string {
 		names = append(names, stage.Name)
 	}
 	return names
-}
-
-func ringOfStageResults(results ...StageResult) *ring.Ring {
-	r := ring.New(len(results))
-	for _, s := range results {
-		r.Value = s
-		r = r.Next()
-	}
-	return r
 }
