@@ -18,12 +18,15 @@ type builder struct {
 // New returns a new Builder implementation that uses the provided StageRunner
 // to run all build stages in series.
 func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.Definition, opts BuildOptions) (Builder, error) {
-	stageRunners := make([]StageRunner, len(def.Stages))
 	filteredStages := filterStages(def.Stages, opts.StageFilter)
+	stageRunners := make([]StageRunner, len(filteredStages))
 	for i, stage := range filteredStages {
 		r, err := stageRunFactory.NewStageRunner(ctx, stage)
 		if err != nil {
 			return nil, fmt.Errorf("stage %s: %w", stage.Name, err)
+		}
+		if r == nil {
+			return nil, fmt.Errorf("stage %s: unexpected nil stage runner", stage.Name)
 		}
 		stageRunners[i] = r
 	}
