@@ -13,3 +13,14 @@ type Artifact struct {
 	// Name is the name of the artifact.
 	Name string `json:"name"`
 }
+
+// Step holds the step type and name of a Wharf build step.
+type Step struct {
+	Name     string   `json:"name"`
+	StepType StepType `json:"stepType"`
+}
+
+// StepType contains the name of a Wharf build step.
+type StepType struct {
+	Name string `json:"name"`
+}
