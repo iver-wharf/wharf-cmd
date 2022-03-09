@@ -3,7 +3,6 @@ package workerclient
 import (
 	"context"
 	"fmt"
-	"io"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"google.golang.org/grpc"
@@ -80,37 +79,4 @@ func (c *RPCClient) StreamStatusEvents(ctx context.Context, req *StatusEventsReq
 // worker.
 func (c *RPCClient) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error) {
 	return c.Client.StreamArtifactEvents(ctx, req, opts...)
-}
-
-// StreamArtifactEvents returns a channel that will receive artifact events
-// from the worker.
-func (c *RPCClient) _StreamArtifactEvents() (<-chan *ArtifactEvent, <-chan error) {
-	ch := make(chan *ArtifactEvent)
-	errCh := make(chan error)
-	stream, err := c.Client.StreamArtifactEvents(context.Background(), &v1.StreamArtifactEventsRequest{})
-	if err != nil {
-		log.Error().WithError(err).Message("Error fetching stream for batched logs.")
-		errCh <- err
-		close(errCh)
-		close(ch)
-	} else {
-		go func() {
-			for {
-				artifactEvent, err := stream.Recv()
-				if err != nil {
-					close(ch)
-					if err == io.EOF {
-						errCh <- nil
-					} else {
-						log.Error().WithError(err).Message("Error fetching from batched logs stream.")
-						errCh <- err
-					}
-					break
-				}
-				ch <- artifactEvent
-			}
-			close(errCh)
-		}()
-	}
-	return ch, errCh
 }
