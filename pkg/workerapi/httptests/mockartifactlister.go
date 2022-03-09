@@ -5,7 +5,7 @@ import "github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/respons
 type mockArtifactLister struct{}
 
 const (
-	invalidArtifactID  = uint(351)
+	unusedArtifactID   = uint(351)
 	validArtifactID1   = uint(34)
 	validArtifactID2   = uint(35)
 	validArtifactName1 = "valid-artifact-1"

@@ -93,7 +93,7 @@ func TestDownloadArtifact(t *testing.T) {
 		},
 		{
 			name:       "get non-existing artifact fails",
-			artifactID: invalidArtifactID,
+			artifactID: unusedArtifactID,
 			wantData:   nil,
 			wantErr:    errArtifactNotFound,
 		},

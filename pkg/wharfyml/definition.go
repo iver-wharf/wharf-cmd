@@ -21,10 +21,10 @@ type Definition struct {
 	Stages []Stage
 }
 
-// ListBuildSteps aggregates steps from all stages into a single slice.
+// ListAllSteps aggregates steps from all stages into a single slice.
 //
-// Makes Definition comply to the BuildStepLister interface.
-func (d *Definition) ListBuildSteps() []Step {
+// Makes Definition comply to the StepLister interface.
+func (d *Definition) ListAllSteps() []Step {
 	var steps []Step
 	for _, stage := range d.Stages {
 		steps = append(steps, stage.Steps...)

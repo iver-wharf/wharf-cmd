@@ -11,7 +11,7 @@ const (
 	buildStepType2 = "container"
 )
 
-func (b *mockBuildStepLister) ListBuildSteps() []wharfyml.Step {
+func (b *mockBuildStepLister) ListAllSteps() []wharfyml.Step {
 	return []wharfyml.Step{
 		{
 			Name: buildStepName1,

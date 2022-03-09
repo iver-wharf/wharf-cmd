@@ -7,9 +7,9 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
 )
 
-// BuildStepLister is an interface that provides a way to list build steps.
-type BuildStepLister interface {
-	ListBuildSteps() []wharfyml.Step
+// StepLister is an interface that provides a way to list build steps.
+type StepLister interface {
+	ListAllSteps() []wharfyml.Step
 }
 
 // ArtifactLister is an interface that provides a way to list artifacts.
@@ -24,13 +24,13 @@ type ArtifactDownloader interface {
 }
 
 type workerHTTPServer struct {
-	buildStepLister    BuildStepLister
+	buildStepLister    StepLister
 	artifactLister     ArtifactLister
 	artifactDownloader ArtifactDownloader
 }
 
 func newWorkerHTTPServer(
-	buildStepLister BuildStepLister,
+	buildStepLister StepLister,
 	artifactLister ArtifactLister,
 	artifactDownloader ArtifactDownloader) *workerHTTPServer {
 	return &workerHTTPServer{
