@@ -25,25 +25,30 @@ import (
 var podInitWaitArgs = []string{"/bin/sh", "-c", "sleep infinite || true"}
 var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 
+// NewK8s is a helper function that creates a new builder using the
+// NewK8sStepRunnerFactory.
 func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config, opts BuildOptions) (Builder, error) {
-	stageFactory, err := NewK8sStageRunnerFactory(ctx, namespace, restConfig)
+	stageFactory, err := NewK8sStageRunnerFactory(namespace, restConfig)
 	if err != nil {
 		return nil, err
 	}
 	return New(ctx, stageFactory, def, opts)
 }
 
-func NewK8sStageRunnerFactory(ctx context.Context, namespace string, restConfig *rest.Config) (StageRunnerFactory, error) {
-	stepFactory, err := NewK8sStepRunnerFactory(ctx, namespace, restConfig)
+// NewK8sStageRunnerFactory is a helper function that creates a new stage runner
+// factory using the NewK8sStepRunnerFactory.
+func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config) (StageRunnerFactory, error) {
+	stepFactory, err := NewK8sStepRunnerFactory(namespace, restConfig)
 	if err != nil {
 		return nil, err
 	}
-	return NewStageRunnerFactory(ctx, stepFactory)
+	return NewStageRunnerFactory(stepFactory)
 }
 
-// NewK8sStepRunnerFactory returns a new step runner implementation that targets
-// Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sStepRunnerFactory(_ context.Context, namespace string, restConfig *rest.Config) (StepRunnerFactory, error) {
+// NewK8sStepRunnerFactory returns a new step runner factory that creates
+// step runners with implementation that targets Kubernetes using a specific
+// Kubernetes namespace and REST config.
+func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config) (StepRunnerFactory, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err

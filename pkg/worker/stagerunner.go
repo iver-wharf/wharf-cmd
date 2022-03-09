@@ -13,7 +13,7 @@ import (
 
 // NewStageRunnerFactory returns a new StageRunner that uses the provided
 // StepRunner to run the steps in parallel.
-func NewStageRunnerFactory(ctx context.Context, stepRunFactory StepRunnerFactory) (StageRunnerFactory, error) {
+func NewStageRunnerFactory(stepRunFactory StepRunnerFactory) (StageRunnerFactory, error) {
 	return stageRunnerFactory{stepRunFactory}, nil
 }
 

@@ -16,7 +16,7 @@ type mockStepRunFactory struct {
 }
 
 func (f mockStepRunFactory) NewStepRunner(
-	ctx context.Context, step wharfyml.Step) (StepRunner, error) {
+	_ context.Context, step wharfyml.Step) (StepRunner, error) {
 	runner, ok := f.runners[step.Name]
 	if !ok {
 		return nil, fmt.Errorf("no step runner found for %q", step.Name)

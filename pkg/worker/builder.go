@@ -19,7 +19,8 @@ type builder struct {
 // to run all build stages in series.
 func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.Definition, opts BuildOptions) (Builder, error) {
 	stageRunners := make([]StageRunner, len(def.Stages))
-	for i, stage := range def.Stages {
+	filteredStages := filterStages(def.Stages, opts.StageFilter)
+	for i, stage := range filteredStages {
 		r, err := stageRunFactory.NewStageRunner(ctx, stage)
 		if err != nil {
 			return nil, fmt.Errorf("stage %s: %w", stage.Name, err)
@@ -91,7 +92,7 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 	return result, nil
 }
 
-func (b builder) filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {
+func filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {
 	var result []wharfyml.Stage
 	for _, stage := range stages {
 		if nameFilter == "" || stage.Name == nameFilter {
