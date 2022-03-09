@@ -147,11 +147,3 @@ func convertToStreamStatusEventsResponseStatus(status worker.Status) v1.StreamSt
 		return v1.StreamStatusEventsResponseUnknown
 	}
 }
-
-// func convertArtifactEvent(ev resultstore.ArtifactEvent) v1.StreamArtifactEventsResponse {
-// 	return v1.StreamArtifactEventsResponse{
-// 		ArtifactID: ev.ArtifactID,
-// 		StepID:     ev.StepID,
-// 		Name:       ev.Name,
-// 	}
-// }

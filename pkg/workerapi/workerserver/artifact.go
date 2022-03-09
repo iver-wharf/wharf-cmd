@@ -18,12 +18,7 @@ func (m *artifactModule) register(g *gin.RouterGroup) {
 	artifact := g.Group("/artifact")
 	{
 		artifact.GET("", m.listArtifactsHandler)
-		{
-			artifactID := artifact.Group(":artifactId")
-			{
-				artifactID.GET("/download", m.downloadArtifactHandler)
-			}
-		}
+		artifact.GET("/:artifactId/download", m.downloadArtifactHandler)
 	}
 }
 
