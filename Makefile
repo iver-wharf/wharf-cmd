@@ -1,6 +1,6 @@
 .PHONY: install tidy deps \
-	swag swag-force \
-	proto lint lint-md lint-go \
+	swag swag-force proto \
+	lint lint-md lint-go \
 	lint-fix lint-fix-md lint-fix-go
 
 ifeq ($(OS),Windows_NT)
