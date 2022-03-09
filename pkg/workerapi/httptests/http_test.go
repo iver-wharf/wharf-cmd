@@ -141,7 +141,7 @@ func launchServer(t *testing.T) workerserver.Server {
 	return server
 }
 
-func newClient(t *testing.T) workerclient.HTTPClient {
+func newClient(t *testing.T) workerclient.HTTP {
 	client, err := workerclient.NewHTTPClient(clientTargetAddress, workerclient.ClientOptions{
 		InsecureSkipVerify: disableCertVerification,
 	})

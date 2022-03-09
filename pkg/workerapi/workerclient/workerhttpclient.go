@@ -13,7 +13,7 @@ import (
 	"github.com/iver-wharf/wharf-core/pkg/problem"
 )
 
-type workerHTTPClient struct {
+type workerHTTP struct {
 	address string
 	client  *http.Client
 	opts    ClientOptions
@@ -38,7 +38,7 @@ type ClientOptions struct {
 //
 // Note that skipping verification is insecure and should not be done in a
 // production environment!
-func NewHTTPClient(address string, opts ClientOptions) (HTTPClient, error) {
+func NewHTTPClient(address string, opts ClientOptions) (HTTP, error) {
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil && !opts.InsecureSkipVerify {
 		return nil, fmt.Errorf("load system cert pool: %w", err)
@@ -48,7 +48,7 @@ func NewHTTPClient(address string, opts ClientOptions) (HTTPClient, error) {
 			" not be done in production.")
 		rootCAs = nil
 	}
-	return &workerHTTPClient{
+	return &workerHTTP{
 		address: address,
 		client: &http.Client{
 			Transport: &http.Transport{
@@ -69,18 +69,18 @@ func NewHTTPClient(address string, opts ClientOptions) (HTTPClient, error) {
 //   https://
 //
 // Appends certs at the provided path to the system cert pool and uses that.
-func NewClientWithCerts(address, certFilePath string) (HTTPClient, error) {
+func NewClientWithCerts(address, certFilePath string) (HTTP, error) {
 	client, err := cacertutil.NewHTTPClientWithCerts(certFilePath)
 	if err != nil {
 		return nil, err
 	}
-	return &workerHTTPClient{
+	return &workerHTTP{
 		address: address,
 		client:  client,
 	}, nil
 }
 
-func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError error) {
+func (c *workerHTTP) ListBuildSteps() (steps []response.Step, finalError error) {
 	res, err := c.client.Get(fmt.Sprintf("%s/api/build/step", c.address))
 	if err := assertResponseOK(res, err); err != nil {
 		finalError = err
@@ -101,7 +101,7 @@ func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError e
 	return
 }
 
-func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, finalError error) {
+func (c *workerHTTP) ListArtifacts() (artifacts []response.Artifact, finalError error) {
 	res, err := c.client.Get(fmt.Sprintf("%s/api/artifact", c.address))
 	if err := assertResponseOK(res, err); err != nil {
 		finalError = err
@@ -122,7 +122,7 @@ func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, final
 	return
 }
 
-func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
+func (c *workerHTTP) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
 	res, err := c.client.Get(fmt.Sprintf("%s/api/artifact/%d/download", c.address, artifactID))
 	if err := assertResponseOK(res, err); err != nil {
 		return nil, err
