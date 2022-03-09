@@ -24,17 +24,17 @@ type ArtifactDownloader interface {
 }
 
 type workerHTTPServer struct {
-	buildStepLister    StepLister
+	stepLister         StepLister
 	artifactLister     ArtifactLister
 	artifactDownloader ArtifactDownloader
 }
 
 func newWorkerHTTPServer(
-	buildStepLister StepLister,
+	stepLister StepLister,
 	artifactLister ArtifactLister,
 	artifactDownloader ArtifactDownloader) *workerHTTPServer {
 	return &workerHTTPServer{
-		buildStepLister:    buildStepLister,
+		stepLister:         stepLister,
 		artifactLister:     artifactLister,
 		artifactDownloader: artifactDownloader,
 	}

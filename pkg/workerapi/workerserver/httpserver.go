@@ -30,12 +30,12 @@ type httpServer struct {
 // NewHTTPServer creates a new HTTP server that can be started by calling Serve.
 func NewHTTPServer(
 	bindAddress string,
-	buildStepLister BuildStepLister,
+	stepLister StepLister,
 	artifactLister ArtifactLister,
 	artifactDownloader ArtifactDownloader) Server {
 	return &httpServer{
 		bindAddress:  bindAddress,
-		workerServer: newWorkerHTTPServer(buildStepLister, artifactLister, artifactDownloader),
+		workerServer: newWorkerHTTPServer(stepLister, artifactLister, artifactDownloader),
 		serveMutex:   &sync.Mutex{},
 	}
 }

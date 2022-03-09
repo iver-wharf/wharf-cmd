@@ -30,6 +30,10 @@ type ClientOptions struct {
 
 // NewHTTPClient creates a client that can communicate with a worker HTTP server.
 //
+// The address should include the host scheme, e.g.:
+//   http://
+//   https://
+//
 // Uses the system cert pool, and optionally allows skipping cert verification,
 //
 // Note that skipping verification is insecure and should not be done in a
@@ -60,6 +64,10 @@ func NewHTTPClient(address string, opts ClientOptions) (HTTPClient, error) {
 
 // NewClientWithCerts creates a client that can communicate with a Worker HTTP server.
 //
+// The address should include the host scheme, e.g.:
+//   http://
+//   https://
+//
 // Appends certs at the provided path to the system cert pool and uses that.
 func NewClientWithCerts(address, certFilePath string) (HTTPClient, error) {
 	client, err := cacertutil.NewHTTPClientWithCerts(certFilePath)
@@ -73,7 +81,7 @@ func NewClientWithCerts(address, certFilePath string) (HTTPClient, error) {
 }
 
 func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError error) {
-	res, err := c.client.Get(fmt.Sprintf("http://%s/api/build/step", c.address))
+	res, err := c.client.Get(fmt.Sprintf("%s/api/build/step", c.address))
 	if err := errorIfBad(res, err); err != nil {
 		finalError = err
 		return
@@ -94,7 +102,7 @@ func (c *workerHTTPClient) ListBuildSteps() (steps []response.Step, finalError e
 }
 
 func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, finalError error) {
-	res, err := c.client.Get(fmt.Sprintf("http://%s/api/artifact", c.address))
+	res, err := c.client.Get(fmt.Sprintf("%s/api/artifact", c.address))
 	if err := errorIfBad(res, err); err != nil {
 		finalError = err
 		return
@@ -115,7 +123,7 @@ func (c *workerHTTPClient) ListArtifacts() (artifacts []response.Artifact, final
 }
 
 func (c *workerHTTPClient) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
-	res, err := c.client.Get(fmt.Sprintf("http://%s/api/artifact/%d/download", c.address, artifactID))
+	res, err := c.client.Get(fmt.Sprintf("%s/api/artifact/%d/download", c.address, artifactID))
 	if err := errorIfBad(res, err); err != nil {
 		return nil, err
 	}

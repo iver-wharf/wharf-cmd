@@ -9,14 +9,12 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/model/response"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/stretchr/testify/assert"
 )
 
 const (
 	serverBindAddress       = "0.0.0.0:8080"
-	clientTargetAddress     = "127.0.0.1:8080"
+	clientTargetAddress     = "http://127.0.0.1:8080"
 	disableCertVerification = true
 )
 
@@ -149,8 +147,4 @@ func newClient(t *testing.T) workerclient.HTTPClient {
 	})
 	assert.NoError(t, err)
 	return client
-}
-
-func init() {
-	logger.AddOutput(logger.LevelDebug, consolepretty.Default)
 }
