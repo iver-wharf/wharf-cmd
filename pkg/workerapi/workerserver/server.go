@@ -16,18 +16,28 @@ var log = logger.NewScoped("WORKER-SERVER")
 //
 // It provides an easy way to start both of these servers simultaneously,
 // listening and responding to requests to either.
-type Server struct {
+type Server interface {
+	Serve(bindAddress string) error
+	Close() error
+}
+
+type server struct {
 	rest *restServer
 	grpc *grpcWorkerServer
 
 	listener net.Listener
 }
 
-// Serve starts the gRPC and HTTP servers.
-func (s *Server) Serve(bindAddress string, store resultstore.Store, artifactOpener ArtifactFileOpener) error {
-	s.rest = newRestServer(artifactOpener)
-	s.grpc = newGRPCServer(store)
+// New creates a new server that can handle both HTTP and gRPC requests.
+func New(store resultstore.Store, artifactOpener ArtifactFileOpener) Server {
+	return &server{
+		rest: newRestServer(artifactOpener),
+		grpc: newGRPCServer(store),
+	}
+}
 
+// Serve starts the gRPC and HTTP servers.
+func (s *server) Serve(bindAddress string) error {
 	var err error
 	s.listener, err = net.Listen("tcp", bindAddress)
 	if err != nil {
@@ -56,7 +66,7 @@ func (s *Server) Serve(bindAddress string, store resultstore.Store, artifactOpen
 //
 // Immediately closes all gRPC connections and listeners, and any active RPCs
 // on both the client and server side will be notified by connection errors.
-func (s *Server) Close() error {
+func (s *server) Close() error {
 	if s.grpc != nil && s.grpc.grpc != nil {
 		s.grpc.grpc.Stop()
 	}
