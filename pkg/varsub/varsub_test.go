@@ -8,14 +8,10 @@ import (
 )
 
 func TestMatches(t *testing.T) {
-	type testMatch struct {
-		Name      string
-		FullMatch string
-	}
 	tests := []struct {
 		name  string
 		value string
-		want  []testMatch
+		want  []VarMatch
 	}{
 		{
 			name:  "text without variable",
@@ -25,52 +21,52 @@ func TestMatches(t *testing.T) {
 		{
 			name:  "simple variable",
 			value: "${lorem}",
-			want:  []testMatch{{Name: "lorem", FullMatch: "${lorem}"}},
+			want:  []VarMatch{{Name: "lorem", FullMatch: "${lorem}"}},
 		},
 		{
 			name:  "invalid simple variable",
 			value: "${lorem ipsum}",
-			want:  []testMatch{{Name: "lorem ipsum", FullMatch: "${lorem ipsum}"}},
+			want:  []VarMatch{{Name: "lorem ipsum", FullMatch: "${lorem ipsum}"}},
 		},
 		{
 			name:  "simple text with variable",
 			value: "Foo ${lorem} bar",
-			want:  []testMatch{{Name: "lorem", FullMatch: "${lorem}"}},
+			want:  []VarMatch{{Name: "lorem", FullMatch: "${lorem}"}},
 		},
 		{
 			name:  "simple text with variable and white spaces",
 			value: "Foo ${\n \tlorem\r} bar",
-			want:  []testMatch{{Name: "lorem", FullMatch: "${\n \tlorem\r}"}},
+			want:  []VarMatch{{Name: "lorem", FullMatch: "${\n \tlorem\r}"}},
 		},
 		{
 			name:  "simple text with escaped variable",
 			value: "Foo ${%lorem%} bar",
-			want:  []testMatch{{Name: "%lorem%", FullMatch: "${%lorem%}"}},
+			want:  []VarMatch{{Name: "%lorem%", FullMatch: "${%lorem%}"}},
 		},
 		{
 			name:  "simple text with escaped empty string",
 			value: "Foo ${%%} bar",
-			want:  []testMatch{{Name: "%%", FullMatch: "${%%}"}},
+			want:  []VarMatch{{Name: "%%", FullMatch: "${%%}"}},
 		},
 		{
 			name:  "simple text with escaped empty string by singular percent",
 			value: "Foo ${%} bar",
-			want:  []testMatch{{Name: "%", FullMatch: "${%}"}},
+			want:  []VarMatch{{Name: "%", FullMatch: "${%}"}},
 		},
 		{
 			name:  "simple text with escaped white signs",
 			value: "Foo ${%\n \r%} bar",
-			want:  []testMatch{{Name: "%\n \r%", FullMatch: "${%\n \r%}"}},
+			want:  []VarMatch{{Name: "%\n \r%", FullMatch: "${%\n \r%}"}},
 		},
 		{
 			name:  "simple text with escaped white signs 2",
 			value: "Foo ${\t%\n \r% } bar",
-			want:  []testMatch{{Name: "%\n \r%", FullMatch: "${\t%\n \r% }"}},
+			want:  []VarMatch{{Name: "%\n \r%", FullMatch: "${\t%\n \r% }"}},
 		},
 		{
 			name:  "simple text with invalid escaped text",
 			value: "Foo ${%lorem} bar",
-			want:  []testMatch{{Name: "%lorem", FullMatch: "${%lorem}"}},
+			want:  []VarMatch{{Name: "%lorem", FullMatch: "${%lorem}"}},
 		},
 		{
 			name:  "simple text with invalid variable",
@@ -80,7 +76,7 @@ func TestMatches(t *testing.T) {
 		{
 			name:  "three variables",
 			value: "${lorem} ${ipsum} ${dolor}",
-			want: []testMatch{
+			want: []VarMatch{
 				{Name: "lorem", FullMatch: "${lorem}"},
 				{Name: "ipsum", FullMatch: "${ipsum}"},
 				{Name: "dolor", FullMatch: "${dolor}"},
@@ -90,14 +86,10 @@ func TestMatches(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			matches := Matches(tc.value)
+			got := Matches(tc.value)
 			if len(tc.want) == 0 {
-				assert.Len(t, matches, 0)
+				assert.Len(t, got, 0)
 				return
-			}
-			got := make([]testMatch, len(matches))
-			for i, m := range matches {
-				got[i] = testMatch{Name: m.Name, FullMatch: m.FullMatch}
 			}
 			assert.Equal(t, tc.want, got)
 		})
