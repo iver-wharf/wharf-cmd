@@ -70,6 +70,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   wharf-cmd completion zsh --help
   ```
 
+- Added Git integration by executing `git` locally to obtain current branch,
+  commit SHA, tags, etc. (#67)
+
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
 
