@@ -1,29 +1,36 @@
 package workerserver
 
 import (
-	"strconv"
+	"net"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type workerRPCServer struct {
-	v1.UnimplementedWorkerServer
-	store resultstore.Store
-	log   logger.Logger
+func serveGRPC(grpcWorkerServer *grpcWorkerServer, listener net.Listener) error {
+	grpcServer := grpc.NewServer()
+	v1.RegisterWorkerServer(grpcServer, grpcWorkerServer)
+	grpcWorkerServer.grpc = grpcServer
+	return grpcServer.Serve(listener)
 }
 
-func newWorkerRPCServer(store resultstore.Store) *workerRPCServer {
-	return &workerRPCServer{
+type grpcWorkerServer struct {
+	v1.UnimplementedWorkerServer
+	store resultstore.Store
+
+	grpc *grpc.Server
+}
+
+func newGRPCServer(store resultstore.Store) *grpcWorkerServer {
+	return &grpcWorkerServer{
 		store: store,
-		log:   logger.NewScoped("WORKER-RPC-SERVER"),
 	}
 }
 
-func (s *workerRPCServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
+func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
 	const bufferSize = 100
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
@@ -31,7 +38,7 @@ func (s *workerRPCServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_S
 	}
 	defer func() {
 		if !s.store.UnsubAllLogLines(ch) {
-			s.log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
+			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
 		}
 	}()
 
@@ -50,7 +57,7 @@ func (s *workerRPCServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_S
 	}
 }
 
-func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, stream v1.Worker_StreamStatusEventsServer) error {
+func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, stream v1.Worker_StreamStatusEventsServer) error {
 	const bufferSize = 100
 	ch, err := s.store.SubAllStatusUpdates(bufferSize)
 	if err != nil {
@@ -58,39 +65,8 @@ func (s *workerRPCServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, st
 	}
 	defer func() {
 		if !s.store.UnsubAllStatusUpdates(ch) {
-			s.log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
+			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
 		}
-	}()
-
-	for {
-		select {
-		case statusEvent, ok := <-ch:
-			if !ok {
-				return nil
-			}
-			if err := stream.Send(ConvertToStreamStatusEventsResponse(statusEvent)); err != nil {
-				return err
-			}
-		default:
-			continue
-		}
-	}
-}
-
-func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsRequest, stream v1.Worker_StreamArtifactEventsServer) error {
-	// Doesn't exist in resultstore currently so mocking it directly here.
-	var ch <-chan *v1.StreamArtifactEventsResponse
-	go func() {
-		sendCh := make(chan *v1.StreamArtifactEventsResponse)
-		ch = sendCh
-		for i := 1; i <= 10; i++ {
-			sendCh <- &v1.StreamArtifactEventsResponse{
-				ArtifactID: uint32(i),
-				StepID:     uint32(i/3) + 1,
-				Name:       "Artifact " + strconv.Itoa(i),
-			}
-		}
-		close(sendCh)
 	}()
 
 	for {
@@ -99,7 +75,34 @@ func (s *workerRPCServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsRequest
 			if !ok {
 				return nil
 			}
-			if err := stream.Send(artifactEvent); err != nil {
+			if err := stream.Send(ConvertToStreamStatusEventsResponse(artifactEvent)); err != nil {
+				return err
+			}
+		default:
+			continue
+		}
+	}
+}
+
+func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsRequest, stream v1.Worker_StreamArtifactEventsServer) error {
+	const bufferSize = 100
+	ch, err := s.store.SubAllArtifactEvents(bufferSize)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if !s.store.UnsubAllArtifactEvents(ch) {
+			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
+		}
+	}()
+
+	for {
+		select {
+		case artifactEvent, ok := <-ch:
+			if !ok {
+				return nil
+			}
+			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
 				return err
 			}
 		default:
@@ -130,7 +133,7 @@ func ConvertToStreamStatusEventsResponse(update resultstore.StatusUpdate) *v1.St
 func convertToStreamStatusEventsResponseStatus(status worker.Status) v1.StreamStatusEventsResponseStatus {
 	switch status {
 	case worker.StatusNone:
-		return v1.StreamStatusEventsResponseNone
+		return v1.StreamStatusEventsResponsePending
 	case worker.StatusScheduling:
 		return v1.StreamStatusEventsResponseScheduling
 	case worker.StatusInitializing:
@@ -144,6 +147,16 @@ func convertToStreamStatusEventsResponseStatus(status worker.Status) v1.StreamSt
 	case worker.StatusCancelled:
 		return v1.StreamStatusEventsResponseCancelled
 	default:
-		return v1.StreamStatusEventsResponseUnknown
+		return v1.StreamStatusEventsResponseUnspecified
+	}
+}
+
+// ConvertToStreamArtifactEventsResponse converts a resultstore artifact event
+// to the equivalent response type.
+func ConvertToStreamArtifactEventsResponse(event resultstore.ArtifactEvent) *v1.StreamArtifactEventsResponse {
+	return &v1.StreamArtifactEventsResponse{
+		ArtifactID: event.ArtifactID,
+		StepID:     event.StepID,
+		Name:       event.Name,
 	}
 }

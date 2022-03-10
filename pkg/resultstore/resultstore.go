@@ -48,6 +48,20 @@ type StatusUpdate struct {
 	Status    worker.Status `json:"status"`
 }
 
+// ArtifactEventList is a list of artifact events. This is the data structure
+// that is serialized in the artifact event list file for a given step.
+type ArtifactEventList struct {
+	LastID         uint64          `json:"lastId"`
+	ArtifactEvents []ArtifactEvent `json:"artifactEvents"`
+}
+
+// ArtifactEvent is metadata about an artifact created during building.
+type ArtifactEvent struct {
+	ArtifactID uint64 `json:"artifactId"`
+	StepID     uint64 `json:"stepId"`
+	Name       string `json:"name"`
+}
+
 // Store is the interface for storing build results and accessing them as they
 // are created.
 type Store interface {
@@ -84,6 +98,19 @@ type Store interface {
 	// UnsubAllStatusUpdates unsubscribes a subscription of all status updates
 	// created via SubAllStatusUpdates.
 	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
+
+	// AddArtifactEvent adds an artifact event to a step.
+	// Any written artifact event is also published to any active subscriptions.
+	AddArtifactEvent(stepID uint64, artifactMeta worker.ArtifactMeta) error
+
+	// SubAllArtifactEvents creates a new channel that streams all artifact
+	// events from this result store since the beginning, and keeps on
+	// streaming new events until unsubscribed.
+	SubAllArtifactEvents(buffer int) (<-chan ArtifactEvent, error)
+
+	// UnsubAllArtifactEvents unsubscribes a subscription of all artifact
+	// events created via SubAllStatusUpdates.
+	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) bool
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -130,6 +157,10 @@ type store struct {
 	logSubMutex      sync.RWMutex
 	logSubs          []chan LogLine
 	logWritersOpened sync.Map
+
+	artifactSubMutex sync.RWMutex
+	artifactSubs     []chan ArtifactEvent
+	artifactMutex    keyedMutex
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

@@ -7,24 +7,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
-	"github.com/iver-wharf/wharf-core/pkg/problem"
 )
 
 type artifactModule struct {
-	*workerHTTPServer
+	*restServer
 }
 
 func (m *artifactModule) register(g *gin.RouterGroup) {
-	artifact := g.Group("/artifact")
-	{
-		artifact.GET("", m.listArtifactsHandler)
-		artifact.GET("/:artifactId/download", m.downloadArtifactHandler)
-	}
-}
-
-func (m *artifactModule) listArtifactsHandler(c *gin.Context) {
-	artifacts := m.artifactLister.ListArtifacts()
-	c.JSON(http.StatusOK, artifacts)
+	g.GET("/artifact/:artifactId/download", m.downloadArtifactHandler)
 }
 
 func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
@@ -33,21 +23,17 @@ func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
 		return
 	}
 
-	ioBody, err := m.artifactDownloader.DownloadArtifact(artifactID)
+	ioBody, err := m.artifactReader.Get(artifactID)
 	if err != nil {
-		ginutil.WriteProblemError(c, err, problem.Response{
-			Type:   "/prob/workerapi/record-not-found",
-			Title:  "Record not found.",
-			Status: http.StatusNotFound,
-			Detail: fmt.Sprintf("Artifact with ID %d was not found.", artifactID),
-		})
+		ginutil.WriteDBNotFound(c, fmt.Sprintf("Unable to find artifact with ID %d.", artifactID))
 		return
 	}
 
 	c.Header("Content-Type", "application/octet-stream")
 	_, err = io.Copy(c.Writer, ioBody)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
+		ginutil.WriteAPIClientReadError(c, err,
+			fmt.Sprintf("Unable to write artifact with ID %d to response.", artifactID))
 		return
 	}
 	c.Status(http.StatusOK)

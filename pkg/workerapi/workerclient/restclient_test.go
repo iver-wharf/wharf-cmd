@@ -79,3 +79,33 @@ func TestAssertResponseOK(t *testing.T) {
 		})
 	}
 }
+
+func TestNewRestClient(t *testing.T) {
+	testCases := []struct {
+		name           string
+		secure         bool
+		wantSecure     bool
+		wantNilRootCAs bool
+	}{
+		{
+			name:       "secure_client",
+			secure:     true,
+			wantSecure: true,
+		},
+		{
+			name:       "insecure_client",
+			secure:     false,
+			wantSecure: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			c, err := newRestClient(ClientOptions{
+				InsecureSkipVerify: !tc.secure,
+			})
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantSecure, !c.client.Transport.(*http.Transport).TLSClientConfig.InsecureSkipVerify)
+		})
+	}
+}

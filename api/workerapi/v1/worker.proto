@@ -46,8 +46,8 @@ message StreamStatusEventsResponse {
   uint64 step_id = 2;
 
   enum Status {
-    UNKNOWN = 0;
-    NONE = 1;
+    UNSPECIFIED = 0;
+    PENDING = 1;
     SCHEDULING = 2;
     INITIALIZING = 3;
     RUNNING = 4;
@@ -55,7 +55,7 @@ message StreamStatusEventsResponse {
     FAILED = 6;
     CANCELLED = 7;
   }
-  // Status is the worker's status.
+  // Status is the step's status.
   Status status = 3;
 }
 
@@ -63,10 +63,10 @@ message StreamArtifactEventsResponse {
   // ArtifactID is the worker's own ID of the artifact. It's unique per build
   // step for a given build, but may have collisons across multiple steps or
   // builds.
-  uint32 artifact_id = 1;
+  uint64 artifact_id = 1;
   // StepID is the worker's own ID of the build step that produced the
   // artifact.
-  uint32 step_id = 2;
+  uint64 step_id = 2;
   // Name is the name of the artifact.
   string name = 3;
 }
