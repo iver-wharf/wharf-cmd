@@ -20,12 +20,15 @@ func TestStore_ReadArtifactEventsFile(t *testing.T) {
 {
 	"artifactEvents": [
 		{
+			"artifactId": 1,
 			"name": "artifact-1"
 		},
 		{
+			"artifactId": 2,
 			"name": "artifact-2"
 		},
 		{
+			"artifactId": 3,
 			"name": "artifact-3"
 		}
 	]
@@ -35,16 +38,19 @@ func TestStore_ReadArtifactEventsFile(t *testing.T) {
 	want := ArtifactEventList{
 		ArtifactEvents: []ArtifactEvent{
 			{
-				StepID: stepID,
-				Name:   "artifact-1",
+				ArtifactID: 1,
+				StepID:     stepID,
+				Name:       "artifact-1",
 			},
 			{
-				StepID: stepID,
-				Name:   "artifact-2",
+				ArtifactID: 2,
+				StepID:     stepID,
+				Name:       "artifact-2",
 			},
 			{
-				StepID: stepID,
-				Name:   "artifact-3",
+				ArtifactID: 3,
+				StepID:     stepID,
+				Name:       "artifact-3",
 			},
 		},
 	}
@@ -181,11 +187,11 @@ func TestStore_AddArtifactEventSecond(t *testing.T) {
 
 func TestStore_SubArtifactEventsSendsAllOldEvents(t *testing.T) {
 	events1 := []ArtifactEvent{
-		{StepID: 1, Name: "artifact-1"},
+		{StepID: 1, ArtifactID: 1, Name: "artifact-1"},
 	}
 	events2 := []ArtifactEvent{
-		{StepID: 2, Name: "artifact-2"},
-		{StepID: 2, Name: "artifact-3"},
+		{StepID: 2, ArtifactID: 2, Name: "artifact-2"},
+		{StepID: 2, ArtifactID: 3, Name: "artifact-3"},
 	}
 	oldLists := map[string]ArtifactEventList{
 		filepath.Join(dirNameSteps, "1", fileNameArtifactEvents): {
