@@ -13,7 +13,7 @@ type restClient struct {
 	client *http.Client
 }
 
-func newRestClient(opts ClientOptions) (*restClient, error) {
+func newRestClient(opts Options) (*restClient, error) {
 	rootCAs, err := x509.SystemCertPool()
 	if err != nil && !opts.InsecureSkipVerify {
 		return nil, fmt.Errorf("load system cert pool: %w", err)

@@ -101,7 +101,7 @@ func TestNewRestClient(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			c, err := newRestClient(ClientOptions{
+			c, err := newRestClient(Options{
 				InsecureSkipVerify: !tc.secure,
 			})
 			assert.NoError(t, err)

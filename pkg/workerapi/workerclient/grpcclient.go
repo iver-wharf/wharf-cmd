@@ -10,7 +10,7 @@ import (
 
 type grpcClient struct {
 	address string
-	opts    ClientOptions
+	opts    Options
 
 	client v1.WorkerClient
 	conn   *grpc.ClientConn
@@ -18,7 +18,7 @@ type grpcClient struct {
 
 // NewRPCClient creates a new gRPC Client that can communicate with the Worker
 // gRPC server.
-func newGRPCClient(address string, opts ClientOptions) *grpcClient {
+func newGRPCClient(address string, opts Options) *grpcClient {
 	return &grpcClient{
 		address: address,
 		opts:    opts,
