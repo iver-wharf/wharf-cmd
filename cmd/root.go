@@ -88,13 +88,6 @@ func initLogging() {
 	isLoggingInitialized = true
 }
 
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
-}
-
 // parseLevel is added in https://github.com/iver-wharf/wharf-core/pull/14 but
 // that PR has not yet merged at the time or writing.
 func parseLevel(lvl string) (logger.Level, error) {
