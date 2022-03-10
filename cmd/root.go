@@ -15,8 +15,6 @@ import (
 
 var isLoggingInitialized bool
 var loglevel string
-var kubeconfigPath string
-var Namespace string
 
 var rootCmd = &cobra.Command{
 	SilenceErrors: true,
@@ -49,6 +47,7 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 	return restConf, ns, nil
 }
 
+// Execute is the entrypoint for wharf-cmd's CLI.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()
