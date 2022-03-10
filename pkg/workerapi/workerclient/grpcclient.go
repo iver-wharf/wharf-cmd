@@ -1,7 +1,6 @@
 package workerclient
 
 import (
-	"errors"
 	"fmt"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
@@ -17,8 +16,6 @@ type grpcClient struct {
 	conn   *grpc.ClientConn
 }
 
-var errAlreadyOpen = errors.New("client is already open")
-
 // NewRPCClient creates a new gRPC Client that can communicate with the Worker
 // gRPC server.
 func newGRPCClient(address string, opts ClientOptions) *grpcClient {
@@ -28,9 +25,9 @@ func newGRPCClient(address string, opts ClientOptions) *grpcClient {
 	}
 }
 
-func (c *grpcClient) open() error {
+func (c *grpcClient) ensureOpen() error {
 	if c.conn != nil {
-		return errAlreadyOpen
+		return nil
 	}
 	var opts []grpc.DialOption
 	if c.opts.InsecureSkipVerify {

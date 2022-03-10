@@ -2,7 +2,6 @@ package workerclient
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -33,7 +32,7 @@ type client struct {
 
 // StreamLogs returns a stream that will receive log lines from the worker.
 func (c *client) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error) {
-	if err := c.grpc.open(); err != nil && !errors.Is(err, errAlreadyOpen) {
+	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
 	return c.grpc.client.StreamLogs(ctx, req, opts...)
@@ -42,7 +41,7 @@ func (c *client) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.
 // StreamStatusEvents returns a stream that will receive status events from the
 // worker.
 func (c *client) StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error) {
-	if err := c.grpc.open(); err != nil && !errors.Is(err, errAlreadyOpen) {
+	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
 	return c.grpc.client.StreamStatusEvents(ctx, req, opts...)
@@ -51,7 +50,7 @@ func (c *client) StreamStatusEvents(ctx context.Context, req *StatusEventsReques
 // StreamArtifactEvents returns a stream that will receive status events from the
 // worker.
 func (c *client) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error) {
-	if err := c.grpc.open(); err != nil && !errors.Is(err, errAlreadyOpen) {
+	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
 	return c.grpc.client.StreamArtifactEvents(ctx, req, opts...)
