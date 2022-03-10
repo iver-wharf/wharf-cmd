@@ -10,7 +10,14 @@ import (
 )
 
 type artifactModule struct {
-	*restServer
+	artifactOpener ArtifactFileOpener
+}
+
+// ArtifactFileOpener is an interface that provides a way to read an artifact
+// file's data using the artifact's ID.
+type ArtifactFileOpener interface {
+	// OpenArtifactFile gets an io.ReadCloser for the artifact with the given ID.
+	OpenArtifactFile(artifactID uint) (io.ReadCloser, error)
 }
 
 func (m *artifactModule) register(g *gin.RouterGroup) {
@@ -23,7 +30,7 @@ func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
 		return
 	}
 
-	ioBody, err := m.artifactReader.Get(artifactID)
+	ioBody, err := m.artifactOpener.OpenArtifactFile(artifactID)
 	if err != nil {
 		ginutil.WriteDBNotFound(c, fmt.Sprintf("Unable to find artifact with ID %d.", artifactID))
 		return

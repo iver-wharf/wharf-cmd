@@ -24,8 +24,8 @@ type Server struct {
 }
 
 // Serve starts the gRPC and HTTP servers.
-func (s *Server) Serve(bindAddress string, store resultstore.Store, artifactReader ArtifactReader) error {
-	s.rest = newRestServer(artifactReader)
+func (s *Server) Serve(bindAddress string, store resultstore.Store, artifactOpener ArtifactFileOpener) error {
+	s.rest = newRestServer(artifactOpener)
 	s.grpc = newGRPCServer(store)
 
 	var err error

@@ -13,12 +13,12 @@ type module interface {
 }
 
 type restServer struct {
-	artifactReader ArtifactReader
+	artifactOpener ArtifactFileOpener
 }
 
-func newRestServer(artifactReader ArtifactReader) *restServer {
+func newRestServer(artifactOpener ArtifactFileOpener) *restServer {
 	return &restServer{
-		artifactReader: artifactReader,
+		artifactOpener: artifactOpener,
 	}
 }
 
@@ -36,7 +36,7 @@ func serveHTTP(s *restServer, listener net.Listener) error {
 
 func (s *restServer) registerModules(r *gin.RouterGroup) {
 	modules := []module{
-		&artifactModule{s},
+		&artifactModule{s.artifactOpener},
 	}
 	for _, module := range modules {
 		module.register(r)
