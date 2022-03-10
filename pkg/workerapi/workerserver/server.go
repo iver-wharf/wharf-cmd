@@ -60,12 +60,9 @@ func (s *server) Serve(bindAddress string) error {
 	return mux.Serve()
 }
 
-// Close closes the listener.
+// Close closes the server. No attempt to finish active requests is made.
 //
-// Any blocked Accept operations will be unblocked and return errors.
-//
-// Immediately closes all gRPC connections and listeners, and any active RPCs
-// on both the client and server side will be notified by connection errors.
+// Any active gRPC connections will be notified by connection errors.
 func (s *server) Close() error {
 	if s.grpc != nil && s.grpc.grpc != nil {
 		s.grpc.grpc.Stop()
