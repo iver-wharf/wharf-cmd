@@ -53,14 +53,15 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			}
 			return errors.New("failed to parse .wharf-ci.yml")
 		}
-		log.Info().Message("Successfully parsed .wharf-ci.yml")
+		log.Debug().Message("Successfully parsed .wharf-ci.yml")
 		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
 		if err != nil {
 			return err
 		}
-		log.Debug().Message("Successfully created builder. Starting build.")
+		log.Debug().Message("Successfully created builder.")
+		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
 		if err != nil {
 			return err
