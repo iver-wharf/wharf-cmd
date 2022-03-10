@@ -25,73 +25,142 @@ import (
 var podInitWaitArgs = []string{"/bin/sh", "-c", "sleep infinite || true"}
 var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 
-type k8sStepRunner struct {
-	namespace  string
-	restConfig *rest.Config
-	clientset  *kubernetes.Clientset
-	pods       corev1.PodInterface
-	events     corev1.EventInterface
+// NewK8s is a helper function that creates a new builder using the
+// NewK8sStepRunnerFactory.
+func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config, opts BuildOptions) (Builder, error) {
+	stageFactory, err := NewK8sStageRunnerFactory(namespace, restConfig)
+	if err != nil {
+		return nil, err
+	}
+	return New(ctx, stageFactory, def, opts)
 }
 
-// NewK8sStepRunner returns a new step runner implementation that targets
-// Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sStepRunner(namespace string, restConfig *rest.Config) (StepRunner, error) {
+// NewK8sStageRunnerFactory is a helper function that creates a new stage runner
+// factory using the NewK8sStepRunnerFactory.
+func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config) (StageRunnerFactory, error) {
+	stepFactory, err := NewK8sStepRunnerFactory(namespace, restConfig)
+	if err != nil {
+		return nil, err
+	}
+	return NewStageRunnerFactory(stepFactory)
+}
+
+// NewK8sStepRunnerFactory returns a new step runner factory that creates
+// step runners with implementation that targets Kubernetes using a specific
+// Kubernetes namespace and REST config.
+func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config) (StepRunnerFactory, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
 	}
-	return k8sStepRunner{
+	return k8sStepRunnerFactory{
 		namespace:  namespace,
 		restConfig: restConfig,
 		clientset:  clientset,
-		pods:       clientset.CoreV1().Pods(namespace),
-		events:     clientset.CoreV1().Events(namespace),
 	}, nil
 }
 
-func (r k8sStepRunner) RunStep(ctx context.Context, step wharfyml.Step) StepResult {
+type k8sStepRunnerFactory struct {
+	namespace  string
+	restConfig *rest.Config
+	clientset  *kubernetes.Clientset
+}
+
+func (f k8sStepRunnerFactory) NewStepRunner(
+	ctx context.Context, step wharfyml.Step) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
+	pod, err := getPodSpec(ctx, step)
+	if err != nil {
+		return nil, err
+	}
+	r := k8sStepRunner{
+		log:        logger.NewScoped(contextStageStepName(ctx)),
+		step:       step,
+		pod:        &pod,
+		namespace:  f.namespace,
+		restConfig: f.restConfig,
+		clientset:  f.clientset,
+		pods:       f.clientset.CoreV1().Pods(f.namespace),
+	}
+	if err := r.dryRunStepError(ctx); err != nil {
+		return nil, fmt.Errorf("dry-run: %w", err)
+	}
+	return r, nil
+}
+
+type k8sStepRunner struct {
+	log        logger.Logger
+	step       wharfyml.Step
+	pod        *v1.Pod
+	namespace  string
+	restConfig *rest.Config
+	clientset  *kubernetes.Clientset
+	pods       corev1.PodInterface
+}
+
+func (r k8sStepRunner) Step() wharfyml.Step {
+	return r.step
+}
+
+func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
+	ctx = contextWithStepName(ctx, r.step.Name)
 	start := time.Now()
-	err := r.runStepError(ctx, step)
 	status := StatusSuccess
+	err := r.runStepError(ctx)
 	if errors.Is(err, context.Canceled) {
 		status = StatusCancelled
 	} else if err != nil {
 		status = StatusFailed
 	}
 	return StepResult{
-		Name:     step.Name,
+		Name:     r.step.Name,
 		Status:   status,
-		Type:     step.Type.StepTypeName(),
+		Type:     r.step.Type.StepTypeName(),
 		Error:    err,
 		Duration: time.Since(start),
 	}
 }
 
-func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) error {
-	pod, err := getPodSpec(ctx, step)
+func (r k8sStepRunner) dryRunStepError(ctx context.Context) error {
+	log.Debug().
+		WithString("step", r.step.Name).
+		WithString("pod", r.pod.GenerateName).
+		Message("DRY RUN: Creating pod.")
+	newPod, err := r.pods.Create(ctx, r.pod, metav1.CreateOptions{
+		DryRun: []string{"All"},
+	})
 	if err != nil {
-		return err
+		return fmt.Errorf("create pod: %w", err)
 	}
 	log.Debug().
-		WithString("step", step.Name).
-		WithString("pod", pod.GenerateName).
+		WithString("step", r.step.Name).
+		WithString("pod", newPod.Name).
+		Message("DRY RUN: Created pod.")
+	return nil
+}
+
+func (r k8sStepRunner) runStepError(ctx context.Context) error {
+	log.Debug().
+		WithString("step", r.step.Name).
+		WithString("pod", r.pod.GenerateName).
 		Message("Creating pod.")
-	newPod, err := r.pods.Create(ctx, &pod, metav1.CreateOptions{})
+	newPod, err := r.pods.Create(ctx, r.pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("create pod: %w", err)
 	}
 	var logFunc = func(ev logger.Event) logger.Event {
 		return ev.
-			WithString("step", step.Name).
+			WithString("step", r.step.Name).
 			WithString("pod", newPod.Name)
 	}
+
 	log.Debug().WithFunc(logFunc).Message("Created pod.")
-	defer r.stopPodNow(context.Background(), step.Name, newPod.Name)
+	defer r.stopPodNow(context.Background(), r.step.Name, newPod.Name)
 	log.Debug().WithFunc(logFunc).Message("Waiting for init container to start.")
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
+
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
 	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
@@ -108,6 +177,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context, step wharfyml.Step) err
 		}
 		return fmt.Errorf("wait for app container: %w", err)
 	}
+
 	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
 	if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{Follow: true}); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
@@ -192,7 +262,6 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 		return err
 	}
 	defer readCloser.Close()
-	podLog := logger.NewScoped(contextStageStepName(ctx))
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		txt := scanner.Text()
@@ -200,7 +269,7 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 		if idx != -1 {
 			txt = txt[idx+1:]
 		}
-		podLog.Info().Message(txt)
+		r.log.Info().Message(txt)
 	}
 	return scanner.Err()
 }

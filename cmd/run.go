@@ -37,12 +37,6 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if err != nil {
 			return err
 		}
-		stepRun, err := worker.NewK8sStepRunner(ns, kubeconfig)
-		if err != nil {
-			return err
-		}
-		stageRun := worker.NewStageRunner(stepRun)
-		b := worker.New(stageRun)
 		def, errs := wharfyml.ParseFile(runFlags.path, wharfyml.Args{
 			Env: runFlags.env,
 		})
@@ -59,9 +53,16 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			}
 			return errors.New("failed to parse .wharf-ci.yml")
 		}
-		res, err := b.Build(context.Background(), def, worker.BuildOptions{
+		log.Debug().Message("Successfully parsed .wharf-ci.yml")
+		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
+		if err != nil {
+			return err
+		}
+		log.Debug().Message("Successfully created builder.")
+		log.Info().Message("Starting build.")
+		res, err := b.Build(context.Background())
 		if err != nil {
 			return err
 		}

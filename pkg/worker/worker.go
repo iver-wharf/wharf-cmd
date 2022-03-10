@@ -16,25 +16,38 @@ type BuildOptions struct {
 	StageFilter string
 }
 
-// Builder is the interface for running Wharf builds. A single Wharf build may
+// Builder is the interface for running a Wharf build. A single Wharf build may
 // contain any number of stages, which in turn may contain any number of steps.
 // All stages will be run in sequence.
 type Builder interface {
-	Build(ctx context.Context, def wharfyml.Definition, opt BuildOptions) (Result, error)
+	Definition() wharfyml.Definition
+	Build(ctx context.Context) (Result, error)
 }
 
-// StageRunner is the interface for running Wharf build stages. A single Wharf
+// StageRunner is the interface for running a Wharf build stage. A single Wharf
 // build stage may contain any number of steps which will all be run in
 // parallel.
 type StageRunner interface {
-	RunStage(ctx context.Context, def wharfyml.Stage) StageResult
+	Stage() wharfyml.Stage
+	RunStage(ctx context.Context) StageResult
 }
 
-// StepRunner is the interface for running Wharf build steps. Steps are the
+// StageRunnerFactory creates a new StageRunner for a given stage.
+type StageRunnerFactory interface {
+	NewStageRunner(ctx context.Context, stage wharfyml.Stage) (StageRunner, error)
+}
+
+// StepRunner is the interface for running a Wharf build step. Steps are the
 // smallest unit of work in Wharf, and each step represents a single Kubernetes
 // pod or Docker container.
 type StepRunner interface {
-	RunStep(ctx context.Context, def wharfyml.Step) StepResult
+	Step() wharfyml.Step
+	RunStep(ctx context.Context) StepResult
+}
+
+// StepRunnerFactory creates a new StepRunner for a given step.
+type StepRunnerFactory interface {
+	NewStepRunner(ctx context.Context, step wharfyml.Step) (StepRunner, error)
 }
 
 // Result is a Wharf build result with the overall status of all stages were

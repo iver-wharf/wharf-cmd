@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -10,33 +11,59 @@ import (
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
+// NewStageRunnerFactory returns a new StageRunner that uses the provided
+// StepRunner to run the steps in parallel.
+func NewStageRunnerFactory(stepRunFactory StepRunnerFactory) (StageRunnerFactory, error) {
+	return stageRunnerFactory{stepRunFactory}, nil
+}
+
+type stageRunnerFactory struct {
+	stepRunFactory StepRunnerFactory
+}
+
 // NewStageRunner returns a new StageRunner that uses the provided StepRunner to
 // run the steps in parallel.
-func NewStageRunner(stepRun StepRunner) StageRunner {
-	return stageRunner{stepRun}
+func (f stageRunnerFactory) NewStageRunner(ctx context.Context, stage wharfyml.Stage) (StageRunner, error) {
+	return newStageRunner(ctx, f.stepRunFactory, stage)
+}
+
+func newStageRunner(ctx context.Context, stepRunFactory StepRunnerFactory, stage wharfyml.Stage) (StageRunner, error) {
+	ctx = contextWithStageName(ctx, stage.Name)
+	stepRunners := make([]StepRunner, len(stage.Steps))
+	for i, step := range stage.Steps {
+		r, err := stepRunFactory.NewStepRunner(ctx, step)
+		if err != nil {
+			return nil, fmt.Errorf("step %s: %w", step.Name, err)
+		}
+		stepRunners[i] = r
+	}
+	return stageRunner{stage, stepRunners}, nil
 }
 
 type stageRunner struct {
-	stepRun StepRunner
+	stage       wharfyml.Stage
+	stepRunners []StepRunner
 }
 
-func (r stageRunner) RunStage(ctx context.Context, stage wharfyml.Stage) StageResult {
-	ctx = contextWithStageName(ctx, stage.Name)
+func (r stageRunner) Stage() wharfyml.Stage {
+	return r.stage
+}
+
+func (r stageRunner) RunStage(ctx context.Context) StageResult {
+	ctx = contextWithStageName(ctx, r.stage.Name)
 	stageRun := stageRun{
-		stepRun:   r.stepRun,
-		stepCount: len(stage.Steps),
-		stage:     &stage,
+		stepCount: len(r.stepRunners),
+		stage:     &r.stage,
 		start:     time.Now(),
 	}
-	for _, step := range stage.Steps {
-		stageRun.startRunStepGoroutine(ctx, step)
+	for _, stepRunner := range r.stepRunners {
+		stageRun.startRunStepGoroutine(ctx, stepRunner)
 	}
 	return stageRun.waitForResult()
 }
 
 type stageRun struct {
 	stage       *wharfyml.Stage
-	stepRun     StepRunner
 	cancelFuncs []func()
 	stepCount   int
 	stepsDone   int32
@@ -49,11 +76,11 @@ type stageRun struct {
 	mutex sync.Mutex
 }
 
-func (r *stageRun) startRunStepGoroutine(ctx context.Context, step wharfyml.Step) {
+func (r *stageRun) startRunStepGoroutine(ctx context.Context, stepRunner StepRunner) {
 	r.wg.Add(1)
 	stepCtx, cancel := context.WithCancel(ctx)
 	r.cancelFuncs = append(r.cancelFuncs, cancel)
-	go r.runStep(stepCtx, step)
+	go r.runStep(stepCtx, stepRunner)
 }
 
 func (r *stageRun) waitForResult() StageResult {
@@ -77,16 +104,16 @@ func (r *stageRun) addStepResult(res StepResult) {
 	atomic.AddInt32(&r.stepsDone, 1)
 }
 
-func (r *stageRun) runStep(ctx context.Context, step wharfyml.Step) {
+func (r *stageRun) runStep(ctx context.Context, stepRunner StepRunner) {
 	defer r.wg.Done()
 	logFunc := func(ev logger.Event) logger.Event {
 		return ev.
 			WithStringf("steps", "%d/%d", r.stepsDone, r.stepCount).
 			WithString("stage", r.stage.Name).
-			WithString("step", step.Name)
+			WithString("step", stepRunner.Step().Name)
 	}
 	log.Info().WithFunc(logFunc).Message("Starting step.")
-	res := r.stepRun.RunStep(ctx, step)
+	res := stepRunner.RunStep(ctx)
 	r.addStepResult(res)
 	dur := res.Duration.Truncate(time.Second)
 	if res.Status == StatusCancelled {
