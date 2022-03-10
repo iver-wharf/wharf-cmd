@@ -90,8 +90,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added HTTP server for worker in `pkg/workerapi/workerserver`: (#51)
 
-  - `GET /api/build/step` Lists build steps.
-  - `GET /api/artifact` Lists artifacts.
   - `GET /api/artifact/:artifactId/download` Downloads an artifact.
 
 - Added HTTP client in `pkg/workerapi/workerclient` to interface with
