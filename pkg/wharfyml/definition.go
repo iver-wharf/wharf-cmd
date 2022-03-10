@@ -21,6 +21,17 @@ type Definition struct {
 	Stages []Stage
 }
 
+// ListAllSteps aggregates steps from all stages into a single slice.
+//
+// Makes Definition comply to the StepLister interface.
+func (d *Definition) ListAllSteps() []Step {
+	var steps []Step
+	for _, stage := range d.Stages {
+		steps = append(steps, stage.Steps...)
+	}
+	return steps
+}
+
 func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) {
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)

@@ -82,14 +82,37 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
 
+- Added gRPC server for worker in `pkg/workerapi/workerserver`: (#51)
+
+  - `StreamLogs` batches logs into chunks and serves to gRPC clients.
+  - `StreamStatusEvents` serves status events to gRPC clients.
+  - `StreamArtifactEvents` serves artifact events to gRPC clients.
+
+- Added gRPC client in `pkg/workerapi/workerclient` to interface with a worker
+  gRPC server. (#51)
+
+- Added HTTP server for worker in `pkg/workerapi/workerserver`: (#51)
+
+  - `GET /api/artifact/:artifactId/download` Downloads an artifact.
+
+- Added HTTP client in `pkg/workerapi/workerclient` to interface with
+  worker HTTP server. (#51)
+
 - Added dependencies:
 
+  - `github.com/alta/protopatch` v0.5.0 (#51)
+  - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
-  - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
+  - `github.com/golang/protobuf` v1.5.2 (#51)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
+  - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
-  - `github.com/swaggo/swag` v1.7.9 (#59)
+  - `github.com/swaggo/swag` v1.8.0 (#59)
+  - `google.golang.org/grpc` v1.44.0 (#51)
+  - `google.golang.org/protobuf` v1.27.1 (#51)
+  - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:

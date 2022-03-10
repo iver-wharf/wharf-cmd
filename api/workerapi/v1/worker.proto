@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+import "patch/go.proto";
+
+option (go.lint).all = true;
+option (go.lint).initialisms = "ID";
+
+// Versioning via package name, for future-proofing
+package wharf.worker.v1;
+
+option go_package = "github.com/iver-wharf/wharf-cmd/api/workerapi/v1";
+
+service Worker {
+  rpc StreamLogs(StreamLogsRequest) returns (stream StreamLogsResponse);
+  rpc StreamStatusEvents(StreamStatusEventsRequest) returns (stream StreamStatusEventsResponse);
+  rpc StreamArtifactEvents(StreamArtifactEventsRequest) returns (stream StreamArtifactEventsResponse);
+}
+
+// Empty messages, but exists for potential future usages
+message StreamLogsRequest {}
+message StreamStatusEventsRequest { }
+message StreamArtifactEventsRequest { }
+
+message StreamLogsResponse {
+  // BuildID is the database ID of the build this log line belongs to.
+  uint64 build_id = 1;
+  // LogID is the worker's own ID of the log line. It's unique per build step
+  // for a given build, but may have collisons across multiple steps or builds.
+  // Not database value, but instead worker's own ID of the log line.
+  uint64 log_id = 2;
+  // StepID is the worker's own ID of the step. It's unique for a given build,
+  // but may have collisions across multiple builds.
+  // Not database value, but instead worker's own ID of the step ID.
+  uint64 step_id = 3;
+  // Timestamp is when the log line was outputted from the build step.
+  google.protobuf.Timestamp timestamp = 4;
+  // Message is the log line text.
+  string message = 5;
+}
+
+message StreamStatusEventsResponse {
+  // EventID is the worker's own ID of the event the status.
+  uint64 event_id = 1;
+  // StepID is the worker's own ID of the step.
+  uint64 step_id = 2;
+
+  enum Status {
+    UNSPECIFIED = 0;
+    PENDING = 1;
+    SCHEDULING = 2;
+    INITIALIZING = 3;
+    RUNNING = 4;
+    SUCCESS = 5;
+    FAILED = 6;
+    CANCELLED = 7;
+  }
+  // Status is the step's status.
+  Status status = 3;
+}
+
+message StreamArtifactEventsResponse {
+  // ArtifactID is the worker's own ID of the artifact. It's unique per build
+  // step for a given build, but may have collisons across multiple steps or
+  // builds.
+  uint64 artifact_id = 1;
+  // StepID is the worker's own ID of the build step that produced the
+  // artifact.
+  uint64 step_id = 2;
+  // Name is the name of the artifact.
+  string name = 3;
+}
