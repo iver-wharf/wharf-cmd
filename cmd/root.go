@@ -15,8 +15,6 @@ import (
 
 var isLoggingInitialized bool
 var loglevel string
-var kubeconfigPath string
-var Namespace string
 
 var rootCmd = &cobra.Command{
 	SilenceErrors: true,
@@ -49,6 +47,7 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 	return restConf, ns, nil
 }
 
+// Execute is the entrypoint for wharf-cmd's CLI.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()
@@ -87,13 +86,6 @@ func initLogging() {
 		log.Debug().WithStringer("loglevel", parsedLogLevel).Message("Setting log-level.")
 	}
 	isLoggingInitialized = true
-}
-
-func homeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
-	}
-	return os.Getenv("USERPROFILE") // windows
 }
 
 // parseLevel is added in https://github.com/iver-wharf/wharf-core/pull/14 but
