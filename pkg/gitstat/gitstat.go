@@ -29,6 +29,8 @@ type Stats struct {
 	CurrentBranchSafe  string
 	LatestTag          string
 	Tags               []string
+	CommitHash         string
+	CommitShortHash    string
 	CommitSubject      string
 	CommitComitterDate string
 	CommitAuthorDate   string
@@ -79,7 +81,7 @@ func FromExec(dir string) (Stats, error) {
 		return Stats{}, err
 	}
 
-	commitInfo, err := execGitCmd(dir, "log", "-n", "1", "HEAD", "--format=%s%n%aI%n%cI")
+	commitInfo, err := execGitCmd(dir, "log", "-n", "1", "HEAD", "--format=%H%n%h%n%s%n%aI%n%cI")
 	if err != nil {
 		return Stats{}, err
 	}
@@ -107,9 +109,11 @@ func FromExec(dir string) (Stats, error) {
 	return Stats{
 		CurrentBranch:      currentBranch,
 		CurrentBranchSafe:  strings.ReplaceAll(currentBranch, "/", "-"),
-		CommitSubject:      safeGetTrimmed(commitInfoSlice, 0),
-		CommitAuthorDate:   safeGetTrimmed(commitInfoSlice, 1),
-		CommitComitterDate: safeGetTrimmed(commitInfoSlice, 2),
+		CommitHash:         safeGetTrimmed(commitInfoSlice, 0),
+		CommitShortHash:    safeGetTrimmed(commitInfoSlice, 1),
+		CommitSubject:      safeGetTrimmed(commitInfoSlice, 2),
+		CommitAuthorDate:   safeGetTrimmed(commitInfoSlice, 3),
+		CommitComitterDate: safeGetTrimmed(commitInfoSlice, 4),
 		Revision:           int(revision),
 		Tags:               tagsSlice,
 		LatestTag:          safeGetTrimmed(tagsSlice, 0),
