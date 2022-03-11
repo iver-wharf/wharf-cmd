@@ -18,7 +18,7 @@ var listOptionsMatchLabels = metav1.ListOptions{
 }
 
 var podInitCloneArgs = []string{"git", "clone"}
-var podContainerListArgs = []string{"/bin/sh", "-c", "ls -alh"}
+var podContainerListArgs = []string{"/bin/sh", "-c", "go install", "&&", "wharf-cmd run"}
 
 type k8sProvisioner struct {
 	Namespace  string
