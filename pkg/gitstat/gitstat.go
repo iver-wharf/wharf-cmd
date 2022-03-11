@@ -35,6 +35,13 @@ type Stats struct {
 	CommitComitterDate string
 	CommitAuthorDate   string
 	Revision           int
+	Remotes            map[string]Remote
+}
+
+// Remote is a Git remote, containing the fetch and pull URLs.
+type Remote struct {
+	FetchURL string
+	PushURL  string
 }
 
 // IsGitRepoFS checks recursively upwards if a directory is inside a Git
@@ -81,11 +88,17 @@ func FromExec(dir string) (Stats, error) {
 		return Stats{}, err
 	}
 
-	commitInfo, err := execGitCmd(dir, "log", "-n", "1", "HEAD", "--format=%H%n%h%n%s%n%aI%n%cI")
+	// %n: newline
+	// %H: long SHA hash
+	// %h: short SHA hash
+	// %s: oneline summary from commit message
+	// %aI: author date (ISO 8601 formatted)
+	// %cI: committer date (ISO 8601 formatted)
+	commitInfo, err := execGitCmdLines(dir,
+		"log", "-n", "1", "HEAD", "--format=%H%n%h%n%s%n%aI%n%cI")
 	if err != nil {
 		return Stats{}, err
 	}
-	commitInfoSlice := strings.Split(commitInfo, "\n")
 
 	revisionStr, err := execGitCmd(dir, "rev-list", "--count", "HEAD")
 	if err != nil {
@@ -96,27 +109,29 @@ func FromExec(dir string) (Stats, error) {
 		return Stats{}, err
 	}
 
-	tags, err := execGitCmd(dir, "tag", "--sort=-taggerdate", "--points-at")
+	tags, err := execGitCmdLines(dir, "tag", "--sort=-taggerdate", "--points-at")
 	if err != nil {
 		return Stats{}, err
 	}
-	tags = strings.TrimSpace(tags)
-	var tagsSlice []string
-	if tags != "" {
-		tagsSlice = strings.Split(tags, "\n")
+
+	remotesStrs, err := execGitCmdLines(dir, "remote", "--verbose", "show", "-n")
+	if err != nil {
+		return Stats{}, err
 	}
+	remotes := parseRemotes(remotesStrs)
 
 	return Stats{
 		CurrentBranch:      currentBranch,
 		CurrentBranchSafe:  strings.ReplaceAll(currentBranch, "/", "-"),
-		CommitHash:         safeGetTrimmed(commitInfoSlice, 0),
-		CommitShortHash:    safeGetTrimmed(commitInfoSlice, 1),
-		CommitSubject:      safeGetTrimmed(commitInfoSlice, 2),
-		CommitAuthorDate:   safeGetTrimmed(commitInfoSlice, 3),
-		CommitComitterDate: safeGetTrimmed(commitInfoSlice, 4),
+		CommitHash:         safeGetTrimmed(commitInfo, 0),
+		CommitShortHash:    safeGetTrimmed(commitInfo, 1),
+		CommitSubject:      safeGetTrimmed(commitInfo, 2),
+		CommitAuthorDate:   safeGetTrimmed(commitInfo, 3),
+		CommitComitterDate: safeGetTrimmed(commitInfo, 4),
 		Revision:           int(revision),
-		Tags:               tagsSlice,
-		LatestTag:          safeGetTrimmed(tagsSlice, 0),
+		Tags:               tags,
+		LatestTag:          safeGetTrimmed(tags, 0),
+		Remotes:            remotes,
 	}, nil
 }
 
@@ -125,6 +140,38 @@ func safeGetTrimmed(slice []string, index int) string {
 		return ""
 	}
 	return strings.TrimSpace(slice[index])
+}
+
+func parseRemotes(strs []string) map[string]Remote {
+	remotes := make(map[string]Remote)
+	for _, line := range strs {
+		var name, url, kind string
+		_, err := fmt.Sscanf(line, "%s\t%s %s", &name, &url, &kind)
+		if err != nil {
+			continue
+		}
+		r := remotes[name]
+		switch kind {
+		case "(fetch)":
+			r.FetchURL = url
+		case "(push)":
+			r.PushURL = url
+		}
+		remotes[name] = r
+	}
+	return remotes
+}
+
+func execGitCmdLines(dir string, args ...string) ([]string, error) {
+	output, err := execGitCmd(dir, args...)
+	if err != nil {
+		return nil, err
+	}
+	output = strings.TrimSpace(output)
+	if output == "" {
+		return nil, nil
+	}
+	return strings.Split(output, "\n"), nil
 }
 
 func execGitCmd(dir string, args ...string) (string, error) {
