@@ -84,8 +84,8 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
-		server.Close()
-		return nil
+		time.Sleep(10 * time.Second)
+		return server.Close()
 	},
 }
 
