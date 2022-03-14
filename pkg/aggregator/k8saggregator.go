@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
@@ -78,81 +79,31 @@ type k8sAggregator struct {
 	upgrader    spdy.Upgrader
 	httpClient  *http.Client
 	wharfClient wharfapi.Client
+
+	curPods     *v1.PodList
+	checkedPods map[string]bool
 }
 
 func (a k8sAggregator) Serve() error {
 	log.Info().Message("Aggregator started")
-	podList, err := a.listMatchingPods(context.Background())
+	var err error
+	a.checkedPods = make(map[string]bool)
+	a.curPods, err = a.listMatchingPods(context.Background())
 	if err != nil {
 		return err
 	}
 
-	for _, pod := range podList.Items {
-		port, connCloser, err := a.connect(pod.Namespace, pod.Name)
-		if err != nil {
-			return err
+	for {
+		time.Sleep(time.Second)
+		for _, pod := range a.curPods.Items {
+			if _, exists := a.checkedPods[string(pod.UID)]; exists {
+				continue
+			}
+			if err := a.streamToWharfDB(&pod); err != nil {
+				return err
+			}
+			a.checkedPods[string(pod.UID)] = true
 		}
-
-		client, err := workerclient.New(fmt.Sprintf("http://127.0.0.1:%d", port.Local), workerclient.Options{
-			InsecureSkipVerify: true,
-		})
-
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-
-			outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
-			stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
-			if err != nil {
-				log.Error().WithError(err).Message("Fetching stream failed.")
-				return
-			}
-			for line, err := stream.Recv(); err == nil; line, err = stream.Recv() {
-				outStream.Send(request.Log{
-					BuildID:      uint(line.BuildID),
-					WorkerLogID:  uint(line.LogID),
-					WorkerStepID: uint(line.StepID),
-					Timestamp:    line.GetTimestamp().AsTime(),
-					Message:      line.GetMessage(),
-				})
-			}
-
-			summary, err := outStream.CloseAndRecv()
-			if err != nil {
-				log.Error().WithError(err).Message("Close and Recv failed.")
-			}
-			log.Debug().WithUint("logsInserted", summary.LogsInserted).Message("Sent logs to DB.")
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
-			if err != nil {
-				log.Error().WithError(err).Message("Fetching stream failed.")
-				return
-			}
-			for artifactEvent, err := stream.Recv(); err == nil; artifactEvent, err = stream.Recv() {
-				log.Info().WithStringer("artifactEvent", artifactEvent).Message("")
-			}
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
-			if err != nil {
-				log.Error().WithError(err).Message("Fetching stream failed.")
-				return
-			}
-			for statusEvent, err := stream.Recv(); err == nil; statusEvent, err = stream.Recv() {
-				log.Info().WithStringer("statusEvent", statusEvent).Message("")
-			}
-		}()
-
-		wg.Wait()
-
-		client.Close()
-		connCloser()
 	}
 
 	log.Info().Message("Aggregator ended")
@@ -206,4 +157,74 @@ func (a k8sAggregator) connect(namespace, podName string) (*portforward.Forwarde
 	}
 
 	return &ports[0], closerFunc, nil
+}
+
+func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
+	port, connCloser, err := a.connect(pod.Namespace, pod.Name)
+	if err != nil {
+		return err
+	}
+
+	client, err := workerclient.New(fmt.Sprintf("http://127.0.0.1:%d", port.Local), workerclient.Options{
+		InsecureSkipVerify: true,
+	})
+
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
+		stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
+		if err != nil {
+			log.Error().WithError(err).Message("Fetching stream failed.")
+			return
+		}
+		for line, err := stream.Recv(); err == nil; line, err = stream.Recv() {
+			outStream.Send(request.Log{
+				BuildID:      uint(line.BuildID),
+				WorkerLogID:  uint(line.LogID),
+				WorkerStepID: uint(line.StepID),
+				Timestamp:    line.GetTimestamp().AsTime(),
+				Message:      line.GetMessage(),
+			})
+		}
+
+		summary, err := outStream.CloseAndRecv()
+		if err != nil {
+			log.Error().WithError(err).Message("Close and Recv failed.")
+		}
+		log.Debug().WithUint("logsInserted", summary.LogsInserted).Message("Sent logs to DB.")
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
+		if err != nil {
+			log.Error().WithError(err).Message("Fetching stream failed.")
+			return
+		}
+		for artifactEvent, err := stream.Recv(); err == nil; artifactEvent, err = stream.Recv() {
+			log.Info().WithStringer("artifactEvent", artifactEvent).Message("")
+		}
+	}()
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
+		if err != nil {
+			log.Error().WithError(err).Message("Fetching stream failed.")
+			return
+		}
+		for statusEvent, err := stream.Recv(); err == nil; statusEvent, err = stream.Recv() {
+			log.Info().WithStringer("statusEvent", statusEvent).Message("")
+		}
+	}()
+
+	wg.Wait()
+
+	client.Close()
+	connCloser()
+
+	return nil
 }
