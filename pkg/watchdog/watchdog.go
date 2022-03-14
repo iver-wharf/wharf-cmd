@@ -9,7 +9,7 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisionerclient"
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
@@ -231,10 +231,10 @@ func (wd *watchdog) getRunningWorkers() ([]provisioner.Worker, error) {
 	var runningWorkers []provisioner.Worker
 	for _, w := range allWorkers {
 		switch w.Status {
-		case worker.StatusInitializing,
-			worker.StatusScheduling,
-			worker.StatusRunning,
-			worker.StatusNone:
+		case workermodel.StatusInitializing,
+			workermodel.StatusScheduling,
+			workermodel.StatusRunning,
+			workermodel.StatusNone:
 			allWorkers = append(allWorkers, w)
 		}
 	}

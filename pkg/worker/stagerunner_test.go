@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,9 +42,9 @@ func (r mockStepRunner) RunStep(ctx context.Context) StepResult {
 	if r.wait {
 		select {
 		case <-ctx.Done():
-			result.Status = StatusCancelled
+			result.Status = workermodel.StatusCancelled
 		case <-time.After(time.Second):
-			result.Status = StatusUnknown
+			result.Status = workermodel.StatusUnknown
 		}
 	}
 	return result
@@ -51,9 +52,9 @@ func (r mockStepRunner) RunStep(ctx context.Context) StepResult {
 
 func TestStageRunner_runAllSuccess(t *testing.T) {
 	factory := mockStepRunFactory{runners: map[string]mockStepRunner{
-		"foo": {result: StepResult{Status: StatusSuccess}},
-		"bar": {result: StepResult{Status: StatusSuccess}},
-		"moo": {result: StepResult{Status: StatusSuccess}},
+		"foo": {result: StepResult{Status: workermodel.StatusSuccess}},
+		"bar": {result: StepResult{Status: workermodel.StatusSuccess}},
+		"moo": {result: StepResult{Status: workermodel.StatusSuccess}},
 	}}
 	stage := wharfyml.Stage{
 		Name: "doesnt-matter",
@@ -66,7 +67,7 @@ func TestStageRunner_runAllSuccess(t *testing.T) {
 	b, err := newStageRunner(context.Background(), factory, stage)
 	require.NoError(t, err)
 	result := b.RunStage(context.Background())
-	assert.Equal(t, StatusSuccess, result.Status)
+	assert.Equal(t, workermodel.StatusSuccess, result.Status)
 
 	gotNames := getNamesFromStepResults(result.Steps)
 	wantNames := []string{"foo", "bar", "moo"}
@@ -75,9 +76,9 @@ func TestStageRunner_runAllSuccess(t *testing.T) {
 
 func TestStageRunner_runOneFailsOthersCancelled(t *testing.T) {
 	factory := mockStepRunFactory{runners: map[string]mockStepRunner{
-		"foo": {result: StepResult{Status: StatusFailed}, wait: true},
-		"bar": {result: StepResult{Status: StatusFailed}, wait: true},
-		"moo": {result: StepResult{Status: StatusFailed}, wait: false},
+		"foo": {result: StepResult{Status: workermodel.StatusFailed}, wait: true},
+		"bar": {result: StepResult{Status: workermodel.StatusFailed}, wait: true},
+		"moo": {result: StepResult{Status: workermodel.StatusFailed}, wait: false},
 	}}
 	stage := wharfyml.Stage{
 		Name: "doesnt-matter",
@@ -90,17 +91,17 @@ func TestStageRunner_runOneFailsOthersCancelled(t *testing.T) {
 	b, err := newStageRunner(context.Background(), factory, stage)
 	require.NoError(t, err)
 	result := b.RunStage(context.Background())
-	assert.Equal(t, StatusFailed, result.Status)
+	assert.Equal(t, workermodel.StatusFailed, result.Status)
 
 	gotNames := getNamesFromStepResults(result.Steps)
 	wantNames := []string{"foo", "bar", "moo"}
 	assert.ElementsMatch(t, wantNames, gotNames)
 
 	gotStatuses := getStatusesFromStepResults(result.Steps)
-	wantStatuses := map[string]Status{
-		"foo": StatusCancelled,
-		"bar": StatusCancelled,
-		"moo": StatusFailed,
+	wantStatuses := map[string]workermodel.Status{
+		"foo": workermodel.StatusCancelled,
+		"bar": workermodel.StatusCancelled,
+		"moo": workermodel.StatusFailed,
 	}
 	assert.Equal(t, wantStatuses, gotStatuses)
 }
@@ -113,8 +114,8 @@ func getNamesFromStepResults(steps []StepResult) []string {
 	return names
 }
 
-func getStatusesFromStepResults(steps []StepResult) map[string]Status {
-	statuses := make(map[string]Status)
+func getStatusesFromStepResults(steps []StepResult) map[string]workermodel.Status {
+	statuses := make(map[string]workermodel.Status)
 	for _, step := range steps {
 		statuses[step.Name] = step.Status
 	}

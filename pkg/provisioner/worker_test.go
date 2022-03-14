@@ -3,7 +3,7 @@ package provisioner
 import (
 	"testing"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,7 +42,7 @@ func TestConvertPodToWorker_Status(t *testing.T) {
 	testCases := []struct {
 		name string
 		pod  v1.Pod
-		want worker.Status
+		want workermodel.Status
 	}{
 		{
 			name: "scheduling",
@@ -51,7 +51,7 @@ func TestConvertPodToWorker_Status(t *testing.T) {
 					Type:   v1.PodScheduled,
 					Status: v1.ConditionTrue,
 				}}}),
-			want: worker.StatusScheduling,
+			want: workermodel.StatusScheduling,
 		},
 		{
 			name: "initializing",
@@ -61,7 +61,7 @@ func TestConvertPodToWorker_Status(t *testing.T) {
 						Running: &v1.ContainerStateRunning{},
 					},
 				}}}),
-			want: worker.StatusInitializing,
+			want: workermodel.StatusInitializing,
 		},
 		{
 			name: "running",
@@ -71,27 +71,27 @@ func TestConvertPodToWorker_Status(t *testing.T) {
 						Running: &v1.ContainerStateRunning{},
 					},
 				}}}),
-			want: worker.StatusRunning,
+			want: workermodel.StatusRunning,
 		},
 		{
 			name: "success",
 			pod:  makeTestPodWithPhase(v1.PodSucceeded),
-			want: worker.StatusSuccess,
+			want: workermodel.StatusSuccess,
 		},
 		{
 			name: "failed",
 			pod:  makeTestPodWithPhase(v1.PodFailed),
-			want: worker.StatusFailed,
+			want: workermodel.StatusFailed,
 		},
 		{
 			name: "unknown_explicit",
 			pod:  makeTestPodWithPhase(v1.PodUnknown),
-			want: worker.StatusUnknown,
+			want: workermodel.StatusUnknown,
 		},
 		{
 			name: "unknown_implicit",
 			pod:  makeTestPod(v1.PodStatus{}),
-			want: worker.StatusUnknown,
+			want: workermodel.StatusUnknown,
 		},
 	}
 
@@ -138,17 +138,17 @@ func TestConvertPodsToWorkers(t *testing.T) {
 		{
 			ID:     "first-uid-420",
 			Name:   "first-namespace/first-name",
-			Status: worker.StatusUnknown,
+			Status: workermodel.StatusUnknown,
 		},
 		{
 			ID:     "second-uid-420",
 			Name:   "first-namespace/second-name",
-			Status: worker.StatusUnknown,
+			Status: workermodel.StatusUnknown,
 		},
 		{
 			ID:     "third-uid-420",
 			Name:   "second-namespace/third-name",
-			Status: worker.StatusUnknown,
+			Status: workermodel.StatusUnknown,
 		},
 	}
 	gotWorkers := convertPodsToWorkers(pods)

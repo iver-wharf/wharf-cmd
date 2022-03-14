@@ -5,7 +5,7 @@ import (
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -130,21 +130,21 @@ func ConvertToStreamStatusEventsResponse(update resultstore.StatusUpdate) *v1.St
 	}
 }
 
-func convertToStreamStatusEventsResponseStatus(status worker.Status) v1.StreamStatusEventsResponseStatus {
+func convertToStreamStatusEventsResponseStatus(status workermodel.Status) v1.StreamStatusEventsResponseStatus {
 	switch status {
-	case worker.StatusNone:
+	case workermodel.StatusNone:
 		return v1.StreamStatusEventsResponsePending
-	case worker.StatusScheduling:
+	case workermodel.StatusScheduling:
 		return v1.StreamStatusEventsResponseScheduling
-	case worker.StatusInitializing:
+	case workermodel.StatusInitializing:
 		return v1.StreamStatusEventsResponseInitializing
-	case worker.StatusRunning:
+	case workermodel.StatusRunning:
 		return v1.StreamStatusEventsResponseRunning
-	case worker.StatusSuccess:
+	case workermodel.StatusSuccess:
 		return v1.StreamStatusEventsResponseSuccess
-	case worker.StatusFailed:
+	case workermodel.StatusFailed:
 		return v1.StreamStatusEventsResponseFailed
-	case worker.StatusCancelled:
+	case workermodel.StatusCancelled:
 		return v1.StreamStatusEventsResponseCancelled
 	default:
 		return v1.StreamStatusEventsResponseUnspecified

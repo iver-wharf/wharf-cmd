@@ -7,6 +7,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -70,7 +71,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
 			WithStringer("status", res.Status).
 			Message("Done with build.")
-		if res.Status != worker.StatusSuccess {
+		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
 		return nil

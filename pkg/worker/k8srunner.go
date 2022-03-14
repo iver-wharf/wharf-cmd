@@ -11,6 +11,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -105,12 +106,12 @@ func (r k8sStepRunner) Step() wharfyml.Step {
 func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	ctx = contextWithStepName(ctx, r.step.Name)
 	start := time.Now()
-	status := StatusSuccess
+	status := workermodel.StatusSuccess
 	err := r.runStepError(ctx)
 	if errors.Is(err, context.Canceled) {
-		status = StatusCancelled
+		status = workermodel.StatusCancelled
 	} else if err != nil {
-		status = StatusFailed
+		status = workermodel.StatusFailed
 	}
 	return StepResult{
 		Name:     r.step.Name,
