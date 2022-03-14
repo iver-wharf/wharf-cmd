@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
@@ -28,8 +29,8 @@ var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 
 // NewK8s is a helper function that creates a new builder using the
 // NewK8sStepRunnerFactory.
-func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config, opts BuildOptions) (Builder, error) {
-	stageFactory, err := NewK8sStageRunnerFactory(namespace, restConfig)
+func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config, store resultstore.Store, opts BuildOptions) (Builder, error) {
+	stageFactory, err := NewK8sStageRunnerFactory(namespace, restConfig, store)
 	if err != nil {
 		return nil, err
 	}
@@ -38,8 +39,8 @@ func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, rest
 
 // NewK8sStageRunnerFactory is a helper function that creates a new stage runner
 // factory using the NewK8sStepRunnerFactory.
-func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config) (StageRunnerFactory, error) {
-	stepFactory, err := NewK8sStepRunnerFactory(namespace, restConfig)
+func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config, store resultstore.Store) (StageRunnerFactory, error) {
+	stepFactory, err := NewK8sStepRunnerFactory(namespace, restConfig, store)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +50,7 @@ func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config) (StageR
 // NewK8sStepRunnerFactory returns a new step runner factory that creates
 // step runners with implementation that targets Kubernetes using a specific
 // Kubernetes namespace and REST config.
-func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config) (StepRunnerFactory, error) {
+func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config, store resultstore.Store) (StepRunnerFactory, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -58,6 +59,7 @@ func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config) (StepRun
 		namespace:  namespace,
 		restConfig: restConfig,
 		clientset:  clientset,
+		store:      store,
 	}, nil
 }
 
@@ -65,10 +67,11 @@ type k8sStepRunnerFactory struct {
 	namespace  string
 	restConfig *rest.Config
 	clientset  *kubernetes.Clientset
+	store      resultstore.Store
 }
 
 func (f k8sStepRunnerFactory) NewStepRunner(
-	ctx context.Context, step wharfyml.Step) (StepRunner, error) {
+	ctx context.Context, step wharfyml.Step, stepID int) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
 	pod, err := getPodSpec(ctx, step)
 	if err != nil {
@@ -77,11 +80,13 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 	r := k8sStepRunner{
 		log:        logger.NewScoped(contextStageStepName(ctx)),
 		step:       step,
+		stepID:     stepID,
 		pod:        &pod,
 		namespace:  f.namespace,
 		restConfig: f.restConfig,
 		clientset:  f.clientset,
 		pods:       f.clientset.CoreV1().Pods(f.namespace),
+		store:      f.store,
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
@@ -97,6 +102,9 @@ type k8sStepRunner struct {
 	restConfig *rest.Config
 	clientset  *kubernetes.Clientset
 	pods       corev1.PodInterface
+	store      resultstore.Store
+
+	stepID int
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -264,6 +272,7 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	}
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
+	writer, err := r.store.OpenLogWriter(uint64(r.stepID))
 	for scanner.Scan() {
 		txt := scanner.Text()
 		idx := strings.LastIndexByte(txt, '\r')
@@ -271,6 +280,7 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 			txt = txt[idx+1:]
 		}
 		r.log.Info().Message(txt)
+		writer.WriteLogLine(txt)
 	}
 	return scanner.Err()
 }

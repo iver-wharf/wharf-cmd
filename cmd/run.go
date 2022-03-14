@@ -5,9 +5,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -55,13 +57,21 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return errors.New("failed to parse .wharf-ci.yml")
 		}
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
-		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, worker.BuildOptions{
+		store := resultstore.NewStore(resultstore.NewFS("/tmp/store"))
+		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
 		if err != nil {
 			return err
 		}
 		log.Debug().Message("Successfully created builder.")
+
+		server := workerserver.New(store, nil)
+		go func() {
+			if err := server.Serve("0.0.0.0:5010"); err != nil {
+				log.Error().WithError(err).Message("Error occurred during serving.")
+			}
+		}()
 		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
 		if err != nil {
@@ -74,6 +84,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
+		server.Close()
 		return nil
 	},
 }
