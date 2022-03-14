@@ -2,3 +2,5 @@ build:
   test-wharfable:
     container:
       image: golang:latest
+      cmds:
+        - sleep 1
