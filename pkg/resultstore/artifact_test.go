@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -129,7 +129,7 @@ func TestStore_AddArtifactEventFirst(t *testing.T) {
 		},
 	})
 	const stepID uint64 = 1
-	err := s.AddArtifactEvent(stepID, worker.ArtifactMeta{Name: "artifact-1"})
+	err := s.AddArtifactEvent(stepID, workermodel.ArtifactMeta{Name: "artifact-1"})
 	require.NoError(t, err)
 	want := `
 {
@@ -164,7 +164,7 @@ func TestStore_AddArtifactEventSecond(t *testing.T) {
 		},
 	})
 	const stepID uint64 = 1
-	err := s.AddArtifactEvent(stepID, worker.ArtifactMeta{Name: "artifact-2"})
+	err := s.AddArtifactEvent(stepID, workermodel.ArtifactMeta{Name: "artifact-2"})
 	require.NoError(t, err)
 	want := `
 {
@@ -295,7 +295,7 @@ func TestStore_PubSubArtifactEvents(t *testing.T) {
 	const buffer = 1
 	const stepID uint64 = 1
 	ch := subArtifactEventsNoErr(t, s, buffer)
-	err := s.AddArtifactEvent(stepID, worker.ArtifactMeta{Name: "artifact-1"})
+	err := s.AddArtifactEvent(stepID, workermodel.ArtifactMeta{Name: "artifact-1"})
 	require.NoError(t, err)
 
 	select {

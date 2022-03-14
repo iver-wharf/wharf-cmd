@@ -8,14 +8,14 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 )
 
 var (
 	fileNameStatusUpdates = "status.json"
 )
 
-func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error {
+func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error {
 	s.statusMutex.Lock(stepID)
 	defer s.statusMutex.Unlock(stepID)
 	list, err := s.readStatusUpdatesFile(stepID)

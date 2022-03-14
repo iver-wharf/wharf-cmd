@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -46,19 +46,19 @@ func TestStore_ReadStatusUpdatesFile(t *testing.T) {
 				StepID:    stepID,
 				UpdateID:  1,
 				Timestamp: wantTime,
-				Status:    worker.StatusScheduling,
+				Status:    workermodel.StatusScheduling,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  2,
 				Timestamp: wantTime,
-				Status:    worker.StatusRunning,
+				Status:    workermodel.StatusRunning,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  3,
 				Timestamp: wantTime,
-				Status:    worker.StatusFailed,
+				Status:    workermodel.StatusFailed,
 			},
 		},
 	}
@@ -81,19 +81,19 @@ func TestStore_WriteStatusUpdatesFile(t *testing.T) {
 				StepID:    stepID,
 				UpdateID:  1,
 				Timestamp: sampleTime,
-				Status:    worker.StatusScheduling,
+				Status:    workermodel.StatusScheduling,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  2,
 				Timestamp: sampleTime,
-				Status:    worker.StatusRunning,
+				Status:    workermodel.StatusRunning,
 			},
 			{
 				StepID:    stepID,
 				UpdateID:  3,
 				Timestamp: sampleTime,
-				Status:    worker.StatusFailed,
+				Status:    workermodel.StatusFailed,
 			},
 		},
 	}
@@ -140,7 +140,7 @@ func TestStore_AddStatusUpdateFirst(t *testing.T) {
 		},
 	})
 	const stepID uint64 = 1
-	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
+	err := s.AddStatusUpdate(stepID, sampleTime, workermodel.StatusCancelled)
 	require.NoError(t, err)
 	want := fmt.Sprintf(`
 {
@@ -176,7 +176,7 @@ func TestStore_AddStatusUpdateSecond(t *testing.T) {
 		},
 	})
 	const stepID uint64 = 1
-	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
+	err := s.AddStatusUpdate(stepID, sampleTime, workermodel.StatusCancelled)
 	require.NoError(t, err)
 	want := fmt.Sprintf(`
 {
@@ -215,17 +215,17 @@ func TestStore_AddStatusUpdateSkipIfSameStatus(t *testing.T) {
 			return nil, errors.New("should not write")
 		},
 	})
-	err := s.AddStatusUpdate(1, time.Now(), worker.StatusCancelled)
+	err := s.AddStatusUpdate(1, time.Now(), workermodel.StatusCancelled)
 	require.NoError(t, err)
 }
 
 func TestStore_SubStatusUpdatesSendsAllOldStatuses(t *testing.T) {
 	updates1 := []StatusUpdate{
-		{StepID: 1, UpdateID: 1, Status: worker.StatusCancelled},
+		{StepID: 1, UpdateID: 1, Status: workermodel.StatusCancelled},
 	}
 	updates2 := []StatusUpdate{
-		{StepID: 2, UpdateID: 1, Status: worker.StatusRunning},
-		{StepID: 2, UpdateID: 2, Status: worker.StatusSuccess},
+		{StepID: 2, UpdateID: 1, Status: workermodel.StatusRunning},
+		{StepID: 2, UpdateID: 2, Status: workermodel.StatusSuccess},
 	}
 	oldLists := map[string]StatusList{
 		filepath.Join(dirNameSteps, "1", fileNameStatusUpdates): {
@@ -329,7 +329,7 @@ func TestStore_PubSubStatusUpdates(t *testing.T) {
 	const buffer = 1
 	const stepID uint64 = 1
 	ch := subStatusUpdatesNoErr(t, s, buffer)
-	err := s.AddStatusUpdate(stepID, sampleTime, worker.StatusCancelled)
+	err := s.AddStatusUpdate(stepID, sampleTime, workermodel.StatusCancelled)
 	require.NoError(t, err)
 
 	select {
@@ -338,7 +338,7 @@ func TestStore_PubSubStatusUpdates(t *testing.T) {
 		want := StatusUpdate{
 			StepID:    stepID,
 			UpdateID:  1,
-			Status:    worker.StatusCancelled,
+			Status:    workermodel.StatusCancelled,
 			Timestamp: sampleTime,
 		}
 		assert.Equal(t, want, got)

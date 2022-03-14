@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -14,7 +14,7 @@ import (
 type Worker struct {
 	ID        string
 	Name      string
-	Status    worker.Status
+	Status    workermodel.Status
 	CreatedAt time.Time
 }
 
@@ -30,19 +30,19 @@ func convertPodToWorker(pod *v1.Pod) Worker {
 	if pod == nil {
 		return Worker{}
 	}
-	var status worker.Status = worker.StatusUnknown
+	var status workermodel.Status = workermodel.StatusUnknown
 	if pod.Status.Phase == v1.PodUnknown {
-		status = worker.StatusUnknown
+		status = workermodel.StatusUnknown
 	} else if pod.Status.Phase == v1.PodSucceeded {
-		status = worker.StatusSuccess
+		status = workermodel.StatusSuccess
 	} else if pod.Status.Phase == v1.PodFailed {
-		status = worker.StatusFailed
+		status = workermodel.StatusFailed
 	} else if anyContainerIsRunning(pod.Status.InitContainerStatuses) {
-		status = worker.StatusInitializing
+		status = workermodel.StatusInitializing
 	} else if anyContainerIsRunning(pod.Status.ContainerStatuses) {
-		status = worker.StatusRunning
+		status = workermodel.StatusRunning
 	} else if podConditionIsTrue(pod.Status.Conditions, v1.PodScheduled) {
-		status = worker.StatusScheduling
+		status = workermodel.StatusScheduling
 	}
 
 	return Worker{
