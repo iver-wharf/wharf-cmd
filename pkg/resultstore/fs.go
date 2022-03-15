@@ -36,11 +36,11 @@ type osFS struct {
 }
 
 func (fs osFS) OpenAppend(name string) (io.WriteCloser, error) {
-	return os.OpenFile(filepath.Join(fs.dir, name), os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	return fs.openFileMkdirAll(name, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 }
 
 func (fs osFS) OpenWrite(name string) (io.WriteCloser, error) {
-	return os.OpenFile(filepath.Join(fs.dir, name), os.O_WRONLY|os.O_CREATE, 0644)
+	return fs.openFileMkdirAll(name, os.O_WRONLY|os.O_CREATE, 0644)
 }
 
 func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
@@ -49,4 +49,13 @@ func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
 
 func (fs osFS) ListDirEntries(name string) ([]fs.DirEntry, error) {
 	return os.ReadDir(name)
+}
+
+func (fs osFS) openFileMkdirAll(name string, flags int, perm fs.FileMode) (io.WriteCloser, error) {
+	path := filepath.Join(fs.dir, name)
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		dir, _ := filepath.Split(path)
+		os.MkdirAll(dir, perm)
+	}
+	return os.OpenFile(path, flags, perm)
 }

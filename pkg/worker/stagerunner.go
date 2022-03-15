@@ -24,15 +24,15 @@ type stageRunnerFactory struct {
 
 // NewStageRunner returns a new StageRunner that uses the provided StepRunner to
 // run the steps in parallel.
-func (f stageRunnerFactory) NewStageRunner(ctx context.Context, stage wharfyml.Stage, startStepID int) (StageRunner, error) {
+func (f stageRunnerFactory) NewStageRunner(ctx context.Context, stage wharfyml.Stage, startStepID uint64) (StageRunner, error) {
 	return newStageRunner(ctx, f.stepRunFactory, stage, startStepID)
 }
 
-func newStageRunner(ctx context.Context, stepRunFactory StepRunnerFactory, stage wharfyml.Stage, startStepID int) (StageRunner, error) {
+func newStageRunner(ctx context.Context, stepRunFactory StepRunnerFactory, stage wharfyml.Stage, startStepID uint64) (StageRunner, error) {
 	ctx = contextWithStageName(ctx, stage.Name)
 	stepRunners := make([]StepRunner, len(stage.Steps))
 	for i, step := range stage.Steps {
-		r, err := stepRunFactory.NewStepRunner(ctx, step, startStepID+i)
+		r, err := stepRunFactory.NewStepRunner(ctx, step, startStepID+uint64(i))
 		if err != nil {
 			return nil, fmt.Errorf("step %s: %w", step.Name, err)
 		}

@@ -71,7 +71,7 @@ type k8sStepRunnerFactory struct {
 }
 
 func (f k8sStepRunnerFactory) NewStepRunner(
-	ctx context.Context, step wharfyml.Step, stepID int) (StepRunner, error) {
+	ctx context.Context, step wharfyml.Step, stepID uint64) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
 	pod, err := getPodSpec(ctx, step)
 	if err != nil {
@@ -104,7 +104,7 @@ type k8sStepRunner struct {
 	pods       corev1.PodInterface
 	store      resultstore.Store
 
-	stepID int
+	stepID uint64
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -169,7 +169,6 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
-
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
 	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
@@ -273,6 +272,9 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
 	writer, err := r.store.OpenLogWriter(uint64(r.stepID))
+	if err != nil {
+		r.log.Error().WithError(err).Message("Error occurred when opening log writer. No logs will be written.")
+	}
 	for scanner.Scan() {
 		txt := scanner.Text()
 		idx := strings.LastIndexByte(txt, '\r')
@@ -280,7 +282,11 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 			txt = txt[idx+1:]
 		}
 		r.log.Info().Message(txt)
-		writer.WriteLogLine(txt)
+		if writer != nil {
+			if err := writer.WriteLogLine(txt); err != nil {
+				r.log.Error().WithError(err).Message("Error occurred when writing log line.")
+			}
+		}
 	}
 	return scanner.Err()
 }
