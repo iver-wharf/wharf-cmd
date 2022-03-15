@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	builtInVarsConfFile = "wharf-vars.yml"
-	builtInVarsDotfile  = ".wharf-vars.yml"
+	builtInVarsFile    = "wharf-vars.yml"
+	builtInVarsDotfile = ".wharf-vars.yml"
 )
 
 func ParseBuiltinVars() (varsub.Source, error) {
@@ -24,7 +24,7 @@ func listPossibleBuiltinVarsFiles(currentDir string) []string {
 	confDir, err := os.UserConfigDir()
 	if err == nil {
 		paths = append(paths,
-			filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsConfFile),
+			filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
 		)
 	}
 

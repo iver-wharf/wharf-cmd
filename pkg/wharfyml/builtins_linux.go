@@ -2,6 +2,6 @@ package wharfyml
 
 func listOSPossibleBuiltInVars() []string {
 	return []string{
-		"/etc/iver-wharf/wharf-cmd/" + builtInVarsConfFile,
+		"/etc/iver-wharf/wharf-cmd/" + builtInVarsFile,
 	}
 }
