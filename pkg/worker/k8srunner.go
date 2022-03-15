@@ -187,7 +187,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	}
 
 	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
-	if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{Follow: true}); err != nil {
+	if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{Follow: true, Timestamps: true}); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Logs ended. Waiting for termination.")
