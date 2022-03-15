@@ -273,7 +273,7 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	scanner := bufio.NewScanner(readCloser)
 	writer, err := r.store.OpenLogWriter(uint64(r.stepID))
 	if err != nil {
-		r.log.Error().WithError(err).Message("Error occurred when opening log writer. No logs will be written.")
+		r.log.Error().WithError(err).Message("Failed to open log writer. No logs will be written.")
 	}
 	for scanner.Scan() {
 		txt := scanner.Text()

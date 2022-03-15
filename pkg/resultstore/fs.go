@@ -54,7 +54,7 @@ func (fs osFS) ListDirEntries(name string) ([]fs.DirEntry, error) {
 func (fs osFS) openFileMkdirAll(name string, flags int, perm fs.FileMode) (io.WriteCloser, error) {
 	path := filepath.Join(fs.dir, name)
 	if _, err := os.Stat(path); os.IsNotExist(err) {
-		dir, _ := filepath.Split(path)
+		dir := filepath.Dir(path)
 		os.MkdirAll(dir, perm)
 	}
 	return os.OpenFile(path, flags, perm)
