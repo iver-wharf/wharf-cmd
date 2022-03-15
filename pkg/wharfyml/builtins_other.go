@@ -3,6 +3,6 @@
 
 package wharfyml
 
-func listOSPossibleBuiltInVars() []string {
+func listOSPossibleVarsFiles() []varFile {
 	return nil
 }

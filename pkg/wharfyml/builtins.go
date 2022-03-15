@@ -1,12 +1,15 @@
 package wharfyml
 
 import (
-	"errors"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/internal/slices"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -14,29 +17,135 @@ const (
 	builtInVarsDotfile = ".wharf-vars.yml"
 )
 
-func ParseBuiltinVars() (varsub.Source, error) {
-	return nil, errors.New("not implemented")
+// ParseVarFiles produces a varsub.Source of *yaml.Node values. The files it
+// checks depends on your OS.
+//
+// For GNU/Linux:
+// 	$XDG_CONFIG_HOME/iver-wharf/wharf-cmd/wharf-vars.yml
+// 	(if $XDG_CONFIG_HOME is unset) $HOME/.config/iver-wharf/wharf-cmd/wharf-vars.yml
+// 	/etc/iver-wharf/wharf-cmd/wharf-vars.yml
+//
+// For Windows:
+// 	%APPDATA%\iver-wharf\wharf-cmd\wharf-vars.yml
+//
+// For Darwin (Mac OS X):
+// 	$HOME/Library/Application Support/iver-wharf/wharf-cmd/wharf-vars.yml
+//
+// In addition, this function also checks the current directory and parent
+// directories above it, recursively, for a dotfile variant (.wharf-vars.yml):
+// 	./.wharf-vars.yml
+// 	../.wharf-vars.yml
+// 	../../.wharf-vars.yml
+// 	../../..(etc)/.wharf-vars.yml
+func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
+	varFiles := listPossibleVarsFiles(currentDir)
+	var errSlice Errors
+	nodeVarSource := make(varsub.SourceMap)
+	for _, varFile := range varFiles {
+		items, errs := tryReadVarsFileNodes(varFile.path)
+		errSlice = append(errSlice,
+			wrapPathErrorSlice(errs, varFile.prettyPath(currentDir))...)
+		for _, item := range items {
+			nodeVarSource[item.key.value] = item.value
+		}
+	}
+	return nodeVarSource, errSlice
 }
 
-func listPossibleBuiltinVarsFiles(currentDir string) []string {
-	paths := listOSPossibleBuiltInVars()
+func tryReadVarsFileNodes(path string) ([]mapItem, Errors) {
+	file, err := os.Open(path)
+	if err != nil {
+		// Silently ignore. Could not exist, be a directory, or not readable.
+		// We don't care either way. We can't read it, so we ignore it.
+		return nil, nil
+	}
+	defer file.Close()
+	return parseVarsFileNodes(file)
+}
+
+func parseVarsFileNodes(reader io.Reader) ([]mapItem, Errors) {
+	rootNodes, err := decodeRootNodes(reader)
+	if err != nil {
+		return nil, Errors{err}
+	}
+	return visitVarsFileRootNodes(rootNodes)
+}
+
+func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
+	var allVars []mapItem
+	var errSlice Errors
+	for i, root := range rootNodes {
+		docNodes, errs := visitMapSlice(root)
+		if len(rootNodes) > 1 {
+			errSlice.add(wrapPathErrorSlice(errs, fmt.Sprintf("doc#%d", i+1))...)
+		} else {
+			errSlice.add(errs...)
+		}
+		for _, node := range docNodes {
+			if node.key.value != propVars {
+				// just silently ignore
+				continue
+			}
+			vars, errs := visitMapSlice(node.value)
+			errSlice.add(wrapPathErrorSlice(errs, propVars)...)
+			allVars = append(allVars, vars...)
+		}
+	}
+	return allVars, errSlice
+}
+
+type varFileSource byte
+
+const (
+	varFileSourceOther varFileSource = iota
+	varFileSourceConfigDir
+	varFileSourceParentDir
+)
+
+type varFile struct {
+	path   string
+	source varFileSource
+}
+
+func (f varFile) prettyPath(currentDir string) string {
+	if f.source == varFileSourceParentDir {
+		rel, err := filepath.Rel(currentDir, f.path)
+		if err == nil {
+			return rel
+		}
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return f.path
+	}
+	if strings.HasPrefix(f.path, home) {
+		return "~" + strings.TrimPrefix(f.path, home)
+	}
+	return f.path
+}
+
+func listPossibleVarsFiles(currentDir string) []varFile {
+	varFiles := listOSPossibleVarsFiles()
 
 	confDir, err := os.UserConfigDir()
 	if err == nil {
-		paths = append(paths,
-			filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
-		)
+		varFiles = append(varFiles, varFile{
+			path:   filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
+			source: varFileSourceConfigDir,
+		})
 	}
 
-	paths = append(paths, listParentDirsPossibleBuiltinVarsFiles(currentDir)...)
-
-	return paths
+	varFiles = append(varFiles, listParentDirsPossibleVarsFiles(currentDir)...)
+	return varFiles
 }
 
-func listParentDirsPossibleBuiltinVarsFiles(currentDir string) []string {
-	var paths []string
+func listParentDirsPossibleVarsFiles(currentDir string) []varFile {
+	var varFiles []varFile
 	for {
-		paths = append(paths, filepath.Join(currentDir, builtInVarsDotfile))
+		varFiles = append(varFiles, varFile{
+			path:   filepath.Join(currentDir, builtInVarsDotfile),
+			source: varFileSourceParentDir,
+		})
 		prevDir := currentDir
 		currentDir = filepath.Dir(currentDir)
 		if prevDir == currentDir {
@@ -45,6 +154,8 @@ func listParentDirsPossibleBuiltinVarsFiles(currentDir string) []string {
 	}
 	// We reverse it because we want the path closest to the current dir
 	// to be merged in last into the varsub.Source.
-	slices.ReverseStrings(paths)
-	return paths
+	slices.Reverse(len(varFiles), func(i, j int) {
+		varFiles[i], varFiles[j] = varFiles[j], varFiles[i]
+	})
+	return varFiles
 }

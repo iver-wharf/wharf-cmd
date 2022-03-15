@@ -8,7 +8,7 @@ import (
 
 func TestListParentDirsPossibleBuiltinVarsFiles(t *testing.T) {
 	currentDir := "/home/root/repos/my-repo"
-	got := listParentDirsPossibleBuiltinVarsFiles(currentDir)
+	got := listParentDirsPossibleVarsFiles(currentDir)
 	want := []string{
 		"/.wharf-vars.yml",
 		"/home/.wharf-vars.yml",
