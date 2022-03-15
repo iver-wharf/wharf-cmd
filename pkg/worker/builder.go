@@ -21,10 +21,10 @@ type builder struct {
 func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.Definition, opts BuildOptions) (Builder, error) {
 	filteredStages := filterStages(def.Stages, opts.StageFilter)
 	stageRunners := make([]StageRunner, len(filteredStages))
-	startStepID := uint64(1)
+	stepIDOffset := uint64(1)
 	for i, stage := range filteredStages {
-		r, err := stageRunFactory.NewStageRunner(ctx, stage, startStepID)
-		startStepID += uint64(len(stage.Steps))
+		r, err := stageRunFactory.NewStageRunner(ctx, stage, stepIDOffset)
+		stepIDOffset += uint64(len(stage.Steps))
 		if err != nil {
 			return nil, fmt.Errorf("stage %s: %w", stage.Name, err)
 		}
