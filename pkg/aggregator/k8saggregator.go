@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -34,9 +33,9 @@ const (
 
 // Copied from pkg/provisioner/k8sprovisioner.go
 var listOptionsMatchLabels = metav1.ListOptions{
-	LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
-		"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-		"wharf.iver.com/instance=prod",
+	// LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+	// 	"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
+	// 	"wharf.iver.com/instance=prod",
 }
 
 // NewK8sAggregator returns a new Aggregator implementation that targets
@@ -88,19 +87,21 @@ func (a k8sAggregator) Serve() error {
 	log.Info().Message("Aggregator started")
 	var err error
 	a.checkedPods = make(map[string]bool)
-	a.curPods, err = a.listMatchingPods(context.Background())
-	if err != nil {
-		return err
-	}
 
 	for {
 		time.Sleep(time.Second)
+		a.curPods, err = a.listMatchingPods(context.Background())
+		if err != nil {
+			log.Error().WithError(err).Message("listing")
+			continue
+		}
 		for _, pod := range a.curPods.Items {
 			if _, exists := a.checkedPods[string(pod.UID)]; exists {
 				continue
 			}
 			if err := a.streamToWharfDB(&pod); err != nil {
-				return err
+				log.Error().WithError(err).Message("streaming")
+				continue
 			}
 			a.checkedPods[string(pod.UID)] = true
 		}
@@ -119,6 +120,7 @@ type connectionCloser func()
 func (a k8sAggregator) connect(namespace, podName string) (*portforward.ForwardedPort, connectionCloser, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		namespace, podName)
+	log.Debug().WithString("path", path)
 	hostBase := strings.TrimLeft(a.restConfig.Host, "htps:/")
 	hostSplit := strings.Split(hostBase, ":")
 	hostIP := hostSplit[0]
@@ -165,7 +167,7 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 		return err
 	}
 
-	client, err := workerclient.New(fmt.Sprintf("http://127.0.0.1:%d", port.Local), workerclient.Options{
+	client, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
 		InsecureSkipVerify: true,
 	})
 
@@ -174,27 +176,29 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 	go func() {
 		defer wg.Done()
 
-		outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
+		// outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
 		stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
 		if err != nil {
 			log.Error().WithError(err).Message("Fetching stream failed.")
 			return
 		}
+
 		for line, err := stream.Recv(); err == nil; line, err = stream.Recv() {
-			outStream.Send(request.Log{
-				BuildID:      uint(line.BuildID),
-				WorkerLogID:  uint(line.LogID),
-				WorkerStepID: uint(line.StepID),
-				Timestamp:    line.GetTimestamp().AsTime(),
-				Message:      line.GetMessage(),
-			})
+			log.Info().WithStringer("line", line).Message("")
+			// outStream.Send(request.Log{
+			// 	BuildID:      uint(line.BuildID),
+			// 	WorkerLogID:  uint(line.LogID),
+			// 	WorkerStepID: uint(line.StepID),
+			// 	Timestamp:    line.GetTimestamp().AsTime(),
+			// 	Message:      line.GetMessage(),
+			// })
 		}
 
-		summary, err := outStream.CloseAndRecv()
-		if err != nil {
-			log.Error().WithError(err).Message("Close and Recv failed.")
-		}
-		log.Debug().WithUint("logsInserted", summary.LogsInserted).Message("Sent logs to DB.")
+		// summary, err := outStream.CloseAndRecv()
+		// if err != nil {
+		// 	log.Error().WithError(err).Message("Close and Recv failed.")
+		// }
+		// log.Debug().WithUint("logsInserted", summary.LogsInserted).Message("Sent logs to DB.")
 	}()
 	wg.Add(1)
 	go func() {
