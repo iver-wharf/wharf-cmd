@@ -49,10 +49,16 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
 		}
 		currentDir := filepath.Dir(ymlAbsPath)
-		source, errs := wharfyml.ParseVarFiles(currentDir)
+
+		var varSources varsub.SourceSlice
+
+		varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 		if len(errs) > 0 {
 			logParseErrors(errs, currentDir)
 			return errors.New("failed to parse variable files")
+		}
+		if varFileSource != nil {
+			varSources = append(varSources, varFileSource)
 		}
 
 		gitStats, err := gitstat.FromExec(currentDir)
@@ -62,15 +68,14 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		} else {
 			log.Debug().Message("Read REPO_ and GIT_ variables from Git:\n" +
 				gitStats.String())
-			source = varsub.SourceSlice{
-				source,
-				gitStats,
-			}
+			varSources = append(varSources, gitStats)
 		}
+
+		varSources = append(varSources, varsub.EnvSource{})
 
 		def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
 			Env:       runFlags.env,
-			VarSource: source,
+			VarSource: varSources,
 		})
 		if len(errs) > 0 {
 			logParseErrors(errs, currentDir)
@@ -128,24 +133,27 @@ func logParseErrors(errs wharfyml.Errors, currentDir string) {
 	if containsMissingBuiltin {
 		varFiles := wharfyml.ListPossibleVarsFiles(currentDir)
 		var sb strings.Builder
-		sb.WriteString("You can add built-in variables in the following files:")
+		sb.WriteString(`Tip: You can add built-in variables to Wharf in multiple ways.
+
+Wharf look for values in the following files:`)
 		for _, file := range varFiles {
 			if file.Kind == wharfyml.VarFileKindParentDir {
 				continue
 			}
-			sb.WriteString("\n\t")
+			sb.WriteString("\n  ")
 			sb.WriteString(file.PrettyPath(currentDir))
 		}
 		sb.WriteString(`
 
-Wharf also looks for
-	.wharf-vars.yml in this directory or any parent directory.
-	.git directory and extracts GIT_ and REPO_ variables from it.
+Wharf also looks for:
+  - All ".wharf-vars.yml" in this directory or any parent directory.
+  - Local Git repository and extracts GIT_ and REPO_ variables from it.
+  - Environment variables.
 
-Sample content:
-	# .wharf-vars.yml
-	vars:
-	  REG_URL: http://harbor.example.com
+Sample file content:
+  # .wharf-vars.yml
+  vars:
+    REG_URL: http://harbor.example.com
 `)
 		log.Info().Message(sb.String())
 	}
