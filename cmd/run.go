@@ -9,6 +9,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -68,6 +69,9 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if err != nil {
 			return err
 		}
+
+		server := workerserver.New(store, nil)
+		go server.Serve("0.0.0.0:5010")
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
@@ -81,6 +85,13 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
+
+		for {
+			// Infinite sleep for testing.
+			// Should be cancellable through API or something.
+			time.Sleep(time.Second)
+		}
+
 		return nil
 	},
 }
