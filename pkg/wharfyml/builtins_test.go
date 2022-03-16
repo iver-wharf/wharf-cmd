@@ -6,6 +6,23 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+type testVarSource struct{}
+
+func (testVarSource) Lookup(name string) (interface{}, bool) {
+	switch name {
+	case "REPO_GROUP":
+		return "iver-wharf", true
+	case "REPO_NAME":
+		return "wharf-cmd", true
+	case "REG_URL":
+		return "http://harbor.example.com", true
+	case "CHART_REPO":
+		return "http://harbor.example.com", true
+	default:
+		return nil, false
+	}
+}
+
 func TestListParentDirsPossibleBuiltinVarsFiles(t *testing.T) {
 	currentDir := "/home/root/repos/my-repo"
 	varFiles := listParentDirsPossibleVarsFiles(currentDir)

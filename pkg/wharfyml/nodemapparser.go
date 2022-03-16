@@ -182,7 +182,7 @@ func (p nodeMapParser) readFromVarSubForOther(
 	if _, ok := p.nodes[nodeKey]; ok {
 		return nil
 	}
-	value, ok := source.Lookup(varLookup)
+	value, ok := safeLookupVar(source, varLookup)
 	if !ok {
 		return wrapPosErrorNode(fmt.Errorf(
 			"%w: need %s or %q to construct %q",
@@ -201,7 +201,7 @@ func (p nodeMapParser) readFromVarSubForOther(
 
 func (p nodeMapParser) lookupFromVarSubForOther(
 	varLookup, other string, source varsub.Source) (*yaml.Node, error) {
-	repoNameVar, ok := source.Lookup(varLookup)
+	repoNameVar, ok := safeLookupVar(source, varLookup)
 	if !ok {
 		err := fmt.Errorf("%w: need %s to construct %q",
 			ErrMissingBuiltinVar, varLookup, other)
@@ -214,4 +214,11 @@ func (p nodeMapParser) lookupFromVarSubForOther(
 		return nil, wrapPosErrorNode(err, p.parent)
 	}
 	return newNode, nil
+}
+
+func safeLookupVar(source varsub.Source, name string) (interface{}, bool) {
+	if source == nil {
+		return nil, false
+	}
+	return source.Lookup(name)
 }
