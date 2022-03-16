@@ -25,7 +25,7 @@ type StepHelm struct {
 // StepTypeName returns the name of this step type.
 func (StepHelm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) visitStepTypeNode(p nodeMapParser, source varsub.Source) (StepType, Errors) {
+func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
 	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"

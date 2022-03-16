@@ -21,7 +21,7 @@ type StepNuGetPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s StepNuGetPackage) visitStepTypeNode(p nodeMapParser, source varsub.Source) (StepType, Errors) {
+func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
 	var errSlice Errors

@@ -29,7 +29,7 @@ needs-cancel:
   long-running:
     container:
       image: alpine:latest
-      cmds: 
+      cmds:
       - sleep infinity
 
   fails:

@@ -38,13 +38,13 @@ const (
 // 	../../.wharf-vars.yml
 // 	../../..(etc)/.wharf-vars.yml
 func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
-	varFiles := listPossibleVarsFiles(currentDir)
+	varFiles := ListPossibleVarsFiles(currentDir)
 	var errSlice Errors
 	nodeVarSource := make(varsub.SourceMap)
 	for _, varFile := range varFiles {
-		items, errs := tryReadVarsFileNodes(varFile.path)
+		items, errs := tryReadVarsFileNodes(varFile.Path)
 		errSlice = append(errSlice,
-			wrapPathErrorSlice(errs, varFile.prettyPath(currentDir))...)
+			wrapPathErrorSlice(errs, varFile.PrettyPath(currentDir))...)
 		for _, item := range items {
 			nodeVarSource[item.key.value] = item.value
 		}
@@ -94,44 +94,46 @@ func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
 	return allVars, errSlice
 }
 
-type varFileSource byte
+type VarFileKind byte
 
 const (
-	varFileSourceOther varFileSource = iota
-	varFileSourceConfigDir
-	varFileSourceParentDir
+	VarFileKindOther VarFileKind = iota
+	VarFileKindConfigDir
+	VarFileKindParentDir
 )
 
-type varFile struct {
-	path   string
-	source varFileSource
+type VarFile struct {
+	Path string
+	Kind VarFileKind
 }
 
-func (f varFile) prettyPath(currentDir string) string {
-	if f.source == varFileSourceParentDir {
-		rel, err := filepath.Rel(currentDir, f.path)
+func (f VarFile) PrettyPath(currentDir string) string {
+	if f.Kind == VarFileKindParentDir {
+		rel, err := filepath.Rel(currentDir, f.Path)
 		if err == nil {
 			return rel
 		}
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return f.path
+		return f.Path
 	}
-	if strings.HasPrefix(f.path, home) {
-		return "~" + strings.TrimPrefix(f.path, home)
+	if strings.HasPrefix(f.Path, home) {
+		return "~" + strings.TrimPrefix(f.Path, home)
 	}
-	return f.path
+	return f.Path
 }
 
-func listPossibleVarsFiles(currentDir string) []varFile {
+// ListPossibleVarsFiles returns all paths of where a .wharf-vars.yml file are
+// looked for.
+func ListPossibleVarsFiles(currentDir string) []VarFile {
 	varFiles := listOSPossibleVarsFiles()
 
 	confDir, err := os.UserConfigDir()
 	if err == nil {
-		varFiles = append(varFiles, varFile{
-			path:   filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
-			source: varFileSourceConfigDir,
+		varFiles = append(varFiles, VarFile{
+			Path: filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
+			Kind: VarFileKindConfigDir,
 		})
 	}
 
@@ -139,12 +141,12 @@ func listPossibleVarsFiles(currentDir string) []varFile {
 	return varFiles
 }
 
-func listParentDirsPossibleVarsFiles(currentDir string) []varFile {
-	var varFiles []varFile
+func listParentDirsPossibleVarsFiles(currentDir string) []VarFile {
+	var varFiles []VarFile
 	for {
-		varFiles = append(varFiles, varFile{
-			path:   filepath.Join(currentDir, builtInVarsDotfile),
-			source: varFileSourceParentDir,
+		varFiles = append(varFiles, VarFile{
+			Path: filepath.Join(currentDir, builtInVarsDotfile),
+			Kind: VarFileKindParentDir,
 		})
 		prevDir := currentDir
 		currentDir = filepath.Dir(currentDir)

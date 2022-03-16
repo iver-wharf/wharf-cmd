@@ -1,10 +1,10 @@
 package wharfyml
 
-func listOSPossibleVarsFiles() []varFile {
-	return []varFile{
+func listOSPossibleVarsFiles() []VarFile {
+	return []VarFile{
 		{
-			path:   "/etc/iver-wharf/wharf-cmd/" + builtInVarsFile,
-			source: varFileSourceConfigDir,
+			Path: "/etc/iver-wharf/wharf-cmd/" + builtInVarsFile,
+			Kind: VarFileKindConfigDir,
 		},
 	}
 }

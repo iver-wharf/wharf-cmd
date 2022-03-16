@@ -18,15 +18,15 @@ func TestListParentDirsPossibleBuiltinVarsFiles(t *testing.T) {
 	}
 	got := make([]string, len(varFiles))
 	for i, f := range varFiles {
-		got[i] = f.path
+		got[i] = f.Path
 	}
 	assert.Equal(t, want, got)
 }
 
 func TestVarFilePrettyPath(t *testing.T) {
 	currentDir := "/home/root/repos/my-repo"
-	file := varFile{path: "/home/root/.wharf-vars.yml", source: varFileSourceParentDir}
+	file := VarFile{Path: "/home/root/.wharf-vars.yml", Kind: VarFileKindParentDir}
 	want := "../../.wharf-vars.yml"
-	got := file.prettyPath(currentDir)
+	got := file.PrettyPath(currentDir)
 	assert.Equal(t, want, got)
 }
