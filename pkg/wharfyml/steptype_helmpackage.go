@@ -1,6 +1,10 @@
 package wharfyml
 
-import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+import (
+	"fmt"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
 
 // StepHelmPackage represents a step type for building and uploading a Helm
 // chart to a chart registry.
@@ -20,9 +24,19 @@ func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 func (s StepHelmPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
-	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
-
 	var errSlice Errors
+
+	if !p.hasNode("destination") {
+		var chartRepo string
+		var repoGroup string
+		errSlice.addNonNils(
+			p.unmarshalStringFromVarSubForOther(
+				"CHART_REPO", "destination", source, &chartRepo),
+			p.unmarshalStringFromVarSubForOther(
+				"REPO_GROUP", "destination", source, &repoGroup),
+		)
+		s.Destination = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
+	}
 
 	// Unmarshalling
 	errSlice.addNonNils(
