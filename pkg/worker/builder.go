@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 )
 
 type builder struct {
@@ -20,8 +21,10 @@ type builder struct {
 func New(ctx context.Context, stageRunFactory StageRunnerFactory, def wharfyml.Definition, opts BuildOptions) (Builder, error) {
 	filteredStages := filterStages(def.Stages, opts.StageFilter)
 	stageRunners := make([]StageRunner, len(filteredStages))
+	stepIDOffset := uint64(1)
 	for i, stage := range filteredStages {
-		r, err := stageRunFactory.NewStageRunner(ctx, stage)
+		r, err := stageRunFactory.NewStageRunner(ctx, stage, stepIDOffset)
+		stepIDOffset += uint64(len(stage.Steps))
 		if err != nil {
 			return nil, fmt.Errorf("stage %s: %w", stage.Name, err)
 		}
@@ -52,7 +55,7 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		log.Warn().
 			WithString("stages", "0/0").
 			Message("No stages to run.")
-		result.Status = StatusNone
+		result.Status = workermodel.StatusNone
 		return result, nil
 	}
 	for _, stageRunner := range b.stageRunners {
@@ -63,13 +66,13 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		res := stageRunner.RunStage(ctx)
 		result.Stages = append(result.Stages, res)
 		stagesDone++
-		if res.Status != StatusSuccess {
+		if res.Status != workermodel.StatusSuccess {
 			var failed []string
 			var cancelled []string
 			for _, stepRes := range res.Steps {
-				if stepRes.Status == StatusFailed {
+				if stepRes.Status == workermodel.StatusFailed {
 					failed = append(failed, stepRes.Name)
-				} else if stepRes.Status == StatusCancelled {
+				} else if stepRes.Status == workermodel.StatusCancelled {
 					cancelled = append(cancelled, stepRes.Name)
 				}
 			}
@@ -89,7 +92,7 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 			WithString("stage", res.Name).
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
 			Message("Done with stage.")
-		result.Status = StatusSuccess
+		result.Status = workermodel.StatusSuccess
 	}
 	result.Duration = time.Since(start)
 	return result, nil

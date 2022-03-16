@@ -7,8 +7,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
+
+var log = logger.NewScoped("RESULTSTORE")
 
 var (
 	dirNameSteps = "steps"
@@ -42,10 +45,10 @@ type StatusList struct {
 
 // StatusUpdate is an update to a status of a build step.
 type StatusUpdate struct {
-	StepID    uint64        `json:"-"`
-	UpdateID  uint64        `json:"updateId"`
-	Timestamp time.Time     `json:"timestamp"`
-	Status    worker.Status `json:"status"`
+	StepID    uint64             `json:"-"`
+	UpdateID  uint64             `json:"updateId"`
+	Timestamp time.Time          `json:"timestamp"`
+	Status    workermodel.Status `json:"status"`
 }
 
 // ArtifactEventList is a list of artifact events. This is the data structure
@@ -88,7 +91,7 @@ type Store interface {
 	// update found for the step is the same as the new status, then this
 	// status update is skipped. Any written status update is also published to
 	// any active subscriptions.
-	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus worker.Status) error
+	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error
 
 	// SubAllStatusUpdates creates a new channel that streams all status updates
 	// from this result store since the beginning, and keeps on streaming new
@@ -101,7 +104,7 @@ type Store interface {
 
 	// AddArtifactEvent adds an artifact event to a step.
 	// Any written artifact event is also published to any active subscriptions.
-	AddArtifactEvent(stepID uint64, artifactMeta worker.ArtifactMeta) error
+	AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error
 
 	// SubAllArtifactEvents creates a new channel that streams all artifact
 	// events from this result store since the beginning, and keeps on

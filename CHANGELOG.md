@@ -51,7 +51,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   line & column of each parse error. (#48, #58)
 
 - Added build result (logs, status updates) caching via file system. New
-  package in `pkg/resultstore`. (#43)
+  package in `pkg/resultstore`. (#43, #69, #70)
 
 - Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
   This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
@@ -154,6 +154,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `pkg/run`
 
 - Removed `containercreator` references from `pkg/core/wharfyml`. (#44)
+
+- Added collecting of build logs and status updates for build steps using
+  `resultstore`. (#71)
 
 ## v0.7.0 (scrapped)
 

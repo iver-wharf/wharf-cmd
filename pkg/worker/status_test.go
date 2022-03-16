@@ -4,15 +4,16 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestStatusMarshalJSON(t *testing.T) {
 	got, err := json.Marshal(struct {
-		MyStatus Status
+		MyStatus workermodel.Status
 	}{
-		MyStatus: StatusSuccess,
+		MyStatus: workermodel.StatusSuccess,
 	})
 	require.NoError(t, err)
 	want := `{"MyStatus": "Success"}`
@@ -21,20 +22,20 @@ func TestStatusMarshalJSON(t *testing.T) {
 
 func TestStatusUnmarshalJSON(t *testing.T) {
 	var myStruct struct {
-		MyStatus Status
+		MyStatus workermodel.Status
 	}
 	b := []byte(`{"MyStatus": "Success"}`)
 	err := json.Unmarshal(b, &myStruct)
 	require.NoError(t, err)
-	assert.Equal(t, StatusSuccess, myStruct.MyStatus)
+	assert.Equal(t, workermodel.StatusSuccess, myStruct.MyStatus)
 }
 
 func TestStatusPtrUnmarshalJSON(t *testing.T) {
 	var myStruct struct {
-		MyStatus *Status
+		MyStatus *workermodel.Status
 	}
 	b := []byte(`{"MyStatus": "Success"}`)
 	err := json.Unmarshal(b, &myStruct)
 	require.NoError(t, err)
-	assert.Equal(t, StatusSuccess, *myStruct.MyStatus)
+	assert.Equal(t, workermodel.StatusSuccess, *myStruct.MyStatus)
 }

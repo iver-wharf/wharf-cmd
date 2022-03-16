@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
@@ -23,15 +24,15 @@ type stageRunnerFactory struct {
 
 // NewStageRunner returns a new StageRunner that uses the provided StepRunner to
 // run the steps in parallel.
-func (f stageRunnerFactory) NewStageRunner(ctx context.Context, stage wharfyml.Stage) (StageRunner, error) {
-	return newStageRunner(ctx, f.stepRunFactory, stage)
+func (f stageRunnerFactory) NewStageRunner(ctx context.Context, stage wharfyml.Stage, stepIDOffset uint64) (StageRunner, error) {
+	return newStageRunner(ctx, f.stepRunFactory, stage, stepIDOffset)
 }
 
-func newStageRunner(ctx context.Context, stepRunFactory StepRunnerFactory, stage wharfyml.Stage) (StageRunner, error) {
+func newStageRunner(ctx context.Context, stepRunFactory StepRunnerFactory, stage wharfyml.Stage, stepIDOffset uint64) (StageRunner, error) {
 	ctx = contextWithStageName(ctx, stage.Name)
 	stepRunners := make([]StepRunner, len(stage.Steps))
 	for i, step := range stage.Steps {
-		r, err := stepRunFactory.NewStepRunner(ctx, step)
+		r, err := stepRunFactory.NewStepRunner(ctx, step, stepIDOffset+uint64(i))
 		if err != nil {
 			return nil, fmt.Errorf("step %s: %w", step.Name, err)
 		}
@@ -85,9 +86,9 @@ func (r *stageRun) startRunStepGoroutine(ctx context.Context, stepRunner StepRun
 
 func (r *stageRun) waitForResult() StageResult {
 	r.wg.Wait()
-	status := StatusSuccess
+	status := workermodel.StatusSuccess
 	if r.failed {
-		status = StatusFailed
+		status = workermodel.StatusFailed
 	}
 	return StageResult{
 		Name:     r.stage.Name,
@@ -116,12 +117,12 @@ func (r *stageRun) runStep(ctx context.Context, stepRunner StepRunner) {
 	res := stepRunner.RunStep(ctx)
 	r.addStepResult(res)
 	dur := res.Duration.Truncate(time.Second)
-	if res.Status == StatusCancelled {
+	if res.Status == workermodel.StatusCancelled {
 		log.Info().
 			WithFunc(logFunc).
 			WithDuration("dur", dur).
 			Message("Cancelled pod.")
-	} else if res.Status != StatusSuccess {
+	} else if res.Status != workermodel.StatusSuccess {
 		r.failed = true
 		log.Warn().
 			WithError(res.Error).

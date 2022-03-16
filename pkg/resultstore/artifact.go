@@ -7,14 +7,14 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 )
 
 var (
 	fileNameArtifactEvents = "artifacts.json"
 )
 
-func (s *store) AddArtifactEvent(stepID uint64, artifactMeta worker.ArtifactMeta) error {
+func (s *store) AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error {
 	s.artifactMutex.Lock(stepID)
 	defer s.artifactMutex.Unlock(stepID)
 	list, err := s.readArtifactEventsFile(stepID)

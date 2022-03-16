@@ -5,8 +5,10 @@ import (
 	"errors"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -54,7 +56,13 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return errors.New("failed to parse .wharf-ci.yml")
 		}
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
-		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, worker.BuildOptions{
+		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
+		//
+		// May require setting of owner and SUID on wharf-cmd binary to access /var/log.
+		// e.g.:
+		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
+		store := resultstore.NewStore(resultstore.NewFS("/var/log/build_logs"))
+		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
 		if err != nil {
@@ -70,7 +78,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
 			WithStringer("status", res.Status).
 			Message("Done with build.")
-		if res.Status != worker.StatusSuccess {
+		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
 		return nil
