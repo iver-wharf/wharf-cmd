@@ -8,7 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
@@ -52,6 +54,20 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			logParseErrors(errs, currentDir)
 			return errors.New("failed to parse variable files")
 		}
+
+		gitStats, err := gitstat.FromExec(currentDir)
+		if err != nil {
+			log.Warn().WithError(err).
+				Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")
+		} else {
+			log.Debug().Message("Read REPO_ and GIT_ variables from Git:\n" +
+				gitStats.String())
+			source = varsub.SourceSlice{
+				source,
+				gitStats,
+			}
+		}
+
 		def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
 			Env:       runFlags.env,
 			VarSource: source,

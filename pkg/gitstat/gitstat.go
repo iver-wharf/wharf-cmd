@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -36,6 +37,59 @@ type Stats struct {
 	CommitAuthorDate   string
 	Revision           int
 	Remotes            map[string]Remote
+	EstimatedRepoGroup string
+	EstimatedRepoName  string
+}
+
+// Lookup tries to get a value based on the correlated built-in variable name.
+// This method implements the varsub.Source interface.
+//
+// The string name <-> field mapping is based on the documentation:
+// https://iver-wharf.github.io/#/usage-wharfyml/variables/built-in-variables
+func (s Stats) Lookup(name string) (interface{}, bool) {
+	switch name {
+	case "GIT_BRANCH", "REPO_BRANCH":
+		return s.CurrentBranch, true
+	case "GIT_COMMIT":
+		return s.CommitHash, true
+	case "GIT_COMMIT_AUTHOR_DATE":
+		return s.CommitAuthorDate, true
+	case "GIT_COMMIT_COMMITTER_DATE":
+		return s.CommitAuthorDate, true
+	case "GIT_COMMIT_SUBJECT":
+		return s.CommitSubject, true
+	case "GIT_SAFEBRANCH":
+		return s.CurrentBranchSafe, true
+	case "GIT_TAG":
+		return s.LatestTag, true
+	case "REPO_NAME":
+		return s.EstimatedRepoName, s.EstimatedRepoName != ""
+	case "REPO_GROUP":
+		return s.EstimatedRepoGroup, s.EstimatedRepoGroup != ""
+	default:
+		return nil, false
+	}
+}
+
+func (s Stats) String() string {
+	var sb strings.Builder
+	sb.WriteString("GIT_BRANCH=")
+	sb.WriteString(s.CurrentBranch)
+	sb.WriteString("\nGIT_COMMIT=")
+	sb.WriteString(s.CommitHash)
+	sb.WriteString("\nGIT_COMMIT_AUTHOR_DATE=")
+	sb.WriteString(s.CommitAuthorDate)
+	sb.WriteString("\nGIT_COMMIT_COMMITTER_DATE=")
+	sb.WriteString(s.CommitComitterDate)
+	sb.WriteString("\nGIT_COMMIT_SUBJECT=")
+	sb.WriteString(s.CommitSubject)
+	sb.WriteString("\nGIT_TAG=")
+	sb.WriteString(s.LatestTag)
+	sb.WriteString("\nREPO_GROUP=")
+	sb.WriteString(s.EstimatedRepoGroup)
+	sb.WriteString("\nREPO_NAME=")
+	sb.WriteString(s.EstimatedRepoName)
+	return sb.String()
 }
 
 // Remote is a Git remote, containing the fetch and pull URLs.
@@ -120,7 +174,7 @@ func FromExec(dir string) (Stats, error) {
 	}
 	remotes := parseRemotes(remotesStrs)
 
-	return Stats{
+	stats := Stats{
 		CurrentBranch:      currentBranch,
 		CurrentBranchSafe:  strings.ReplaceAll(currentBranch, "/", "-"),
 		CommitHash:         safeGetTrimmed(commitInfo, 0),
@@ -132,7 +186,17 @@ func FromExec(dir string) (Stats, error) {
 		Tags:               tags,
 		LatestTag:          safeGetTrimmed(tags, 0),
 		Remotes:            remotes,
-	}, nil
+	}
+
+	for name, r := range remotes {
+		if name != "origin" {
+			continue
+		}
+		stats.EstimatedRepoGroup, stats.EstimatedRepoName = estimateRepoGroupAndName(r)
+		break
+	}
+
+	return stats, nil
 }
 
 func safeGetTrimmed(slice []string, index int) string {
@@ -208,4 +272,32 @@ func convGitExecError(err error, outBytes []byte, args []string) error {
 func wrapGitExecError(err error, args []string) error {
 	return fmt.Errorf("exec %q: %w",
 		strings.Join(append([]string{"git"}, args...), " "), err)
+}
+
+// Regex patterns for estimating the repo name and group names. One hidden
+// gem is the (?:v\d+/)? part that removes any versioned paths, ex the "/v3/",
+// that Azure DevOps uses.
+var estURLRegex = regexp.MustCompile(
+	`\w+://[^/]+/(?:v\d+/)?(.*)/([^/]+)`)
+var estSSHRegex = regexp.MustCompile(
+	`\w+:(?:v\d+/)?(.*)/([^/]+)`)
+
+func estimateRepoGroupAndName(origin Remote) (string, string) {
+	url := origin.FetchURL
+	if url == "" {
+		url = origin.PushURL
+	}
+	if url == "" {
+		return "", ""
+	}
+	groups := estURLRegex.FindStringSubmatch(origin.FetchURL)
+	if groups == nil {
+		groups = estSSHRegex.FindStringSubmatch(origin.FetchURL)
+	}
+	if groups == nil {
+		return "", ""
+	}
+	// Typical of Azure DevOps to have a trailing /_git in the path
+	return strings.TrimSuffix(groups[1], "/_git"),
+		strings.TrimSuffix(groups[2], ".git")
 }
