@@ -36,101 +36,39 @@ func (StepDocker) StepTypeName() string { return "docker" }
 func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
-	s.Destination = ""
 	s.Name = stepName
-
-	s.Push = true
 	s.Secret = "gitlab-registry"
 
 	var errSlice Errors
 
-	if _, ok := p.nodes["destination"]; !ok {
-		if _, ok := p.nodes["registry"]; !ok {
-			regURL, ok := source.Lookup("REG_URL")
-			if !ok {
-				errSlice.add(wrapPosErrorNode(fmt.Errorf(
-					"%w: need REG_URL or 'registry' to construct 'destination'",
-					ErrMissingBuiltinVar),
-					p.parent))
-			} else {
-				newNode, err := newNodeWithValue(p.parent, regURL)
-				if err != nil {
-					errSlice.add(wrapPosErrorNode(fmt.Errorf(
-						"read REG_URL to construct 'destination': %w", err),
-						p.parent))
-				} else {
-					p.nodes["registry"] = newNode
-				}
-			}
-		}
-
-		if _, ok := p.nodes["group"]; !ok {
-			repoGroup, ok := source.Lookup("REPO_GROUP")
-			if !ok {
-				errSlice.add(wrapPosErrorNode(fmt.Errorf(
-					"%w: need REPO_GROUP or 'group' to construct 'destination'",
-					ErrMissingBuiltinVar),
-					p.parent))
-			} else {
-				newNode, err := newNodeWithValue(p.parent, repoGroup)
-				if err != nil {
-					errSlice.add(wrapPosErrorNode(fmt.Errorf(
-						"read REPO_GROUP to construct 'destination': %w", err),
-						p.parent))
-				} else {
-					p.nodes["group"] = newNode
-				}
-			}
-		}
-
-		repoNameVar, ok := source.Lookup("REPO_NAME")
-		if !ok {
-			errSlice.add(wrapPosErrorNode(fmt.Errorf(
-				"%w: need REPO_NAME to construct 'destination'",
-				ErrMissingBuiltinVar),
-				p.parent))
-		} else {
-			newNode, err := newNodeWithValue(p.parent, repoNameVar)
-			errSlice.add(wrapPosErrorNode(fmt.Errorf(
-				"read REPO_NAME to construct 'destination': %w", err),
-				p.parent))
-			// __repoName isn't a real field, but we're setting it to abuse
-			// p.unmarshalString()
-			p.nodes["__repoName"] = newNode
-		}
-
+	if !p.hasNode("destination") {
 		var repoName string
 		errSlice.addNonNils(
-			p.unmarshalString("registry", &s.Registry),
-			p.unmarshalString("group", &s.Group),
-			p.unmarshalString("name", &s.Name),
-			p.unmarshalString("__repoName", &repoName),
+			p.unmarshalStringFromNodeOrVarSubForOther(
+				"registry", "REG_URL", "destination", source, &s.Registry),
+			p.unmarshalStringFromNodeOrVarSubForOther(
+				"group", "REPO_GROUP", "destination", source, &s.Registry),
+			p.unmarshalStringFromVarSubForOther(
+				"REPO_NAME", "destination", source, &repoName),
+			p.unmarshalString("name", &s.Name), // Already defaults to step name
 		)
-		if len(errSlice) == 0 {
+		if repoName == s.Name {
+			s.Destination = fmt.Sprintf("%s/%s/%s",
+				s.Registry, s.Group, repoName)
+		} else {
 			s.Destination = fmt.Sprintf("%s/%s/%s/%s",
-				s.Registry, s.Group, repoName, s.Name,
-			)
-			// default to "${registry}/${group}/${REPO_NAME}/${step_name}"
+				s.Registry, s.Group, repoName, s.Name)
 		}
 	}
 
-	if _, ok := p.nodes["group"]; !ok {
-		repoGroup, ok := source.Lookup("REPO_GROUP")
-		if ok {
-			newNode, err := newNodeWithValue(p.parent, repoGroup)
-			if err != nil {
-				errSlice.add(wrapPosErrorNode(fmt.Errorf(
-					"read REPO_GROUP to construct 'destination': %w", err),
-					p.parent))
-			} else {
-				p.nodes["group"] = newNode
-				err := p.unmarshalString("group", &s.Group)
-				if err != nil {
-					errSlice.add(err)
-				} else if strings.HasPrefix(strings.ToLower(s.Group), "default") {
-					s.AppendCert = true
-				}
-			}
+	if !p.hasNode("append-cert") {
+		var repoGroup string
+		errSlice.addNonNils(
+			p.unmarshalStringFromVarSubForOther(
+				"REPO_GROUP", "append-cert", source, &repoGroup),
+		)
+		if strings.HasPrefix(strings.ToLower(s.Group), "default") {
+			s.AppendCert = true
 		}
 	}
 

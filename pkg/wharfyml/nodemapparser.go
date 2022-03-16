@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,6 +29,11 @@ type nodeMapParser struct {
 
 func (p nodeMapParser) parentPos() Pos {
 	return newPosNode(p.parent)
+}
+
+func (p nodeMapParser) hasNode(key string) bool {
+	_, ok := p.nodes[key]
+	return ok
 }
 
 func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
@@ -105,6 +111,29 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	return errSlice
 }
 
+func (p nodeMapParser) unmarshalStringFromNodeOrVarSubForOther(
+	nodeKey, varLookup, other string, source varsub.Source, target *string) error {
+
+	err := p.readFromVarSubForOther(nodeKey, varLookup, other, source)
+	if err != nil {
+		return err
+	}
+	return p.unmarshalString(nodeKey, target)
+}
+
+func (p nodeMapParser) unmarshalStringFromVarSubForOther(
+	varLookup, other string, source varsub.Source, target *string) error {
+	node, err := p.lookupFromVarSubForOther(
+		varLookup, other, source)
+	if err != nil {
+		return err
+	}
+	p.nodes["__tmp"] = node
+	err = p.unmarshalString("__tmp", target)
+	delete(p.nodes, "__tmp")
+	return err
+}
+
 func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	node, ok := p.nodes[key]
 	if !ok {
@@ -146,4 +175,43 @@ func (p nodeMapParser) validateRequiredSlice(key string) error {
 func (p nodeMapParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
 	return wrapPosErrorNode(inner, p.parent)
+}
+
+func (p nodeMapParser) readFromVarSubForOther(
+	nodeKey, varLookup, other string, source varsub.Source) error {
+	if _, ok := p.nodes[nodeKey]; ok {
+		return nil
+	}
+	value, ok := source.Lookup(varLookup)
+	if !ok {
+		return wrapPosErrorNode(fmt.Errorf(
+			"%w: need %s or %q to construct %q",
+			ErrMissingBuiltinVar, varLookup, nodeKey, other),
+			p.parent)
+	}
+	newNode, err := newNodeWithValue(p.parent, value)
+	if err != nil {
+		return wrapPosErrorNode(fmt.Errorf(
+			"read %s to construct %q: %w", varLookup, other, err),
+			p.parent)
+	}
+	p.nodes["registry"] = newNode
+	return nil
+}
+
+func (p nodeMapParser) lookupFromVarSubForOther(
+	varLookup, other string, source varsub.Source) (*yaml.Node, error) {
+	repoNameVar, ok := source.Lookup(varLookup)
+	if !ok {
+		err := fmt.Errorf("%w: need %s to construct %q",
+			ErrMissingBuiltinVar, varLookup, other)
+		return nil, wrapPosErrorNode(err, p.parent)
+	}
+	newNode, err := newNodeWithValue(p.parent, repoNameVar)
+	if err != nil {
+		err := fmt.Errorf("read %s to construct %q: %w",
+			varLookup, other, err)
+		return nil, wrapPosErrorNode(err, p.parent)
+	}
+	return newNode, nil
 }
