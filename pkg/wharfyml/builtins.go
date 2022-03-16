@@ -94,19 +94,31 @@ func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
 	return allVars, errSlice
 }
 
+// VarFileKind is an enum of the different kinds of where the variable file
+// comes from.
 type VarFileKind byte
 
 const (
-	VarFileKindOther VarFileKind = iota
+	// VarFileKindUnspecified means the variable file didn't come from any
+	// place worth defining.
+	VarFileKindUnspecified VarFileKind = iota
+	// VarFileKindConfigDir means the variable file comes from a config
+	// directory, such as /etc/... or ~/.config/... on Linux, or %APPDATA%\...
+	// on Windows.
 	VarFileKindConfigDir
+	// VarFileKindParentDir means the variable file comes from the same
+	// directory tree as the current directory.
 	VarFileKindParentDir
 )
 
+// VarFile is a place and kind definition of a variable file.
 type VarFile struct {
 	Path string
 	Kind VarFileKind
 }
 
+// PrettyPath returns a formatted version of the path, based on what kind of
+// variable file it is.
 func (f VarFile) PrettyPath(currentDir string) string {
 	if f.Kind == VarFileKindParentDir {
 		rel, err := filepath.Rel(currentDir, f.Path)

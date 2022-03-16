@@ -23,7 +23,7 @@ type StepContainer struct {
 // StepTypeName returns the name of this step type.
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.OS = "linux"
