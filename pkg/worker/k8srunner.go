@@ -80,13 +80,13 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 	r := k8sStepRunner{
 		log:        logger.NewScoped(contextStageStepName(ctx)),
 		step:       step,
-		stepID:     stepID,
 		pod:        &pod,
 		namespace:  f.namespace,
 		restConfig: f.restConfig,
 		clientset:  f.clientset,
 		pods:       f.clientset.CoreV1().Pods(f.namespace),
 		store:      f.store,
+		stepID:     stepID,
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
@@ -103,8 +103,7 @@ type k8sStepRunner struct {
 	clientset  *kubernetes.Clientset
 	pods       corev1.PodInterface
 	store      resultstore.Store
-
-	stepID uint64
+	stepID     uint64
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -121,6 +120,7 @@ func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	} else if err != nil {
 		status = workermodel.StatusFailed
 	}
+	r.addStatusUpdate(status)
 	return StepResult{
 		Name:     r.step.Name,
 		Status:   status,
@@ -153,6 +153,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		WithString("step", r.step.Name).
 		WithString("pod", r.pod.GenerateName).
 		Message("Creating pod.")
+	r.addStatusUpdate(workermodel.StatusInitializing)
 	newPod, err := r.pods.Create(ctx, r.pod, metav1.CreateOptions{})
 	if err != nil {
 		return fmt.Errorf("create pod: %w", err)
@@ -177,6 +178,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	if err := r.continueInitContainer(newPod.Name); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
+	r.addStatusUpdate(workermodel.StatusRunning)
 	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
 	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
 		if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{}); err != nil {
@@ -379,4 +381,8 @@ func execInPod(c *rest.Config, namespace, podName string, execOpts *v1.PodExecOp
 		SubResource("exec").
 		VersionedParams(execOpts, scheme.ParameterCodec)
 	return remotecommand.NewSPDYExecutor(c, "POST", req.URL())
+}
+
+func (r *k8sStepRunner) addStatusUpdate(status workermodel.Status) {
+	r.store.AddStatusUpdate(r.stepID, time.Now(), status)
 }
