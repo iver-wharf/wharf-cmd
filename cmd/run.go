@@ -71,8 +71,6 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			varSources = append(varSources, gitStats)
 		}
 
-		varSources = append(varSources, varsub.EnvSource{})
-
 		def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
 			Env:       runFlags.env,
 			VarSource: varSources,
