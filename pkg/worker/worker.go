@@ -35,7 +35,7 @@ type StageRunner interface {
 
 // StageRunnerFactory creates a new StageRunner for a given stage.
 type StageRunnerFactory interface {
-	NewStageRunner(ctx context.Context, stage wharfyml.Stage) (StageRunner, error)
+	NewStageRunner(ctx context.Context, stage wharfyml.Stage, stepIDOffset uint64) (StageRunner, error)
 }
 
 // StepRunner is the interface for running a Wharf build step. Steps are the
@@ -48,7 +48,7 @@ type StepRunner interface {
 
 // StepRunnerFactory creates a new StepRunner for a given step.
 type StepRunnerFactory interface {
-	NewStepRunner(ctx context.Context, step wharfyml.Step) (StepRunner, error)
+	NewStepRunner(ctx context.Context, step wharfyml.Step, stepID uint64) (StepRunner, error)
 }
 
 // Result is a Wharf build result with the overall status of all stages were

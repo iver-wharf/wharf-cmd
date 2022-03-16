@@ -8,7 +8,10 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
+
+var log = logger.NewScoped("RESULTSTORE")
 
 var (
 	dirNameSteps = "steps"

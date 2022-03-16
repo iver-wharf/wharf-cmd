@@ -16,7 +16,7 @@ type mockStageRunFactory struct {
 }
 
 func (f mockStageRunFactory) NewStageRunner(
-	_ context.Context, stage wharfyml.Stage) (StageRunner, error) {
+	_ context.Context, stage wharfyml.Stage, _ uint64) (StageRunner, error) {
 	runner, ok := f.runners[stage.Name]
 	if !ok {
 		return nil, fmt.Errorf("no stage runner found for %q", stage.Name)

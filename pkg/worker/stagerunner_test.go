@@ -17,7 +17,7 @@ type mockStepRunFactory struct {
 }
 
 func (f mockStepRunFactory) NewStepRunner(
-	_ context.Context, step wharfyml.Step) (StepRunner, error) {
+	_ context.Context, step wharfyml.Step, _ uint64) (StepRunner, error) {
 	runner, ok := f.runners[step.Name]
 	if !ok {
 		return nil, fmt.Errorf("no step runner found for %q", step.Name)
@@ -64,7 +64,7 @@ func TestStageRunner_runAllSuccess(t *testing.T) {
 			{Name: "moo"},
 		},
 	}
-	b, err := newStageRunner(context.Background(), factory, stage)
+	b, err := newStageRunner(context.Background(), factory, stage, 1)
 	require.NoError(t, err)
 	result := b.RunStage(context.Background())
 	assert.Equal(t, workermodel.StatusSuccess, result.Status)
@@ -88,7 +88,7 @@ func TestStageRunner_runOneFailsOthersCancelled(t *testing.T) {
 			{Name: "moo"},
 		},
 	}
-	b, err := newStageRunner(context.Background(), factory, stage)
+	b, err := newStageRunner(context.Background(), factory, stage, 1)
 	require.NoError(t, err)
 	result := b.RunStage(context.Background())
 	assert.Equal(t, workermodel.StatusFailed, result.Status)

@@ -155,6 +155,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Removed `containercreator` references from `pkg/core/wharfyml`. (#44)
 
+- Added collecting of build logs and status updates for build steps using
+  `resultstore`. (#71)
+
 ## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)
