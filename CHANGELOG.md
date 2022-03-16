@@ -50,6 +50,25 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   returning multiple errors for the whole parsing as well as keep track of the
   line & column of each parse error. (#48, #58)
 
+- Added support for a new file type: `.wharf-vars.yml`. It is used to define
+  built-in variables, and wharf-cmd looks for it at: (#73)
+
+  - `.wharf-vars.yml` in same directory as `.wharf-ci.yml`
+  - `.wharf-vars.yml` in all parent directories, recursively.
+  - Linux: `/etc/.config/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - Linux: `~/.config/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - Mac: `~/Library/Application Support/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - Windows: `%APPDATA%\iver-wharf\wharf-cmd\wharf-vars.yml`
+
+  The file content should be structured as:
+
+  ```yml
+  # .wharf-vars.yml
+
+  vars:
+    CHART_REPO: http://harbor.example.com
+  ```
+
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
 
