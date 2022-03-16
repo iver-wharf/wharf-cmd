@@ -22,7 +22,7 @@ type StepNuGetPackage struct {
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
 func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	var errSlice Errors
 

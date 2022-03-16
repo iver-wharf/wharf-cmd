@@ -75,8 +75,9 @@ func (v stepTypeVisitor) visitStepTypeValueNode(stepName string, node *yaml.Node
 	return stepType, errSlice
 }
 
-func getStepTypeMeta(p nodeMapParser) StepTypeMeta {
+func getStepTypeMeta(p nodeMapParser, stepName string) StepTypeMeta {
 	return StepTypeMeta{
+		StepName: stepName,
 		Source:   p.parentPos(),
 		FieldPos: p.positions,
 	}

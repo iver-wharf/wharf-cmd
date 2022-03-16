@@ -24,7 +24,7 @@ type StepContainer struct {
 func (StepContainer) StepTypeName() string { return "container" }
 
 func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.OS = "linux"
 	s.Shell = "/bin/sh"

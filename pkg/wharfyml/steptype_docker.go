@@ -34,7 +34,7 @@ type StepDocker struct {
 func (StepDocker) StepTypeName() string { return "docker" }
 
 func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.Name = stepName
 	s.Secret = "gitlab-registry"

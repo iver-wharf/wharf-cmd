@@ -30,7 +30,7 @@ type StepHelm struct {
 func (StepHelm) StepTypeName() string { return "helm" }
 
 func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"

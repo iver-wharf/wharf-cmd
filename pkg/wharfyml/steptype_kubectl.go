@@ -23,7 +23,7 @@ type StepKubectl struct {
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
 func (s StepKubectl) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"

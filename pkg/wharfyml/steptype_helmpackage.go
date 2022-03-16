@@ -22,7 +22,7 @@ type StepHelmPackage struct {
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
 func (s StepHelmPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	var errSlice Errors
 
