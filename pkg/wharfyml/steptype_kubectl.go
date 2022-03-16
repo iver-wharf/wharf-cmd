@@ -1,5 +1,7 @@
 package wharfyml
 
+import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+
 // StepKubectl represents a step type for running kubectl commands on some
 // Kubernetes manifest files.
 type StepKubectl struct {
@@ -20,7 +22,7 @@ type StepKubectl struct {
 // StepTypeName returns the name of this step type.
 func (StepKubectl) StepTypeName() string { return "kubectl" }
 
-func (s StepKubectl) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+func (s StepKubectl) visitStepTypeNode(p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
 	s.Cluster = "kubectl-config"

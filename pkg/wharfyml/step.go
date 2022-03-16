@@ -3,6 +3,7 @@ package wharfyml
 import (
 	"errors"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -19,7 +20,7 @@ type Step struct {
 	Type StepType
 }
 
-func visitStepNode(name strNode, node *yaml.Node) (step Step, errSlice Errors) {
+func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step Step, errSlice Errors) {
 	step.Pos = newPosNode(node)
 	step.Name = name.value
 	nodes, errs := visitMapSlice(node)
@@ -33,7 +34,8 @@ func visitStepNode(name strNode, node *yaml.Node) (step Step, errSlice Errors) {
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
-		stepType, errs := visitStepTypeNode(stepTypeNode.key, stepTypeNode.value)
+		stepType, errs := visitStepTypeNode(
+			stepTypeNode.key, stepTypeNode.value, source)
 		step.Type = stepType
 		if stepType != nil {
 			errSlice.add(wrapPathErrorSlice(errs, stepType.StepTypeName())...)

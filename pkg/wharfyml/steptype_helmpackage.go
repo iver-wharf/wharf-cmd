@@ -1,5 +1,7 @@
 package wharfyml
 
+import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+
 // StepHelmPackage represents a step type for building and uploading a Helm
 // chart to a chart registry.
 type StepHelmPackage struct {
@@ -15,7 +17,7 @@ type StepHelmPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s StepHelmPackage) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+func (s StepHelmPackage) visitStepTypeNode(p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
 	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"

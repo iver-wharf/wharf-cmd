@@ -21,9 +21,9 @@ const (
 // checks depends on your OS.
 //
 // For GNU/Linux:
+// 	/etc/iver-wharf/wharf-cmd/wharf-vars.yml
 // 	$XDG_CONFIG_HOME/iver-wharf/wharf-cmd/wharf-vars.yml
 // 	(if $XDG_CONFIG_HOME is unset) $HOME/.config/iver-wharf/wharf-cmd/wharf-vars.yml
-// 	/etc/iver-wharf/wharf-cmd/wharf-vars.yml
 //
 // For Windows:
 // 	%APPDATA%\iver-wharf\wharf-cmd\wharf-vars.yml

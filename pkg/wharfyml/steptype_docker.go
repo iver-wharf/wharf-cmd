@@ -1,5 +1,7 @@
 package wharfyml
 
+import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+
 // StepDocker represents a step type for building and pushing Docker images.
 type StepDocker struct {
 	// Step type metadata
@@ -26,7 +28,7 @@ type StepDocker struct {
 // StepTypeName returns the name of this step type.
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
+func (s StepDocker) visitStepTypeNode(p nodeMapParser, source varsub.Source) (StepType, Errors) {
 	s.Meta = getStepTypeMeta(p)
 
 	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"

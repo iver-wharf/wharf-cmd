@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -23,12 +24,12 @@ type StepTypeMeta struct {
 	FieldPos map[string]Pos
 }
 
-func visitStepTypeNode(key strNode, node *yaml.Node) (StepType, Errors) {
+func visitStepTypeNode(key strNode, node *yaml.Node, source varsub.Source) (StepType, Errors) {
 	visitor, err := visitStepTypeKeyNode(key)
 	if err != nil {
 		return nil, Errors{err}
 	}
-	return visitor.visitStepTypeValueNode(node)
+	return visitor.visitStepTypeValueNode(node, source)
 }
 
 func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
@@ -57,16 +58,16 @@ func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
 
 type stepTypeVisitor struct {
 	keyNode   *yaml.Node
-	visitNode func(nodeMapParser) (StepType, Errors)
+	visitNode func(p nodeMapParser, source varsub.Source) (StepType, Errors)
 }
 
-func (v stepTypeVisitor) visitStepTypeValueNode(node *yaml.Node) (StepType, Errors) {
+func (v stepTypeVisitor) visitStepTypeValueNode(node *yaml.Node, source varsub.Source) (StepType, Errors) {
 	var errSlice Errors
 	m, errs := visitMap(node)
 	errSlice.add(errs...)
 
 	parser := newNodeMapParser(v.keyNode, m)
-	stepType, errs := v.visitNode(parser)
+	stepType, errs := v.visitNode(parser, source)
 	errSlice.add(errs...)
 
 	return stepType, errSlice
