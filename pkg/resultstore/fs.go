@@ -48,7 +48,7 @@ func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
 }
 
 func (fs osFS) ListDirEntries(name string) ([]fs.DirEntry, error) {
-	return os.ReadDir(name)
+	return os.ReadDir(filepath.Join(fs.dir, name))
 }
 
 func (fs osFS) openFileMkdirAll(name string, flags int, perm fs.FileMode) (io.WriteCloser, error) {
