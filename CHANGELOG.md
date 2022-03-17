@@ -50,6 +50,31 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   returning multiple errors for the whole parsing as well as keep track of the
   line & column of each parse error. (#48, #58)
 
+- Added support for a new file type: `.wharf-vars.yml`. It is used to define
+  built-in variables, and wharf-cmd looks for it in multiple files in the
+  following order, where former files take precedence over latter files on a
+  per-variable basis: (#73)
+
+  - `./.wharf-vars.yml` (in same directory as `.wharf-ci.yml`)
+  - `./../.wharf-vars.yml` (in parent directory of `.wharf-ci.yml`)
+  - `./../../.wharf-vars.yml` (etc; it continues recursively)
+  - (Linux only) `~/.config/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Linux only) `/etc/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Darwin/OS X only) `~/Library/Application Support/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Windows only) `%APPDATA%\iver-wharf\wharf-cmd\wharf-vars.yml`
+
+  Note the leading dot in the directory tree files (`.wharf-vars.yml`), while
+  the files from config folders is without the dot (`wharf-vars.yml`).
+
+  The file content should be structured as:
+
+  ```yml
+  # .wharf-vars.yml
+
+  vars:
+    CHART_REPO: http://harbor.example.com
+  ```
+
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
 

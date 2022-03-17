@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -28,6 +29,11 @@ type nodeMapParser struct {
 
 func (p nodeMapParser) parentPos() Pos {
 	return newPosNode(p.parent)
+}
+
+func (p nodeMapParser) hasNode(key string) bool {
+	_, ok := p.nodes[key]
+	return ok
 }
 
 func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
@@ -105,6 +111,28 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	return errSlice
 }
 
+func (p nodeMapParser) unmarshalStringWithVarSub(
+	nodeKey, varLookup string, source varsub.Source, target *string) error {
+
+	err := p.loadFromVarSubIfUnset(nodeKey, varLookup, source)
+	if err != nil {
+		return err
+	}
+	return p.unmarshalString(nodeKey, target)
+}
+
+func (p nodeMapParser) unmarshalStringFromVarSub(
+	varLookup string, source varsub.Source, target *string) error {
+	node, err := p.lookupFromVarSub(varLookup, source)
+	if err != nil {
+		return err
+	}
+	p.nodes["__tmp"] = node
+	err = p.unmarshalString("__tmp", target)
+	delete(p.nodes, "__tmp")
+	return err
+}
+
 func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	node, ok := p.nodes[key]
 	if !ok {
@@ -146,4 +174,39 @@ func (p nodeMapParser) validateRequiredSlice(key string) error {
 func (p nodeMapParser) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
 	return wrapPosErrorNode(inner, p.parent)
+}
+
+func (p nodeMapParser) loadFromVarSubIfUnset(
+	nodeKey, varLookup string, source varsub.Source) error {
+	if _, ok := p.nodes[nodeKey]; ok {
+		return nil
+	}
+	node, err := p.lookupFromVarSub(varLookup, source)
+	if err != nil {
+		return err
+	}
+	p.nodes[nodeKey] = node
+	return nil
+}
+
+func (p nodeMapParser) lookupFromVarSub(
+	varLookup string, source varsub.Source) (*yaml.Node, error) {
+	varValue, ok := safeLookupVar(source, varLookup)
+	if !ok {
+		err := fmt.Errorf("%w: need %s", ErrMissingBuiltinVar, varLookup)
+		return nil, wrapPosErrorNode(err, p.parent)
+	}
+	newNode, err := newNodeWithValue(p.parent, varValue)
+	if err != nil {
+		err := fmt.Errorf("read %s: %w", varLookup, err)
+		return nil, wrapPosErrorNode(err, p.parent)
+	}
+	return newNode, nil
+}
+
+func safeLookupVar(source varsub.Source, name string) (interface{}, bool) {
+	if source == nil {
+		return nil, false
+	}
+	return source.Lookup(name)
 }

@@ -1,5 +1,7 @@
 package wharfyml
 
+import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+
 // StepNuGetPackage represents a step type used for building .NET NuGet
 // packages.
 type StepNuGetPackage struct {
@@ -19,8 +21,8 @@ type StepNuGetPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s StepNuGetPackage) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	var errSlice Errors
 

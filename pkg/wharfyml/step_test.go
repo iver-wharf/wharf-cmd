@@ -7,29 +7,33 @@ import (
 )
 
 func TestVisitStep_ErrIfNotMap(t *testing.T) {
-	_, errs := visitStepNode(getKeyedNode(t, `myStep: 123`))
+	key, node := getKeyedNode(t, `myStep: 123`)
+	_, errs := visitStepNode(key, node, nil)
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestVisitStep_ErrIfEmpty(t *testing.T) {
-	_, errs := visitStepNode(getKeyedNode(t, `myStep: {}`))
+	key, node := getKeyedNode(t, `myStep: {}`)
+	_, errs := visitStepNode(key, node, nil)
 	requireContainsErr(t, errs, ErrStepEmpty)
 }
 
 func TestVisitStep_ErrIfMultipleStepTypes(t *testing.T) {
-	_, errs := visitStepNode(getKeyedNode(t, `
+	key, node := getKeyedNode(t, `
 myStep:
   container: {}
   docker: {}
-`))
+`)
+	_, errs := visitStepNode(key, node, nil)
 	requireContainsErr(t, errs, ErrStepMultipleStepTypes)
 }
 
 func TestVisitStep_Name(t *testing.T) {
-	step, errs := visitStepNode(getKeyedNode(t, `
+	key, node := getKeyedNode(t, `
 myStep:
   helm-package: {}
-`))
+`)
+	step, errs := visitStepNode(key, node, nil)
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
 	}

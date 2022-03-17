@@ -97,7 +97,7 @@ func visitDefStageNodes(nodes []mapItem, source varsub.Source) (stages []Stage, 
 			errSlice.add(err)
 			continue
 		}
-		stage, errs := visitStageNode(n.key, stageNode)
+		stage, errs := visitStageNode(n.key, stageNode, source)
 		stages = append(stages, stage)
 		errSlice.add(wrapPathErrorSlice(errs, n.key.value)...)
 	}

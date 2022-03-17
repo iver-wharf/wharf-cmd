@@ -1,5 +1,12 @@
 package wharfyml
 
+import (
+	"fmt"
+	"strings"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
+
 // StepDocker represents a step type for building and pushing Docker images.
 type StepDocker struct {
 	// Step type metadata
@@ -26,19 +33,45 @@ type StepDocker struct {
 // StepTypeName returns the name of this step type.
 func (StepDocker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p, stepName)
 
-	s.Destination = ""  // TODO: default to "${registry}/${group}/${REPO_NAME}/${step_name}"
-	s.Name = ""         // TODO: default to "${step_name}"
-	s.Group = ""        // TODO: default to "${REPO_GROUP}"
-	s.Registry = ""     // TODO: default to "${REG_URL}"
-	s.AppendCert = true // TODO: default to true if REPO_GROUP starts with "default", case insensitive
-
-	s.Push = true
+	s.Name = stepName
 	s.Secret = "gitlab-registry"
 
 	var errSlice Errors
+
+	if !p.hasNode("destination") {
+		var repoName string
+		var errs Errors
+		errs.addNonNils(
+			p.unmarshalStringWithVarSub("registry", "REG_URL", source, &s.Registry),
+			p.unmarshalStringWithVarSub("group", "REPO_GROUP", source, &s.Registry),
+			p.unmarshalStringFromVarSub("REPO_NAME", source, &repoName),
+			p.unmarshalString("name", &s.Name), // Already defaults to step name
+		)
+		for _, err := range errs {
+			errSlice.add(fmt.Errorf(`eval "destination" default: %w`, err))
+		}
+		if repoName == s.Name {
+			s.Destination = fmt.Sprintf("%s/%s/%s",
+				s.Registry, s.Group, repoName)
+		} else {
+			s.Destination = fmt.Sprintf("%s/%s/%s/%s",
+				s.Registry, s.Group, repoName, s.Name)
+		}
+	}
+
+	if !p.hasNode("append-cert") {
+		var repoGroup string
+		err := p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup)
+		if err != nil {
+			errSlice.add(fmt.Errorf(`eval "append-cert" default: %w`, err))
+		}
+		if strings.HasPrefix(strings.ToLower(s.Group), "default") {
+			s.AppendCert = true
+		}
+	}
 
 	// Unmarshalling
 	errSlice.addNonNils(
@@ -46,10 +79,8 @@ func (s StepDocker) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
 		p.unmarshalString("tag", &s.Tag),
 		p.unmarshalString("destination", &s.Destination),
 		p.unmarshalString("name", &s.Name),
-		p.unmarshalString("group", &s.Group),
 		p.unmarshalString("context", &s.Context),
 		p.unmarshalString("secret", &s.Secret),
-		p.unmarshalString("registry", &s.Registry),
 		p.unmarshalBool("append-cert", &s.AppendCert),
 		p.unmarshalBool("push", &s.Push),
 		p.unmarshalString("secretName", &s.SecretName),

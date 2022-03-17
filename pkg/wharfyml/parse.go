@@ -39,7 +39,7 @@ func Parse(reader io.Reader, args Args) (def Definition, errSlice Errors) {
 }
 
 func parse(reader io.Reader, args Args) (def Definition, errSlice Errors) {
-	doc, err := decodeFirstDoc(reader)
+	doc, err := decodeFirstRootNode(reader)
 	if err != nil {
 		errSlice.add(err)
 	}
@@ -52,27 +52,38 @@ func parse(reader io.Reader, args Args) (def Definition, errSlice Errors) {
 	return
 }
 
-func decodeFirstDoc(reader io.Reader) (*yaml.Node, error) {
-	dec := yaml.NewDecoder(reader)
-	var doc yaml.Node
-	err := dec.Decode(&doc)
-	if err == io.EOF {
+func decodeFirstRootNode(reader io.Reader) (*yaml.Node, error) {
+	rootNodes, err := decodeRootNodes(reader)
+	if err != nil {
+		return nil, err
+	}
+	if len(rootNodes) == 0 {
 		return nil, ErrMissingDoc
 	}
-	if err != nil {
-		return nil, err
+	if len(rootNodes) > 1 {
+		return nil, fmt.Errorf("%w: expected 1, found %d", ErrTooManyDocs, len(rootNodes))
 	}
-	body, err := visitDocument(&doc)
-	if err != nil {
-		return nil, err
+	return rootNodes[0], nil
+}
+
+func decodeRootNodes(reader io.Reader) ([]*yaml.Node, error) {
+	dec := yaml.NewDecoder(reader)
+	var rootNodes []*yaml.Node
+	for {
+		var doc yaml.Node
+		if err := dec.Decode(&doc); err == io.EOF {
+			break
+		} else if err != nil {
+			return nil, fmt.Errorf("document %d: %w", len(rootNodes)+1, err)
+		}
+		root, err := visitDocument(&doc)
+		if err != nil {
+			return nil, fmt.Errorf("document %d: %w", len(rootNodes)+1, err)
+		}
+		root = unwrapNodeRec(root)
+		rootNodes = append(rootNodes, root)
 	}
-	var unusedNode yaml.Node
-	if err := dec.Decode(&unusedNode); err != io.EOF {
-		// Continue, but only parse the first doc
-		return body, ErrTooManyDocs
-	}
-	body = unwrapNodeRec(body)
-	return body, nil
+	return rootNodes, nil
 }
 
 func unwrapNodeRec(node *yaml.Node) *yaml.Node {

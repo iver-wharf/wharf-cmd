@@ -3,9 +3,14 @@ package cmd
 import (
 	"context"
 	"errors"
+	"fmt"
+	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
@@ -39,20 +44,39 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if err != nil {
 			return err
 		}
-		def, errs := wharfyml.ParseFile(runFlags.path, wharfyml.Args{
-			Env: runFlags.env,
+		ymlAbsPath, err := filepath.Abs(runFlags.path)
+		if err != nil {
+			return fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
+		}
+		currentDir := filepath.Dir(ymlAbsPath)
+
+		var varSources varsub.SourceSlice
+
+		varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
+		if len(errs) > 0 {
+			logParseErrors(errs, currentDir)
+			return errors.New("failed to parse variable files")
+		}
+		if varFileSource != nil {
+			varSources = append(varSources, varFileSource)
+		}
+
+		gitStats, err := gitstat.FromExec(currentDir)
+		if err != nil {
+			log.Warn().WithError(err).
+				Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")
+		} else {
+			log.Debug().Message("Read REPO_ and GIT_ variables from Git:\n" +
+				gitStats.String())
+			varSources = append(varSources, gitStats)
+		}
+
+		def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
+			Env:       runFlags.env,
+			VarSource: varSources,
 		})
 		if len(errs) > 0 {
-			log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
-			for _, err := range errs {
-				var posErr wharfyml.PosError
-				if errors.As(err, &posErr) {
-					log.Warn().Messagef("%4d:%-4d%s",
-						posErr.Source.Line, posErr.Source.Column, err.Error())
-				} else {
-					log.Warn().Messagef("   -:-   %s", err.Error())
-				}
-			}
+			logParseErrors(errs, currentDir)
 			return errors.New("failed to parse .wharf-ci.yml")
 		}
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
@@ -83,6 +107,54 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 		return nil
 	},
+}
+
+func logParseErrors(errs wharfyml.Errors, currentDir string) {
+	log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
+	for _, err := range errs {
+		var posErr wharfyml.PosError
+		if errors.As(err, &posErr) {
+			log.Warn().Messagef("%4d:%-4d%s",
+				posErr.Source.Line, posErr.Source.Column, err.Error())
+		} else {
+			log.Warn().Messagef("   -:-   %s", err.Error())
+		}
+	}
+
+	containsMissingBuiltin := false
+	for _, err := range errs {
+		if errors.Is(err, wharfyml.ErrMissingBuiltinVar) {
+			containsMissingBuiltin = true
+			break
+		}
+	}
+	if containsMissingBuiltin {
+		varFiles := wharfyml.ListPossibleVarsFiles(currentDir)
+		var sb strings.Builder
+		sb.WriteString(`Tip: You can add built-in variables to Wharf in multiple ways.
+
+Wharf look for values in the following files:`)
+		for _, file := range varFiles {
+			if file.IsRel {
+				continue
+			}
+			sb.WriteString("\n  ")
+			sb.WriteString(file.PrettyPath(currentDir))
+		}
+		sb.WriteString(`
+
+Wharf also looks for:
+  - All ".wharf-vars.yml" in this directory or any parent directory.
+  - Local Git repository and extracts GIT_ and REPO_ variables from it.
+  - Environment variables.
+
+Sample file content:
+  # .wharf-vars.yml
+  vars:
+    REG_URL: http://harbor.example.com
+`)
+		log.Info().Message(sb.String())
+	}
 }
 
 func init() {
