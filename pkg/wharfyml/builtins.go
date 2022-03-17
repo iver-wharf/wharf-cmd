@@ -113,10 +113,14 @@ func (f VarFile) PrettyPath(currentDir string) string {
 	if err != nil {
 		return f.Path
 	}
-	if strings.HasPrefix(f.Path, home) {
-		return "~" + strings.TrimPrefix(f.Path, home)
+	return useShorthandHomePrefix(f.Path, home)
+}
+
+func useShorthandHomePrefix(path, home string) string {
+	if !strings.HasPrefix(path, home) {
+		return path
 	}
-	return f.Path
+	return "~" + strings.TrimPrefix(path, home)
 }
 
 // ListPossibleVarsFiles returns all paths where we look for wharf-vars.yml and
