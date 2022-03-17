@@ -42,7 +42,7 @@ func TestListParentDirsPossibleBuiltinVarsFiles(t *testing.T) {
 
 func TestVarFilePrettyPath(t *testing.T) {
 	currentDir := "/home/root/repos/my-repo"
-	file := VarFile{Path: "/home/root/.wharf-vars.yml", Kind: VarFileKindParentDir}
+	file := VarFile{Path: "/home/root/.wharf-vars.yml", IsRel: true}
 	want := "../../.wharf-vars.yml"
 	got := file.PrettyPath(currentDir)
 	assert.Equal(t, want, got)

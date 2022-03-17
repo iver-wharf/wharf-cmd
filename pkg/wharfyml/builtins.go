@@ -94,33 +94,16 @@ func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
 	return allVars, errSlice
 }
 
-// VarFileKind is an enum of the different kinds of where the variable file
-// comes from.
-type VarFileKind byte
-
-const (
-	// VarFileKindUnspecified means the variable file didn't come from any
-	// place worth defining.
-	VarFileKindUnspecified VarFileKind = iota
-	// VarFileKindConfigDir means the variable file comes from a config
-	// directory, such as /etc/... or ~/.config/... on Linux, or %APPDATA%\...
-	// on Windows.
-	VarFileKindConfigDir
-	// VarFileKindParentDir means the variable file comes from the same
-	// directory tree as the current directory.
-	VarFileKindParentDir
-)
-
 // VarFile is a place and kind definition of a variable file.
 type VarFile struct {
-	Path string
-	Kind VarFileKind
+	Path  string
+	IsRel bool
 }
 
-// PrettyPath returns a formatted version of the path, based on what kind of
-// variable file it is.
+// PrettyPath returns a formatted version of the path, based on if its relative,
+// and using "~" as shorthand for the user's home directory.
 func (f VarFile) PrettyPath(currentDir string) string {
-	if f.Kind == VarFileKindParentDir {
+	if f.IsRel {
 		rel, err := filepath.Rel(currentDir, f.Path)
 		if err == nil {
 			return rel
@@ -146,8 +129,8 @@ func ListPossibleVarsFiles(currentDir string) []VarFile {
 	confDir, err := os.UserConfigDir()
 	if err == nil {
 		varFiles = append(varFiles, VarFile{
-			Path: filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
-			Kind: VarFileKindConfigDir,
+			Path:  filepath.Join(confDir, "iver-wharf", "wharf-cmd", builtInVarsFile),
+			IsRel: false,
 		})
 	}
 
@@ -159,8 +142,8 @@ func listParentDirsPossibleVarsFiles(currentDir string) []VarFile {
 	var varFiles []VarFile
 	for {
 		varFiles = append(varFiles, VarFile{
-			Path: filepath.Join(currentDir, builtInVarsDotfile),
-			Kind: VarFileKindParentDir,
+			Path:  filepath.Join(currentDir, builtInVarsDotfile),
+			IsRel: true,
 		})
 		prevDir := currentDir
 		currentDir = filepath.Dir(currentDir)

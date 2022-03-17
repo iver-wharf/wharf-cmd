@@ -135,7 +135,7 @@ func logParseErrors(errs wharfyml.Errors, currentDir string) {
 
 Wharf look for values in the following files:`)
 		for _, file := range varFiles {
-			if file.Kind == wharfyml.VarFileKindParentDir {
+			if file.IsRel {
 				continue
 			}
 			sb.WriteString("\n  ")
