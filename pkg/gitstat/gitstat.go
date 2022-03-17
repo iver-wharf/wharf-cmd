@@ -44,7 +44,7 @@ type Stats struct {
 // Lookup tries to get a value based on the correlated built-in variable name.
 // This method implements the varsub.Source interface.
 //
-// The string name <-> field mapping is based on the documentation:
+// The string name -> field mapping is based on the documentation:
 // https://iver-wharf.github.io/#/usage-wharfyml/variables/built-in-variables
 func (s Stats) Lookup(name string) (interface{}, bool) {
 	switch name {

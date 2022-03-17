@@ -136,8 +136,10 @@ func (f VarFile) PrettyPath(currentDir string) string {
 	return f.Path
 }
 
-// ListPossibleVarsFiles returns all paths of where a .wharf-vars.yml file are
-// looked for.
+// ListPossibleVarsFiles returns all paths where we look for wharf-vars.yml and
+// .wharf-vars.yml files.
+//
+// Returned paths include the filename.
 func ListPossibleVarsFiles(currentDir string) []VarFile {
 	varFiles := listOSPossibleVarsFiles()
 

@@ -137,14 +137,14 @@ func TestEstimateRepoGroupAndName(t *testing.T) {
 		},
 		{
 			name:      "dev.azure.com/ssh-path",
-			origin:    newTestRemote("git@ssh.dev.azure.com:v3/iver-wharf/wharf/wharf-cmd"),
-			wantGroup: "iver-wharf/wharf",
+			origin:    newTestRemote("git@ssh.dev.azure.com:v3/iver-wharf/wharf-subgroup/wharf-cmd"),
+			wantGroup: "iver-wharf/wharf-subgroup",
 			wantName:  "wharf-cmd",
 		},
 		{
 			name:      "dev.azure.com/https",
-			origin:    newTestRemote("https://iver-wharf@dev.azure.com/iver-wharf/wharf/_git/wharf-cmd"),
-			wantGroup: "iver-wharf/wharf",
+			origin:    newTestRemote("https://iver-wharf@dev.azure.com/iver-wharf/wharf-subgroup/_git/wharf-cmd"),
+			wantGroup: "iver-wharf/wharf-subgroup",
 			wantName:  "wharf-cmd",
 		},
 		{
