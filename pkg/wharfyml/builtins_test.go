@@ -17,7 +17,7 @@ func (testVarSource) Lookup(name string) (interface{}, bool) {
 	case "REG_URL":
 		return "http://harbor.example.com", true
 	case "CHART_REPO":
-		return "http://harbor.example.com", true
+		return "http://charts.example.com", true
 	default:
 		return nil, false
 	}
