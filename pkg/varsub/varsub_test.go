@@ -176,7 +176,7 @@ func TestSubstitute_nonStrings(t *testing.T) {
 		name   string
 		source SourceMap
 		value  string
-		want   interface{}
+		want   any
 	}{
 		{
 			name:   "full/bool",
@@ -242,7 +242,7 @@ func TestSubstitute_recursive(t *testing.T) {
 		name   string
 		source SourceMap
 		value  string
-		want   interface{}
+		want   any
 	}{
 		{
 			name: "string",

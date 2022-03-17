@@ -27,15 +27,15 @@ var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
 
 // Substitute will replace all variables in the string using the variable
 // substution source. Variables are looked up recursively.
-func Substitute(value string, source Source) (interface{}, error) {
+func Substitute(value string, source Source) (any, error) {
 	return substituteRec(value, source, nil)
 }
 
-func substituteRec(value string, source Source, usedParams []string) (interface{}, error) {
+func substituteRec(value string, source Source, usedParams []string) (any, error) {
 	result := value
 	matches := Matches(value)
 	for _, match := range matches {
-		var matchVal interface{}
+		var matchVal any
 		if match.Name == "%" {
 			matchVal = "${}"
 		} else if escapedParamPattern.MatchString(match.Name) {
@@ -76,7 +76,7 @@ func containsString(slice []string, element string) bool {
 	return false
 }
 
-func stringify(val interface{}) string {
+func stringify(val any) string {
 	switch val := val.(type) {
 	case string:
 		return val

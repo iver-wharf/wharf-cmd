@@ -1,6 +1,6 @@
 module github.com/iver-wharf/wharf-cmd
 
-go 1.17
+go 1.18
 
 require (
 	github.com/alta/protopatch v0.5.0
