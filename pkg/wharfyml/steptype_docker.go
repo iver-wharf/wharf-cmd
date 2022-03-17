@@ -43,15 +43,16 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 
 	if !p.hasNode("destination") {
 		var repoName string
-		errSlice.addNonNils(
-			p.unmarshalStringFromNodeOrVarSubForOther(
-				"registry", "REG_URL", "destination", source, &s.Registry),
-			p.unmarshalStringFromNodeOrVarSubForOther(
-				"group", "REPO_GROUP", "destination", source, &s.Registry),
-			p.unmarshalStringFromVarSubForOther(
-				"REPO_NAME", "destination", source, &repoName),
+		var errs Errors
+		errs.addNonNils(
+			p.unmarshalStringWithVarSub("registry", "REG_URL", source, &s.Registry),
+			p.unmarshalStringWithVarSub("group", "REPO_GROUP", source, &s.Registry),
+			p.unmarshalStringFromVarSub("REPO_NAME", source, &repoName),
 			p.unmarshalString("name", &s.Name), // Already defaults to step name
 		)
+		for _, err := range errs {
+			errSlice.add(fmt.Errorf(`eval "destination" default: %w`, err))
+		}
 		if repoName == s.Name {
 			s.Destination = fmt.Sprintf("%s/%s/%s",
 				s.Registry, s.Group, repoName)
@@ -63,10 +64,10 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 
 	if !p.hasNode("append-cert") {
 		var repoGroup string
-		errSlice.addNonNils(
-			p.unmarshalStringFromVarSubForOther(
-				"REPO_GROUP", "append-cert", source, &repoGroup),
-		)
+		err := p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup)
+		if err != nil {
+			errSlice.add(fmt.Errorf(`eval "append-cert" default: %w`, err))
+		}
 		if strings.HasPrefix(strings.ToLower(s.Group), "default") {
 			s.AppendCert = true
 		}

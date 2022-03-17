@@ -40,12 +40,14 @@ func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source var
 	if !p.hasNode("repo") {
 		var chartRepo string
 		var repoGroup string
-		errSlice.addNonNils(
-			p.unmarshalStringFromVarSubForOther(
-				"CHART_REPO", "repo", source, &chartRepo),
-			p.unmarshalStringFromVarSubForOther(
-				"REPO_GROUP", "repo", source, &repoGroup),
+		var errs Errors
+		errs.addNonNils(
+			p.unmarshalStringFromVarSub("CHART_REPO", source, &chartRepo),
+			p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup),
 		)
+		for _, err := range errs {
+			errSlice.add(fmt.Errorf(`eval "repo" default: %w`, err))
+		}
 		s.Repo = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
