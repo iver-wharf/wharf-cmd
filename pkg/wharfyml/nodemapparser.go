@@ -123,8 +123,7 @@ func (p nodeMapParser) unmarshalStringWithVarSub(
 
 func (p nodeMapParser) unmarshalStringFromVarSub(
 	varLookup string, source varsub.Source, target *string) error {
-	node, err := p.lookupFromVarSub(
-		varLookup, source)
+	node, err := p.lookupFromVarSub(varLookup, source)
 	if err != nil {
 		return err
 	}
