@@ -59,7 +59,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `./../.wharf-vars.yml` (in parent directory of `.wharf-ci.yml`)
   - `./../../.wharf-vars.yml` (etc; it continues recursively)
   - (Linux only) `~/.config/iver-wharf/wharf-cmd/wharf-vars.yml`
-  - (Linux only) `/etc/.config/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Linux only) `/etc/iver-wharf/wharf-cmd/wharf-vars.yml`
   - (Darwin/OS X only) `~/Library/Application Support/iver-wharf/wharf-cmd/wharf-vars.yml`
   - (Windows only) `%APPDATA%\iver-wharf\wharf-cmd\wharf-vars.yml`
 
