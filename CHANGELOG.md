@@ -132,7 +132,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
   - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0 (#8)
 
-- Changed Go runtime from v1.13 to v1.17. (#8)
+- Changed Go runtime from v1.13 to v1.18. (#8, #74)
 
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 
