@@ -88,14 +88,8 @@ func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {
 	}
 	ch := make(chan StatusUpdate, buffer)
 	s.statusSubs = append(s.statusSubs, ch)
-	go s.pubStatusUpdatesToChan(updates, ch)
+	go sendAllToChan(ch, updates)
 	return ch, nil
-}
-
-func (s *store) pubStatusUpdatesToChan(updates []StatusUpdate, ch chan<- StatusUpdate) {
-	for _, u := range updates {
-		ch <- u
-	}
 }
 
 func (s *store) listAllStatusUpdates() ([]StatusUpdate, error) {

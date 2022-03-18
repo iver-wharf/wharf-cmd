@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
-	"gopkg.in/typ.v2"
+	"gopkg.in/typ.v3/pkg/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -157,6 +157,6 @@ func listParentDirsPossibleVarsFiles(currentDir string) []VarFile {
 	}
 	// We reverse it because we want the path closest to the current dir
 	// to be merged in last into the varsub.Source.
-	typ.Reverse(varFiles)
+	slices.Reverse(varFiles)
 	return varFiles
 }

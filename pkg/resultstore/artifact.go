@@ -81,14 +81,8 @@ func (s *store) SubAllArtifactEvents(buffer int) (<-chan ArtifactEvent, error) {
 	}
 	ch := make(chan ArtifactEvent, buffer)
 	s.artifactSubs = append(s.artifactSubs, ch)
-	go s.pubArtifactEventsToChan(events, ch)
+	go sendAllToChan(ch, events)
 	return ch, nil
-}
-
-func (s *store) pubArtifactEventsToChan(events []ArtifactEvent, ch chan<- ArtifactEvent) {
-	for _, u := range events {
-		ch <- u
-	}
 }
 
 func (s *store) listAllArtifactEvents() ([]ArtifactEvent, error) {
