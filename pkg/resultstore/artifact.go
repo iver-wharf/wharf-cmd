@@ -15,8 +15,8 @@ var (
 )
 
 func (s *store) AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error {
-	s.artifactMutex.Lock(stepID)
-	defer s.artifactMutex.Unlock(stepID)
+	s.artifactMutex.LockKey(stepID)
+	defer s.artifactMutex.UnlockKey(stepID)
 	list, err := s.readArtifactEventsFile(stepID)
 	if err != nil {
 		return err
@@ -73,15 +73,14 @@ func (s *store) resolveArtifactEventsPath(stepID uint64) string {
 }
 
 func (s *store) SubAllArtifactEvents(buffer int) (<-chan ArtifactEvent, error) {
-	s.artifactSubMutex.Lock()
-	defer s.artifactSubMutex.Unlock()
+	s.artifactSubMutex.RLock()
+	defer s.artifactSubMutex.RUnlock()
+	ch := s.artifactPubSub.SubBuf(buffer)
 	events, err := s.listAllArtifactEvents()
 	if err != nil {
 		return nil, fmt.Errorf("read all existing artifact events: %w", err)
 	}
-	ch := make(chan ArtifactEvent, buffer)
-	s.artifactSubs = append(s.artifactSubs, ch)
-	go sendAllToChan(ch, events)
+	go s.artifactPubSub.WithOnly(ch).PubSliceSync(events)
 	return ch, nil
 }
 
@@ -101,26 +100,14 @@ func (s *store) listAllArtifactEvents() ([]ArtifactEvent, error) {
 	return artifacts, nil
 }
 
-func (s *store) UnsubAllArtifactEvents(artifactCh <-chan ArtifactEvent) bool {
-	s.artifactSubMutex.Lock()
-	defer s.artifactSubMutex.Unlock()
-	for i, ch := range s.artifactSubs {
-		if ch == artifactCh {
-			if i != len(s.artifactSubs)-1 {
-				copy(s.artifactSubs[i:], s.artifactSubs[i+1:])
-			}
-			s.artifactSubs = s.artifactSubs[:len(s.artifactSubs)-1]
-			close(ch)
-			return true
-		}
-	}
-	return false
+func (s *store) UnsubAllArtifactEvents(artifactCh <-chan ArtifactEvent) error {
+	return s.artifactPubSub.Unsub(artifactCh)
 }
 
 func (s *store) pubArtifactEvent(artifactEvent ArtifactEvent) {
+	// Additional locking as we want to pre-fetch existing data on new
+	// subscriptions
 	s.artifactSubMutex.RLock()
-	for _, ch := range s.artifactSubs {
-		ch <- artifactEvent
-	}
+	s.artifactPubSub.PubSync(artifactEvent)
 	s.artifactSubMutex.RUnlock()
 }
