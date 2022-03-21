@@ -117,6 +117,10 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return errors.New("build failed")
 		}
 
+		// Lets subscribed code (like the workerserver) know that no more
+		// data is coming.
+		store.UnsubAll()
+
 		for running {
 			// Infinite sleep for testing.
 			// Should be cancellable through API or something.
