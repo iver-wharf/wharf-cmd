@@ -3,6 +3,7 @@ package wharfyml
 import (
 	"errors"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,7 +22,7 @@ type Stage struct {
 	Steps   []Step
 }
 
-func visitStageNode(nameNode strNode, node *yaml.Node) (stage Stage, errSlice Errors) {
+func visitStageNode(nameNode strNode, node *yaml.Node, source varsub.Source) (stage Stage, errSlice Errors) {
 	stage.Pos = newPosNode(node)
 	stage.Name = nameNode.value
 	nodes, errs := visitMapSlice(node)
@@ -38,7 +39,7 @@ func visitStageNode(nameNode strNode, node *yaml.Node) (stage Stage, errSlice Er
 			stage.Envs = envs
 			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
 		default:
-			step, errs := visitStepNode(stepNode.key, stepNode.value)
+			step, errs := visitStepNode(stepNode.key, stepNode.value, source)
 			stage.Steps = append(stage.Steps, step)
 			errSlice.add(wrapPathErrorSlice(errs, stepNode.key.value)...)
 		}

@@ -1,5 +1,11 @@
 package wharfyml
 
+import (
+	"fmt"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
+
 // StepHelmPackage represents a step type for building and uploading a Helm
 // chart to a chart registry.
 type StepHelmPackage struct {
@@ -15,12 +21,24 @@ type StepHelmPackage struct {
 // StepTypeName returns the name of this step type.
 func (StepHelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s StepHelmPackage) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
-
-	s.Destination = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
+func (s StepHelmPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	var errSlice Errors
+
+	if !p.hasNode("destination") {
+		var chartRepo string
+		var repoGroup string
+		var errs Errors
+		errs.addNonNils(
+			p.unmarshalStringFromVarSub("CHART_REPO", source, &chartRepo),
+			p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup),
+		)
+		for _, err := range errs {
+			errSlice.add(fmt.Errorf(`eval "destination" default: %w`, err))
+		}
+		s.Destination = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
+	}
 
 	// Unmarshalling
 	errSlice.addNonNils(

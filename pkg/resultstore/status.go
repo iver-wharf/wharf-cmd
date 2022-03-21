@@ -16,8 +16,8 @@ var (
 )
 
 func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error {
-	s.statusMutex.Lock(stepID)
-	defer s.statusMutex.Unlock(stepID)
+	s.statusMutex.LockKey(stepID)
+	defer s.statusMutex.UnlockKey(stepID)
 	list, err := s.readStatusUpdatesFile(stepID)
 	if err != nil {
 		return err
@@ -80,22 +80,15 @@ func (s *store) resolveStatusPath(stepID uint64) string {
 }
 
 func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {
-	s.statusSubMutex.Lock()
-	defer s.statusSubMutex.Unlock()
+	s.statusSubMutex.RLock()
+	defer s.statusSubMutex.RUnlock()
+	ch := s.statusPubSub.SubBuf(buffer)
 	updates, err := s.listAllStatusUpdates()
 	if err != nil {
 		return nil, fmt.Errorf("read all existing status updates: %w", err)
 	}
-	ch := make(chan StatusUpdate, buffer)
-	s.statusSubs = append(s.statusSubs, ch)
-	go s.pubStatusUpdatesToChan(updates, ch)
+	go s.statusPubSub.WithOnly(ch).PubSliceSync(updates)
 	return ch, nil
-}
-
-func (s *store) pubStatusUpdatesToChan(updates []StatusUpdate, ch chan<- StatusUpdate) {
-	for _, u := range updates {
-		ch <- u
-	}
 }
 
 func (s *store) listAllStatusUpdates() ([]StatusUpdate, error) {
@@ -114,26 +107,14 @@ func (s *store) listAllStatusUpdates() ([]StatusUpdate, error) {
 	return updates, nil
 }
 
-func (s *store) UnsubAllStatusUpdates(statusCh <-chan StatusUpdate) bool {
-	s.statusSubMutex.Lock()
-	defer s.statusSubMutex.Unlock()
-	for i, ch := range s.statusSubs {
-		if ch == statusCh {
-			if i != len(s.statusSubs)-1 {
-				copy(s.statusSubs[i:], s.statusSubs[i+1:])
-			}
-			s.statusSubs = s.statusSubs[:len(s.statusSubs)-1]
-			close(ch)
-			return true
-		}
-	}
-	return false
+func (s *store) UnsubAllStatusUpdates(statusCh <-chan StatusUpdate) error {
+	return s.statusPubSub.Unsub(statusCh)
 }
 
 func (s *store) pubStatusUpdate(statusUpdate StatusUpdate) {
+	// Additional locking as we want to pre-fetch existing data on new
+	// subscriptions
 	s.statusSubMutex.RLock()
-	for _, ch := range s.statusSubs {
-		ch <- statusUpdate
-	}
+	s.statusPubSub.PubSync(statusUpdate)
 	s.statusSubMutex.RUnlock()
 }

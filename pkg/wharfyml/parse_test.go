@@ -56,7 +56,7 @@ myStage2:
   myKubectlStep:
     kubectl:
       file: deploy/pod.yaml
-`), Args{Env: "myEnvA"})
+`), Args{Env: "myEnvA", VarSource: testVarSource{}})
 	requireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
@@ -140,7 +140,7 @@ environments:
   myEnv:
     myStr: !!str 123
     myInt: !!int 123
-`), Args{})
+`), Args{VarSource: testVarSource{}})
 	requireNoErr(t, errs)
 	myEnv, ok := def.Envs["myEnv"]
 	require.True(t, ok, "myEnv environment exists")
@@ -156,7 +156,7 @@ myStage1: &reused
     helm-package: {}
 
 myStage2: *reused
-`), Args{})
+`), Args{VarSource: testVarSource{}})
 	requireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -178,7 +178,7 @@ myStage2:
   <<: *reused
   myOtherStep:
     helm-package: {}
-`), Args{})
+`), Args{VarSource: testVarSource{}})
 	requireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -230,7 +230,7 @@ C:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse(strings.NewReader(tc.input), Args{})
+			got, errs := Parse(strings.NewReader(tc.input), Args{VarSource: testVarSource{}})
 			require.Empty(t, errs)
 			var gotOrder []string
 			for _, s := range got.Stages {
@@ -276,7 +276,7 @@ myStage:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse(strings.NewReader(tc.input), Args{})
+			got, errs := Parse(strings.NewReader(tc.input), Args{VarSource: testVarSource{}})
 			requireNoErr(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string

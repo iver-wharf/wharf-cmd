@@ -273,47 +273,6 @@ func TestStore_SubStatusUpdatesSendsAllOldStatuses(t *testing.T) {
 	assert.ElementsMatch(t, want, got)
 }
 
-func TestStore_SubUnsubStatusUpdates(t *testing.T) {
-	s := NewStore(mockFS{
-		listDirEntries: func(string) ([]fs.DirEntry, error) {
-			return nil, nil
-		},
-	}).(*store)
-	require.Empty(t, s.statusSubs, "before sub")
-	const buffer = 0
-	ch := subStatusUpdatesNoErr(t, s, buffer)
-	require.Len(t, s.statusSubs, 1, "after sub")
-	assert.True(t, s.statusSubs[0] == ch, "after sub")
-	require.True(t, s.UnsubAllStatusUpdates(ch), "unsub success")
-	assert.Empty(t, s.statusSubs, "after unsub")
-}
-
-func TestStore_UnsubStatusUpdatesMiddle(t *testing.T) {
-	s := NewStore(mockFS{
-		listDirEntries: func(string) ([]fs.DirEntry, error) {
-			return nil, nil
-		},
-	}).(*store)
-	require.Empty(t, s.statusSubs, "before sub")
-	const buffer = 0
-	chs := []<-chan StatusUpdate{
-		subStatusUpdatesNoErr(t, s, buffer),
-		subStatusUpdatesNoErr(t, s, buffer),
-		subStatusUpdatesNoErr(t, s, buffer),
-		subStatusUpdatesNoErr(t, s, buffer),
-		subStatusUpdatesNoErr(t, s, buffer),
-	}
-	require.Len(t, s.statusSubs, 5, "after sub")
-	require.True(t, s.UnsubAllStatusUpdates(chs[2]), "unsub success")
-	require.Len(t, s.statusSubs, 4, "after unsub")
-	want := []<-chan StatusUpdate{
-		chs[0], chs[1], chs[3], chs[4],
-	}
-	for i, ch := range want {
-		assert.Truef(t, ch == s.statusSubs[i], "index %d, %v != %v", i, ch, s.statusSubs[i])
-	}
-}
-
 func TestStore_PubSubStatusUpdates(t *testing.T) {
 	s := NewStore(mockFS{
 		openRead: func(name string) (io.ReadCloser, error) {

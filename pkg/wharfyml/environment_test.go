@@ -65,7 +65,7 @@ myEnv:
   myBool: true
 `))
 	requireNotContainsErr(t, errs, ErrInvalidFieldType)
-	want := map[string]interface{}{
+	want := map[string]any{
 		"myIntNeg": -123,
 		"myIntPos": 123,
 		"myFloat":  456.789,

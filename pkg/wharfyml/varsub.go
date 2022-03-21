@@ -47,7 +47,7 @@ func varSubStringNode(str strNode, source varsub.Source) (*yaml.Node, error) {
 	return newNodeWithValue(str.node, val)
 }
 
-func newNodeWithValue(node *yaml.Node, val interface{}) (*yaml.Node, error) {
+func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 	clone := *node
 	clone.Kind = yaml.ScalarNode
 	switch val := val.(type) {

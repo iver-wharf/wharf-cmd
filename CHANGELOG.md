@@ -50,6 +50,31 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   returning multiple errors for the whole parsing as well as keep track of the
   line & column of each parse error. (#48, #58)
 
+- Added support for a new file type: `.wharf-vars.yml`. It is used to define
+  built-in variables, and wharf-cmd looks for it in multiple files in the
+  following order, where former files take precedence over latter files on a
+  per-variable basis: (#73)
+
+  - `./.wharf-vars.yml` (in same directory as `.wharf-ci.yml`)
+  - `./../.wharf-vars.yml` (in parent directory of `.wharf-ci.yml`)
+  - `./../../.wharf-vars.yml` (etc; it continues recursively)
+  - (Linux only) `~/.config/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Linux only) `/etc/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Darwin/OS X only) `~/Library/Application Support/iver-wharf/wharf-cmd/wharf-vars.yml`
+  - (Windows only) `%APPDATA%\iver-wharf\wharf-cmd\wharf-vars.yml`
+
+  Note the leading dot in the directory tree files (`.wharf-vars.yml`), while
+  the files from config folders is without the dot (`wharf-vars.yml`).
+
+  The file content should be structured as:
+
+  ```yml
+  # .wharf-vars.yml
+
+  vars:
+    CHART_REPO: http://harbor.example.com
+  ```
+
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
 
@@ -104,8 +129,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
-  - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
+  - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
@@ -113,6 +138,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
   - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
+  - `gopkg.in/typ.v3` v3.0.0 (#75)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:
@@ -132,7 +158,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
   - `sigs.k8s.io/yaml` from v1.1.0 to v1.2.0 (#8)
 
-- Changed Go runtime from v1.13 to v1.17. (#8)
+- Changed Go runtime from v1.13 to v1.18. (#8, #74)
 
 - Changed logging on CLI errors (ex "unknown command") to be more terse. (#34)
 

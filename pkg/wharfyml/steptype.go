@@ -4,12 +4,14 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
 // Errors related to parsing step types.
 var (
-	ErrStepTypeUnknown = errors.New("unknown step type")
+	ErrStepTypeUnknown   = errors.New("unknown step type")
+	ErrMissingBuiltinVar = errors.New("missing built-in var")
 )
 
 // StepType is an interface that is implemented by all step types.
@@ -19,16 +21,17 @@ type StepType interface {
 
 // StepTypeMeta contains metadata about a step type.
 type StepTypeMeta struct {
+	StepName string
 	Source   Pos
 	FieldPos map[string]Pos
 }
 
-func visitStepTypeNode(key strNode, node *yaml.Node) (StepType, Errors) {
+func visitStepTypeNode(stepName string, key strNode, node *yaml.Node, source varsub.Source) (StepType, Errors) {
 	visitor, err := visitStepTypeKeyNode(key)
 	if err != nil {
 		return nil, Errors{err}
 	}
-	return visitor.visitStepTypeValueNode(node)
+	return visitor.visitStepTypeValueNode(stepName, node, source)
 }
 
 func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
@@ -57,23 +60,24 @@ func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
 
 type stepTypeVisitor struct {
 	keyNode   *yaml.Node
-	visitNode func(nodeMapParser) (StepType, Errors)
+	visitNode func(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors)
 }
 
-func (v stepTypeVisitor) visitStepTypeValueNode(node *yaml.Node) (StepType, Errors) {
+func (v stepTypeVisitor) visitStepTypeValueNode(stepName string, node *yaml.Node, source varsub.Source) (StepType, Errors) {
 	var errSlice Errors
 	m, errs := visitMap(node)
 	errSlice.add(errs...)
 
 	parser := newNodeMapParser(v.keyNode, m)
-	stepType, errs := v.visitNode(parser)
+	stepType, errs := v.visitNode(stepName, parser, source)
 	errSlice.add(errs...)
 
 	return stepType, errSlice
 }
 
-func getStepTypeMeta(p nodeMapParser) StepTypeMeta {
+func getStepTypeMeta(p nodeMapParser, stepName string) StepTypeMeta {
 	return StepTypeMeta{
+		StepName: stepName,
 		Source:   p.parentPos(),
 		FieldPos: p.positions,
 	}

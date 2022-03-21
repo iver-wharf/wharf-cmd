@@ -11,6 +11,13 @@ helm-pack:
     helm-package:
       chart-path: helm-chart
 
+helm-deploy:
+  my-chart:
+    helm:
+      name: my-release
+      chart: lorem
+      namespace: foo
+
 test:
   step1:
     container:
@@ -29,7 +36,7 @@ needs-cancel:
   long-running:
     container:
       image: alpine:latest
-      cmds: 
+      cmds:
       - sleep infinity
 
   fails:

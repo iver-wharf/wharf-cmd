@@ -7,17 +7,20 @@ import (
 )
 
 func TestVisitStage_ErrIfNotMap(t *testing.T) {
-	_, errs := visitStageNode(getKeyedNode(t, `myStage: 123`))
+	key, node := getKeyedNode(t, `myStage: 123`)
+	_, errs := visitStageNode(key, node, nil)
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestVisitStage_ErrIfEmptyMap(t *testing.T) {
-	_, errs := visitStageNode(getKeyedNode(t, `myStage: {}`))
+	key, node := getKeyedNode(t, `myStage: {}`)
+	_, errs := visitStageNode(key, node, nil)
 	requireContainsErr(t, errs, ErrStageEmpty)
 }
 
 func TestVisitStage_Name(t *testing.T) {
-	stage, errs := visitStageNode(getKeyedNode(t, `myStage: {}`))
+	key, node := getKeyedNode(t, `myStage: {}`)
+	stage, errs := visitStageNode(key, node, nil)
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
 	}

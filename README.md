@@ -21,7 +21,7 @@ A command-line interface to run tasks specified in a `.wharf-ci.yml` file.
 
 ## Development
 
-1. Install Go 1.17 or later: <https://golang.org/>
+1. Install Go 1.18 or later: <https://golang.org/>
 
 2. Start hacking with your favorite tool. For example VS Code, GoLand,
    Vim, Emacs, or whatnot.
