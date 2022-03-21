@@ -42,7 +42,8 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 			},
 		},
 		Spec: v1.PodSpec{
-			RestartPolicy: v1.RestartPolicyNever,
+			ServiceAccountName: "wharf-builder",
+			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
