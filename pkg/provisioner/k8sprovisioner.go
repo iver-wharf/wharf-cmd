@@ -111,8 +111,8 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			AutomountServiceAccountToken: new(bool),
-			RestartPolicy:                v1.RestartPolicyNever,
+			ServiceAccountName: "wharf-builder",
+			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
