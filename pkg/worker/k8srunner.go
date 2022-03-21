@@ -290,6 +290,11 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 			}
 		}
 	}
+	if writer != nil {
+		if err := writer.Close(); err != nil {
+			r.log.Error().WithError(err).Message("Failed to close log writer.")
+		}
+	}
 	return scanner.Err()
 }
 

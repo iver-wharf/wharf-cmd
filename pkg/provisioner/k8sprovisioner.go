@@ -18,7 +18,13 @@ var listOptionsMatchLabels = metav1.ListOptions{
 }
 
 var podInitCloneArgs = []string{"git", "clone"}
-var podContainerListArgs = []string{"/bin/sh", "-c", "go install", "&&", "wharf-cmd run"}
+var podContainerListArgs = []string{"/bin/sh", "-c", `apt-get update && \
+apt-get install -y npm && \
+make deps && \
+make swag-force && \
+go install && \
+cd test && \
+wharf-cmd run -s test`}
 
 type k8sProvisioner struct {
 	Namespace  string
@@ -111,21 +117,21 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			AutomountServiceAccountToken: new(bool),
-			RestartPolicy:                v1.RestartPolicyNever,
+			ServiceAccountName: "wharf-builder-sa",
+			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            append(podInitCloneArgs, "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
+					Args:            append(podInitCloneArgs, "-b", "test/worker-with-server", "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
 					VolumeMounts:    volumeMounts,
 				},
 			},
 			Containers: []v1.Container{
 				{
 					Name:            "app",
-					Image:           "ubuntu:20.04",
+					Image:           "golang:latest",
 					ImagePullPolicy: v1.PullAlways,
 					Command:         podContainerListArgs,
 					WorkingDir:      repoVolumeMountPath,

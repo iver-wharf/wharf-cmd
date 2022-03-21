@@ -55,7 +55,7 @@ func (s *server) Serve(bindAddress string) error {
 	}
 
 	go logIfErrored("gRPC", func() error { return serveGRPC(s.grpc, grpcListener) })
-	go logIfErrored("HTTP", func() error { return serveHTTP(s.rest, httpListener) })
+	go logIfErrored("HTTP", func() error { return serveHTTP(s, s.rest, httpListener) })
 
 	return mux.Serve()
 }

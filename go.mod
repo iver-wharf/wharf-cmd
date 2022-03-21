@@ -8,7 +8,6 @@ require (
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang/protobuf v1.5.2
 	github.com/iver-wharf/wharf-api-client-go/v2 v2.0.1-0.20220303151222-6073acc9b23f
-	github.com/iver-wharf/wharf-api/v5 v5.1.2
 	github.com/iver-wharf/wharf-core v1.3.0
 	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.4.0

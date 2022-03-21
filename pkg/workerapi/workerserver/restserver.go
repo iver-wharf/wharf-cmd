@@ -22,13 +22,16 @@ func newRestServer(artifactOpener ArtifactFileOpener) *restServer {
 	}
 }
 
-func serveHTTP(s *restServer, listener net.Listener) error {
+func serveHTTP(workerServer *server, s *restServer, listener net.Listener) error {
 	r := gin.New()
 	applyGinHandlers(r)
 	applyCORSConfig(r)
 
 	g := r.Group("/api")
 	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
+	g.GET("/kill", func(c *gin.Context) {
+		workerServer.Close()
+	})
 
 	s.registerModules(g)
 	return r.RunListener(listener)
