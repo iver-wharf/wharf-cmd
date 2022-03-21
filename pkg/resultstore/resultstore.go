@@ -116,6 +116,10 @@ type Store interface {
 	// UnsubAllArtifactEvents unsubscribes a subscription of all artifact
 	// events created via SubAllStatusUpdates.
 	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) error
+
+	// UnsubAll unsubscribes all subscriptions, closing the channels and letting
+	// subscribed code know that no more data will be written.
+	UnsubAll() error
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -166,6 +170,19 @@ type store struct {
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
 	artifactMutex    sync2.KeyedMutex[uint64]
+}
+
+func (s *store) UnsubAll() error {
+	if err := s.logPubSub.UnsubAll(); err != nil {
+		return err
+	}
+	if err := s.statusPubSub.UnsubAll(); err != nil {
+		return err
+	}
+	if err := s.artifactPubSub.UnsubAll(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {
