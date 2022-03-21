@@ -256,7 +256,7 @@ func proxyToWharfDB[T1 workerResponseConstraint, T2 wharfResponseConstraint, T3 
 	line, err := proxy.Recv()
 	for err == nil {
 		log.Debug().WithStringer("value", line).Message("Sending to Wharf")
-		if proxy.streamSender == nil {
+		if proxy.streamSender != nil {
 			proxy.Send(proxy.convert(line))
 		}
 		line, err = proxy.Recv()
