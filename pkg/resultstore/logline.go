@@ -90,8 +90,8 @@ func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) {
 		Message:   msg,
 		Timestamp: tim,
 	}
-	// Additional locking as we want to pre-fetch existing data on new
-	// subscriptions.
+	// Locking to prevent new data being added during fetching existing data
+	// part of when a new subscription is made.
 	s.logSubMutex.RLock()
 	s.logPubSub.PubSync(logLine)
 	s.logSubMutex.RUnlock() // not deferring as it's performance critical

@@ -105,8 +105,8 @@ func (s *store) UnsubAllArtifactEvents(artifactCh <-chan ArtifactEvent) error {
 }
 
 func (s *store) pubArtifactEvent(artifactEvent ArtifactEvent) {
-	// Additional locking as we want to pre-fetch existing data on new
-	// subscriptions
+	// Locking to prevent new data being added during fetching existing data
+	// part of when a new subscription is made.
 	s.artifactSubMutex.RLock()
 	s.artifactPubSub.PubSync(artifactEvent)
 	s.artifactSubMutex.RUnlock()
