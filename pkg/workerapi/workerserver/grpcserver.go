@@ -36,11 +36,7 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if !s.store.UnsubAllLogLines(ch) {
-			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
-		}
-	}()
+	defer unsubWithErrorHandle(ch, s.store.UnsubAllLogLines)
 
 	for {
 		select {
@@ -63,11 +59,7 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if !s.store.UnsubAllStatusUpdates(ch) {
-			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
-		}
-	}()
+	defer unsubWithErrorHandle(ch, s.store.UnsubAllStatusUpdates)
 
 	for {
 		select {
@@ -90,11 +82,7 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 	if err != nil {
 		return err
 	}
-	defer func() {
-		if !s.store.UnsubAllArtifactEvents(ch) {
-			log.Warn().Message("Attempted to unsubscribe a non-subscribed channel.")
-		}
-	}()
+	defer unsubWithErrorHandle(ch, s.store.UnsubAllArtifactEvents)
 
 	for {
 		select {
@@ -108,6 +96,12 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 		default:
 			continue
 		}
+	}
+}
+
+func unsubWithErrorHandle[E any](ch <-chan E, unsub func(ch <-chan E) error) {
+	if err := unsub(ch); err != nil {
+		log.Warn().WithError(err).Message("Failed to unsubscribe channel.")
 	}
 }
 

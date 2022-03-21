@@ -9,6 +9,8 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"gopkg.in/typ.v3/pkg/chans"
+	"gopkg.in/typ.v3/pkg/sync2"
 )
 
 var log = logger.NewScoped("RESULTSTORE")
@@ -85,7 +87,7 @@ type Store interface {
 
 	// UnsubAllLogLines unsubscribes a subscription of all status updates
 	// created via SubAllLogLines.
-	UnsubAllLogLines(ch <-chan LogLine) bool
+	UnsubAllLogLines(ch <-chan LogLine) error
 
 	// AddStatusUpdate adds a status update to a step. If the latest status
 	// update found for the step is the same as the new status, then this
@@ -100,7 +102,7 @@ type Store interface {
 
 	// UnsubAllStatusUpdates unsubscribes a subscription of all status updates
 	// created via SubAllStatusUpdates.
-	UnsubAllStatusUpdates(ch <-chan StatusUpdate) bool
+	UnsubAllStatusUpdates(ch <-chan StatusUpdate) error
 
 	// AddArtifactEvent adds an artifact event to a step.
 	// Any written artifact event is also published to any active subscriptions.
@@ -113,7 +115,7 @@ type Store interface {
 
 	// UnsubAllArtifactEvents unsubscribes a subscription of all artifact
 	// events created via SubAllStatusUpdates.
-	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) bool
+	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) error
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -153,17 +155,17 @@ func NewStore(fs FS) Store {
 type store struct {
 	fs FS
 
+	statusPubSub   chans.PubSub[StatusUpdate]
 	statusSubMutex sync.RWMutex
-	statusMutex    keyedMutex
-	statusSubs     []chan StatusUpdate
+	statusMutex    sync2.KeyedMutex[uint64]
 
 	logSubMutex      sync.RWMutex
-	logSubs          []chan LogLine
+	logPubSub        chans.PubSub[LogLine]
 	logWritersOpened sync.Map
 
+	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
-	artifactSubs     []chan ArtifactEvent
-	artifactMutex    keyedMutex
+	artifactMutex    sync2.KeyedMutex[uint64]
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

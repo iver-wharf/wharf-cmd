@@ -103,3 +103,76 @@ func TestParseRemotes(t *testing.T) {
 		})
 	}
 }
+
+func TestEstimateRepoGroupAndName(t *testing.T) {
+	tests := []struct {
+		name      string
+		origin    Remote
+		wantGroup string
+		wantName  string
+	}{
+		{
+			name:      "empty",
+			origin:    Remote{},
+			wantGroup: "",
+			wantName:  "",
+		},
+		{
+			name:      "github/ssh-path",
+			origin:    newTestRemote("git@github.com:iver-wharf/wharf-cmd.git"),
+			wantGroup: "iver-wharf",
+			wantName:  "wharf-cmd",
+		},
+		{
+			name:      "github/ssh-url",
+			origin:    newTestRemote("ssh://git@github.com/iver-wharf/wharf-cmd.git"),
+			wantGroup: "iver-wharf",
+			wantName:  "wharf-cmd",
+		},
+		{
+			name:      "github/http-no-dotgit",
+			origin:    newTestRemote("http://git@github.com/iver-wharf/wharf-cmd"),
+			wantGroup: "iver-wharf",
+			wantName:  "wharf-cmd",
+		},
+		{
+			name:      "dev.azure.com/ssh-path",
+			origin:    newTestRemote("git@ssh.dev.azure.com:v3/iver-wharf/wharf-subgroup/wharf-cmd"),
+			wantGroup: "iver-wharf/wharf-subgroup",
+			wantName:  "wharf-cmd",
+		},
+		{
+			name:      "dev.azure.com/https",
+			origin:    newTestRemote("https://iver-wharf@dev.azure.com/iver-wharf/wharf-subgroup/_git/wharf-cmd"),
+			wantGroup: "iver-wharf/wharf-subgroup",
+			wantName:  "wharf-cmd",
+		},
+		{
+			name:      "gitlab/ssh-path",
+			origin:    newTestRemote("git@gitlab.com:iver-wharf/wharf-subgroup/wharf-cmd.git"),
+			wantGroup: "iver-wharf/wharf-subgroup",
+			wantName:  "wharf-cmd",
+		},
+		{
+			name:      "gitlab/https-url",
+			origin:    newTestRemote("https://gitlab.com/iver-wharf/wharf-subgroup/wharf-cmd.git"),
+			wantGroup: "iver-wharf/wharf-subgroup",
+			wantName:  "wharf-cmd",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotGroup, gotName := estimateRepoGroupAndName(tc.origin)
+			assert.Equal(t, tc.wantGroup, gotGroup, "group name")
+			assert.Equal(t, tc.wantName, gotName, "repo name")
+		})
+	}
+}
+
+func newTestRemote(url string) Remote {
+	return Remote{
+		FetchURL: url,
+		PushURL:  url,
+	}
+}

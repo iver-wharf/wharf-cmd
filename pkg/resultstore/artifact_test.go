@@ -239,47 +239,6 @@ func TestStore_SubArtifactEventsSendsAllOldEvents(t *testing.T) {
 	assert.ElementsMatch(t, want, got)
 }
 
-func TestStore_SubUnsubArtifactEvents(t *testing.T) {
-	s := NewStore(mockFS{
-		listDirEntries: func(string) ([]fs.DirEntry, error) {
-			return nil, nil
-		},
-	}).(*store)
-	require.Empty(t, s.artifactSubs, "before sub")
-	const buffer = 0
-	ch := subArtifactEventsNoErr(t, s, buffer)
-	require.Len(t, s.artifactSubs, 1, "after sub")
-	assert.True(t, s.artifactSubs[0] == ch, "after sub")
-	require.True(t, s.UnsubAllArtifactEvents(ch), "unsub success")
-	assert.Empty(t, s.artifactSubs, "after unsub")
-}
-
-func TestStore_UnsubArtifactEventsMiddle(t *testing.T) {
-	s := NewStore(mockFS{
-		listDirEntries: func(string) ([]fs.DirEntry, error) {
-			return nil, nil
-		},
-	}).(*store)
-	require.Empty(t, s.artifactSubs, "before sub")
-	const buffer = 0
-	chs := []<-chan ArtifactEvent{
-		subArtifactEventsNoErr(t, s, buffer),
-		subArtifactEventsNoErr(t, s, buffer),
-		subArtifactEventsNoErr(t, s, buffer),
-		subArtifactEventsNoErr(t, s, buffer),
-		subArtifactEventsNoErr(t, s, buffer),
-	}
-	require.Len(t, s.artifactSubs, 5, "after sub")
-	require.True(t, s.UnsubAllArtifactEvents(chs[2]), "unsub success")
-	require.Len(t, s.artifactSubs, 4, "after unsub")
-	want := []<-chan ArtifactEvent{
-		chs[0], chs[1], chs[3], chs[4],
-	}
-	for i, ch := range want {
-		assert.Truef(t, ch == s.artifactSubs[i], "index %d, %v != %v", i, ch, s.artifactSubs[i])
-	}
-}
-
 func TestStore_PubSubArtifactEvents(t *testing.T) {
 	s := NewStore(mockFS{
 		openRead: func(name string) (io.ReadCloser, error) {

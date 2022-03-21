@@ -84,47 +84,6 @@ func TestSanitizeLogLine(t *testing.T) {
 	}
 }
 
-func TestStore_SubUnsubLogLines(t *testing.T) {
-	s := NewStore(mockFS{
-		listDirEntries: func(name string) ([]fs.DirEntry, error) {
-			return nil, nil
-		},
-	}).(*store)
-	require.Empty(t, s.logSubs, "before sub")
-	const buffer = 0
-	ch := subLogLinesNoErr(t, s, buffer)
-	require.Len(t, s.logSubs, 1, "after sub")
-	assert.True(t, s.logSubs[0] == ch, "after sub")
-	require.True(t, s.UnsubAllLogLines(ch), "unsub success")
-	assert.Empty(t, s.logSubs, "after unsub")
-}
-
-func TestStore_UnsubLogLinesMiddle(t *testing.T) {
-	s := NewStore(mockFS{
-		listDirEntries: func(name string) ([]fs.DirEntry, error) {
-			return nil, nil
-		},
-	}).(*store)
-	require.Empty(t, s.logSubs, "before sub")
-	const buffer = 0
-	chs := []<-chan LogLine{
-		subLogLinesNoErr(t, s, buffer),
-		subLogLinesNoErr(t, s, buffer),
-		subLogLinesNoErr(t, s, buffer),
-		subLogLinesNoErr(t, s, buffer),
-		subLogLinesNoErr(t, s, buffer),
-	}
-	require.Len(t, s.logSubs, 5, "after sub")
-	require.True(t, s.UnsubAllLogLines(chs[2]), "unsub success")
-	require.Len(t, s.logSubs, 4, "after unsub")
-	want := []<-chan LogLine{
-		chs[0], chs[1], chs[3], chs[4],
-	}
-	for i, ch := range want {
-		assert.Truef(t, ch == s.logSubs[i], "index %d, %v != %v", i, ch, s.logSubs[i])
-	}
-}
-
 func TestStore_PubSubLogLines(t *testing.T) {
 	s := NewStore(mockFS{
 		listDirEntries: func(name string) ([]fs.DirEntry, error) {

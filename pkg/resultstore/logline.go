@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"gopkg.in/typ.v3/pkg/chans"
 )
 
 var (
@@ -25,9 +27,8 @@ func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open all log file handles: %w", err)
 	}
-	ch := make(chan LogLine, buffer)
-	s.logSubs = append(s.logSubs, ch)
-	go s.pubAllLogsToChanToCatchUp(readers, ch)
+	ch := s.logPubSub.SubBuf(buffer)
+	go s.pubAllLogsToChanToCatchUp(readers, s.logPubSub.WithOnly(ch))
 	return ch, nil
 }
 
@@ -53,13 +54,13 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 	return readers, nil
 }
 
-func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, ch chan<- LogLine) {
+func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *chans.PubSub[LogLine]) {
 	for _, r := range readers {
-		go s.pubLogsToChanToCatchUp(r, ch)
+		go s.pubLogsToChanToCatchUp(r, pubSub)
 	}
 }
 
-func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, ch chan<- LogLine) error {
+func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, pubSub *chans.PubSub[LogLine]) error {
 	defer r.Close()
 	for {
 		line, err := r.ReadLogLine()
@@ -69,24 +70,12 @@ func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, ch chan<- LogLine) e
 			}
 			return err
 		}
-		ch <- line
+		pubSub.PubSync(line)
 	}
 }
 
-func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) bool {
-	s.logSubMutex.Lock()
-	defer s.logSubMutex.Unlock()
-	for i, ch := range s.logSubs {
-		if ch == logLineCh {
-			if i != len(s.logSubs)-1 {
-				copy(s.logSubs[i:], s.logSubs[i+1:])
-			}
-			s.logSubs = s.logSubs[:len(s.logSubs)-1]
-			close(ch)
-			return true
-		}
-	}
-	return false
+func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) error {
+	return s.logPubSub.Unsub(logLineCh)
 }
 
 func (s *store) resolveLogPath(stepID uint64) string {
@@ -94,11 +83,6 @@ func (s *store) resolveLogPath(stepID uint64) string {
 }
 
 func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) {
-	s.logSubMutex.RLock()
-	if len(s.logSubs) == 0 {
-		s.logSubMutex.RUnlock()
-		return
-	}
 	tim, msg := parseLogLine(line)
 	logLine := LogLine{
 		StepID:    stepID,
@@ -106,9 +90,10 @@ func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) {
 		Message:   msg,
 		Timestamp: tim,
 	}
-	for _, ch := range s.logSubs {
-		ch <- logLine
-	}
+	// Locking to prevent new data being added during fetching existing data
+	// part of when a new subscription is made.
+	s.logSubMutex.RLock()
+	s.logPubSub.PubSync(logLine)
 	s.logSubMutex.RUnlock() // not deferring as it's performance critical
 }
 

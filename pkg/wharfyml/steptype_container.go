@@ -1,5 +1,7 @@
 package wharfyml
 
+import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+
 // StepContainer represents a step type for running commands inside a Docker
 // container.
 type StepContainer struct {
@@ -21,8 +23,8 @@ type StepContainer struct {
 // StepTypeName returns the name of this step type.
 func (StepContainer) StepTypeName() string { return "container" }
 
-func (s StepContainer) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.OS = "linux"
 	s.Shell = "/bin/sh"

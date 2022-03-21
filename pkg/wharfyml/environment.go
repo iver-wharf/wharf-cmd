@@ -16,7 +16,7 @@ var (
 type Env struct {
 	Source Pos
 	Name   string
-	Vars   map[string]interface{}
+	Vars   map[string]any
 }
 
 // EnvRef is a reference to an environments definition. Used in stages.
@@ -41,7 +41,7 @@ func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, Errors) {
 func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice Errors) {
 	env = Env{
 		Name:   nameNode.value,
-		Vars:   make(map[string]interface{}),
+		Vars:   make(map[string]any),
 		Source: newPosNode(node),
 	}
 	nodes, errs := visitMapSlice(node)
@@ -56,7 +56,7 @@ func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice 
 	return
 }
 
-func visitEnvironmentVariableNode(node *yaml.Node) (interface{}, error) {
+func visitEnvironmentVariableNode(node *yaml.Node) (any, error) {
 	if err := verifyKind(node, "string, boolean, or number", yaml.ScalarNode); err != nil {
 		return nil, err
 	}

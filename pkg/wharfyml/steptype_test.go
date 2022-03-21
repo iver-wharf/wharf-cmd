@@ -5,19 +5,22 @@ import (
 )
 
 func TestVisitStepType_ErrIfNotMap(t *testing.T) {
-	_, errs := visitStepTypeNode(getKeyedNode(t, `container: 123`))
+	key, node := getKeyedNode(t, `container: 123`)
+	_, errs := visitStepTypeNode("", key, node, testVarSource{})
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestVisitStepType_ErrIfInvalidField(t *testing.T) {
-	_, errs := visitStepTypeNode(getKeyedNode(t, `
+	key, node := getKeyedNode(t, `
 container:
-  image: [123]`))
+  image: [123]`)
+	_, errs := visitStepTypeNode("", key, node, testVarSource{})
 	requireContainsErr(t, errs, ErrInvalidFieldType)
 }
 
 func TestVisitStepType_ErrIfMissingRequiredField(t *testing.T) {
 	// in "container" step, "cmds" and "image" are required
-	_, errs := visitStepTypeNode(getKeyedNode(t, `container: {}`))
+	key, node := getKeyedNode(t, `container: {}`)
+	_, errs := visitStepTypeNode("", key, node, testVarSource{})
 	requireContainsErr(t, errs, ErrMissingRequired)
 }

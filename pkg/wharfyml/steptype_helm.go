@@ -1,5 +1,11 @@
 package wharfyml
 
+import (
+	"fmt"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
+
 // StepHelm represents a step type for installing a Helm chart into a Kubernetes
 // cluster.
 type StepHelm struct {
@@ -23,14 +29,27 @@ type StepHelm struct {
 // StepTypeName returns the name of this step type.
 func (StepHelm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) visitStepTypeNode(p nodeMapParser) (StepType, Errors) {
-	s.Meta = getStepTypeMeta(p)
+func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+	s.Meta = getStepTypeMeta(p, stepName)
 
-	s.Repo = "" // TODO: default to "${CHART_REPO}/${REPO_GROUP}"
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 
 	var errSlice Errors
+
+	if !p.hasNode("repo") {
+		var chartRepo string
+		var repoGroup string
+		var errs Errors
+		errs.addNonNils(
+			p.unmarshalStringFromVarSub("CHART_REPO", source, &chartRepo),
+			p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup),
+		)
+		for _, err := range errs {
+			errSlice.add(fmt.Errorf(`eval "repo" default: %w`, err))
+		}
+		s.Repo = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
+	}
 
 	// Unmarshalling
 	errSlice.addNonNils(
