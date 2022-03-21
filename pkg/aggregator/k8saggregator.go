@@ -221,38 +221,38 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 
 type nillable *int
 
-type workerResponseConstraint interface {
+type workerResponse interface {
 	*workerv1.StreamStatusEventsResponse | *workerv1.StreamArtifactEventsResponse | *workerv1.StreamLogsResponse
 	// used only for debug logging at the moment
 	String() string
 }
 
-type wharfRequestConstraint interface {
+type wharfRequest interface {
 	// nillable added to support nil for now
 	request.Log | request.BuildStatusUpdate | nillable
 }
 
-type wharfResponseConstraint interface {
+type wharfResponse interface {
 	// nillable added to support nil for now
 	response.CreatedLogsSummary | nillable
 }
 
-type streamReceiver[received workerResponseConstraint] interface {
+type streamReceiver[received workerResponse] interface {
 	Recv() (received, error)
 }
 
-type streamSender[sent wharfRequestConstraint, received wharfResponseConstraint] interface {
+type streamSender[sent wharfRequest, received wharfResponse] interface {
 	Send(data sent) error
 	CloseAndRecv() (received, error)
 }
 
-type proxy[fromWorker workerResponseConstraint, fromWharf wharfResponseConstraint, toWharf wharfRequestConstraint] struct {
+type proxy[fromWorker workerResponse, fromWharf wharfResponse, toWharf wharfRequest] struct {
 	streamReceiver[fromWorker]
 	streamSender[toWharf, fromWharf]
 	convert func(from fromWorker) toWharf
 }
 
-func proxyToWharfDB[T1 workerResponseConstraint, T2 wharfResponseConstraint, T3 wharfRequestConstraint](wg *sync.WaitGroup, proxy proxy[T1, T2, T3]) error {
+func proxyToWharfDB[T1 workerResponse, T2 wharfResponse, T3 wharfRequest](wg *sync.WaitGroup, proxy proxy[T1, T2, T3]) error {
 	line, err := proxy.Recv()
 	for err == nil {
 		log.Debug().WithStringer("value", line).Message("Sending to Wharf")
