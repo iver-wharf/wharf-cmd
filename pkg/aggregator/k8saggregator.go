@@ -171,7 +171,7 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 			wg.Done()
 			return
 		}
-		proxyToWharfDB(&wg, proxy[*workerclient.LogLine, response.CreatedLogsSummary, request.Log]{
+		relayToWharf(&wg, relayer[*workerclient.LogLine, response.CreatedLogsSummary, request.Log]{
 			streamReceiver: stream,
 			streamSender:   outStream,
 			convert: func(v *workerclient.LogLine) request.Log {
@@ -194,7 +194,7 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 			return
 		}
 		// No way to send to wharf DB through stream currently (that I know of), so sender is nil
-		proxyToWharfDB(&wg, proxy[*workerclient.ArtifactEvent, nillable, nillable]{
+		relayToWharf(&wg, relayer[*workerclient.ArtifactEvent, nillable, nillable]{
 			streamReceiver: stream,
 		})
 	}()
@@ -207,7 +207,7 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 			return
 		}
 		// No way to send to wharf DB through stream currently (that I know of), so sender is nil
-		proxyToWharfDB(&wg, proxy[*workerclient.StatusEvent, nillable, nillable]{
+		relayToWharf(&wg, relayer[*workerclient.StatusEvent, nillable, nillable]{
 			streamReceiver: stream,
 		})
 	}()
@@ -246,23 +246,23 @@ type streamSender[sent wharfRequest, received wharfResponse] interface {
 	CloseAndRecv() (received, error)
 }
 
-type proxy[fromWorker workerResponse, fromWharf wharfResponse, toWharf wharfRequest] struct {
+type relayer[fromWorker workerResponse, fromWharf wharfResponse, toWharf wharfRequest] struct {
 	streamReceiver[fromWorker]
 	streamSender[toWharf, fromWharf]
 	convert func(from fromWorker) toWharf
 }
 
-func proxyToWharfDB[T1 workerResponse, T2 wharfResponse, T3 wharfRequest](wg *sync.WaitGroup, proxy proxy[T1, T2, T3]) error {
-	line, err := proxy.Recv()
+func relayToWharf[T1 workerResponse, T2 wharfResponse, T3 wharfRequest](wg *sync.WaitGroup, relayer relayer[T1, T2, T3]) error {
+	line, err := relayer.Recv()
 	for err == nil {
 		log.Debug().WithStringer("value", line).Message("Sending to Wharf")
-		if proxy.streamSender != nil {
-			proxy.Send(proxy.convert(line))
+		if relayer.streamSender != nil {
+			relayer.Send(relayer.convert(line))
 		}
-		line, err = proxy.Recv()
+		line, err = relayer.Recv()
 	}
-	if proxy.streamSender != nil {
-		summary, err := proxy.CloseAndRecv()
+	if relayer.streamSender != nil {
+		summary, err := relayer.CloseAndRecv()
 		wg.Done()
 		if err != nil {
 			log.Error().WithError(err).Message("Close and Recv failed.")
