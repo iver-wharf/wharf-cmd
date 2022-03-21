@@ -129,8 +129,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
-  - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
+  - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
@@ -138,6 +138,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
   - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
+  - `gopkg.in/typ.v3` v3.0.0 (#75)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:
