@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
+	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/response"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -18,6 +20,7 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
+	workerv1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
@@ -107,7 +110,6 @@ func (a k8sAggregator) Serve() error {
 		}
 	}
 
-	log.Info().Message("Aggregator ended")
 	return nil
 }
 
@@ -174,55 +176,48 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
-
-		// outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
+		outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
 		stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
 		if err != nil {
 			log.Error().WithError(err).Message("Fetching stream failed.")
 			return
 		}
-
-		for line, err := stream.Recv(); err == nil; line, err = stream.Recv() {
-			log.Info().WithStringer("line", line).Message("")
-			// outStream.Send(request.Log{
-			// 	BuildID:      uint(line.BuildID),
-			// 	WorkerLogID:  uint(line.LogID),
-			// 	WorkerStepID: uint(line.StepID),
-			// 	Timestamp:    line.GetTimestamp().AsTime(),
-			// 	Message:      line.GetMessage(),
-			// })
-		}
-
-		// summary, err := outStream.CloseAndRecv()
-		// if err != nil {
-		// 	log.Error().WithError(err).Message("Close and Recv failed.")
-		// }
-		// log.Debug().WithUint("logsInserted", summary.LogsInserted).Message("Sent logs to DB.")
+		proxyToWharfDB[*workerclient.LogLine, response.CreatedLogsSummary, request.Log](&wg, stream, outStream, func(v *workerclient.LogLine) request.Log {
+			return request.Log{
+				BuildID:      uint(v.BuildID),
+				WorkerLogID:  uint(v.LogID),
+				WorkerStepID: uint(v.StepID),
+				Timestamp:    v.GetTimestamp().AsTime(),
+				Message:      v.GetMessage(),
+			}
+		})
 	}()
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
 		if err != nil {
 			log.Error().WithError(err).Message("Fetching stream failed.")
 			return
 		}
-		for artifactEvent, err := stream.Recv(); err == nil; artifactEvent, err = stream.Recv() {
-			log.Info().WithStringer("artifactEvent", artifactEvent).Message("")
-		}
+		// for artifactEvent, err := stream.Recv(); err == nil; artifactEvent, err = stream.Recv() {
+		// 	log.Info().WithStringer("artifactEvent", artifactEvent).Message("")
+		// }
+
+		proxyToWharfDB[*workerclient.ArtifactEvent, any](&wg, stream, nil, func(v *workerclient.ArtifactEvent) any {
+			return nil
+		})
 	}()
 	wg.Add(1)
 	go func() {
-		defer wg.Done()
 		stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
 		if err != nil {
 			log.Error().WithError(err).Message("Fetching stream failed.")
 			return
 		}
-		for statusEvent, err := stream.Recv(); err == nil; statusEvent, err = stream.Recv() {
-			log.Info().WithStringer("statusEvent", statusEvent).Message("")
-		}
+
+		proxyToWharfDB[*workerclient.StatusEvent, any](&wg, stream, nil, func(v *workerclient.StatusEvent) any {
+			return nil
+		})
 	}()
 
 	wg.Wait()
@@ -230,5 +225,46 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 	client.Close()
 	connCloser()
 
+	return nil
+}
+
+type workerResponseConstraint interface {
+	*workerv1.StreamStatusEventsResponse | *workerv1.StreamArtifactEventsResponse | *workerv1.StreamLogsResponse
+	String() string
+}
+
+type wharfRequestConstraint interface {
+	request.Log | request.BuildStatusUpdate | any
+}
+
+type wharfResponseConstraint interface {
+	any | response.CreatedLogsSummary
+}
+
+type streamReceiver[received workerResponseConstraint] interface {
+	Recv() (received, error)
+}
+
+type streamSender[sent wharfRequestConstraint, received wharfResponseConstraint] interface {
+	Send(data sent) error
+	CloseAndRecv() (received, error)
+}
+
+func proxyToWharfDB[fromWorker workerResponseConstraint, fromWharf wharfResponseConstraint, toWharf wharfRequestConstraint](
+	wg *sync.WaitGroup, receiver streamReceiver[fromWorker], sender streamSender[toWharf, fromWharf], convert func(from fromWorker) toWharf) error {
+	for line, err := receiver.Recv(); err == nil; line, err = receiver.Recv() {
+		log.Info().WithStringer("value", line).Message("Sending to Wharf")
+		if sender == nil {
+			sender.Send(convert(line))
+		}
+	}
+
+	summary, err := sender.CloseAndRecv()
+	wg.Done()
+	if err != nil {
+		log.Error().WithError(err).Message("Close and Recv failed.")
+		return err
+	}
+	log.Debug().WithString("summary", fmt.Sprintf("%v", summary)).Message("Send to Wharf DB finished.")
 	return nil
 }
