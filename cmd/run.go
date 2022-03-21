@@ -71,7 +71,14 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 
 		server := workerserver.New(store, nil)
-		go server.Serve("0.0.0.0:5010")
+		running := true
+		go func() {
+			if err := server.Serve("0.0.0.0:5010"); err != nil {
+				log.Error().WithError(err).Message("Server error.")
+			}
+			log.Debug().Message("Server closed")
+			running = false
+		}()
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
@@ -86,7 +93,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return errors.New("build failed")
 		}
 
-		for {
+		for running {
 			// Infinite sleep for testing.
 			// Should be cancellable through API or something.
 			time.Sleep(time.Second)
