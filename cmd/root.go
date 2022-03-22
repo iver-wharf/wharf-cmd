@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
+	"github.com/iver-wharf/wharf-core/pkg/app"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
 	"github.com/spf13/cobra"
@@ -48,7 +50,8 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 }
 
 // Execute is the entrypoint for wharf-cmd's CLI.
-func Execute() {
+func Execute(version app.Version) {
+	rootCmd.Version = versionString(version)
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()
 		log.Error().Message(err.Error())
@@ -56,8 +59,29 @@ func Execute() {
 	}
 }
 
+func versionString(v app.Version) string {
+	var sb strings.Builder
+	if v.Version != "" {
+		sb.WriteString(v.Version)
+	} else {
+		sb.WriteString("v0.0.0")
+	}
+	if v.BuildRef != 0 {
+		fmt.Fprintf(&sb, " #%d", v.BuildRef)
+	}
+	if v.BuildGitCommit != "" && v.BuildGitCommit != "HEAD" {
+		fmt.Fprintf(&sb, " (%s)", v.BuildGitCommit)
+	}
+	if v.BuildDate != (time.Time{}) {
+		sb.WriteString(" built ")
+		sb.WriteString(v.BuildDate.Format(time.RFC1123))
+	}
+	return sb.String()
+}
+
 func init() {
 	cobra.OnInitialize(initLogging)
+	rootCmd.InitDefaultVersionFlag()
 	rootCmd.PersistentFlags().StringVar(&loglevel, "loglevel", "info", "Show debug information")
 }
 
