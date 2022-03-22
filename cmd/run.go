@@ -120,7 +120,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 
 		// Lets subscribed code (like the workerserver) know that no more
 		// data is coming.
-		store.UnsubAll()
+		// store.UnsubAll()
 
 		for running.Load() {
 			log.Info().Message("still running")
