@@ -43,6 +43,7 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 		select {
 		case logLine, ok := <-ch:
 			if !ok {
+				log.Info().Message("EOF reached - StreamLogs")
 				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
@@ -66,6 +67,7 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
+				log.Info().Message("EOF reached - StreamStatusEvents")
 				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamStatusEventsResponse(artifactEvent)); err != nil {
@@ -89,6 +91,7 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
+				log.Info().Message("EOF reached - StreamArtifactEvents")
 				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
