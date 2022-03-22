@@ -16,6 +16,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
+	"go.uber.org/atomic"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -95,13 +96,13 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 
 		server := workerserver.New(store, nil)
-		running := true
+		running := atomic.NewBool(true)
 		go func() {
 			if err := server.Serve("0.0.0.0:5010"); err != nil {
 				log.Error().WithError(err).Message("Server error.")
 			}
 			log.Debug().Message("Server closed")
-			running = false
+			running.Store(false)
 		}()
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
@@ -121,7 +122,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		// data is coming.
 		store.UnsubAll()
 
-		for running {
+		for running.Load() {
 			// Infinite sleep for testing.
 			// Should be cancellable through API or something.
 			time.Sleep(time.Second)

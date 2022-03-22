@@ -174,20 +174,21 @@ type store struct {
 
 func (s *store) UnsubAll() error {
 	writer, err := s.OpenLogWriter(34)
+	defer writer.Close()
 	if err != nil {
 		return err
 	}
-	writer.WriteLogLine("UnsubAll - statusPubSub")
+	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - statusPubSub", time.Now().Format(time.RFC3339Nano)))
 	if err := s.statusPubSub.UnsubAll(); err != nil {
-		writer.WriteLogLine(fmt.Sprintf("UnsubAll - statusPubSub: %v", err))
+		writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - statusPubSub: %v", time.Now().Format(time.RFC3339Nano), err))
 		return err
 	}
-	writer.WriteLogLine("UnsubAll - artifactPubSub")
+	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - artifactPubSub", time.Now().Format(time.RFC3339Nano)))
 	if err := s.artifactPubSub.UnsubAll(); err != nil {
-		writer.WriteLogLine(fmt.Sprintf("UnsubAll - artifactPubSub: %v", err))
+		writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - artifactPubSub: %v", time.Now().Format(time.RFC3339Nano), err))
 		return err
 	}
-	writer.WriteLogLine("UnsubAll - logPubSub")
+	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - logPubSub", time.Now().Format(time.RFC3339Nano)))
 	if err := s.logPubSub.UnsubAll(); err != nil {
 		log.Error().WithError(err).Message("UnsubAll - logPubSub")
 		return err
