@@ -179,17 +179,17 @@ func (s *store) UnsubAll() error {
 		return err
 	}
 	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - statusPubSub", time.Now().Format(time.RFC3339Nano)))
-	if err := s.statusPubSub.UnsubAll(); err != nil {
+	if err := s.statusPubSub.UnsubAll(); err != nil && err != chans.ErrAlreadyUnsubscribed {
 		writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - statusPubSub: %v", time.Now().Format(time.RFC3339Nano), err))
 		return err
 	}
 	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - artifactPubSub", time.Now().Format(time.RFC3339Nano)))
-	if err := s.artifactPubSub.UnsubAll(); err != nil {
+	if err := s.artifactPubSub.UnsubAll(); err != nil && err != chans.ErrAlreadyUnsubscribed {
 		writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - artifactPubSub: %v", time.Now().Format(time.RFC3339Nano), err))
 		return err
 	}
 	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - logPubSub", time.Now().Format(time.RFC3339Nano)))
-	if err := s.logPubSub.UnsubAll(); err != nil {
+	if err := s.logPubSub.UnsubAll(); err != nil && err != chans.ErrAlreadyUnsubscribed {
 		log.Error().WithError(err).Message("UnsubAll - logPubSub")
 		return err
 	}
