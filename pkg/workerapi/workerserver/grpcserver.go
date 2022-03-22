@@ -32,7 +32,7 @@ func newGRPCServer(store resultstore.Store) *grpcWorkerServer {
 }
 
 func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_StreamLogsServer) error {
-	const bufferSize = 100
+	const bufferSize = 1
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
 		return err
@@ -47,6 +47,7 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
+				log.Error().WithError(err).Message("Error - StreamLogs")
 				return err
 			}
 		default:
@@ -56,7 +57,7 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 }
 
 func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, stream v1.Worker_StreamStatusEventsServer) error {
-	const bufferSize = 100
+	const bufferSize = 1
 	ch, err := s.store.SubAllStatusUpdates(bufferSize)
 	if err != nil {
 		return err
@@ -71,6 +72,7 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamStatusEventsResponse(artifactEvent)); err != nil {
+				log.Error().WithError(err).Message("Error - StreamStatusEvents")
 				return err
 			}
 		default:
@@ -80,7 +82,7 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 }
 
 func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsRequest, stream v1.Worker_StreamArtifactEventsServer) error {
-	const bufferSize = 100
+	const bufferSize = 1
 	ch, err := s.store.SubAllArtifactEvents(bufferSize)
 	if err != nil {
 		return err
@@ -95,6 +97,7 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
+				log.Error().WithError(err).Message("Error - StreamArtifactEvents")
 				return err
 			}
 		default:
