@@ -1,6 +1,7 @@
 package workerserver
 
 import (
+	"io"
 	"net"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
@@ -42,7 +43,7 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 		select {
 		case logLine, ok := <-ch:
 			if !ok {
-				return nil
+				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
 				return err
@@ -65,7 +66,7 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
-				return nil
+				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamStatusEventsResponse(artifactEvent)); err != nil {
 				return err
@@ -88,7 +89,7 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
-				return nil
+				return io.EOF
 			}
 			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
 				return err
