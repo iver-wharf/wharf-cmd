@@ -57,10 +57,9 @@ func (s *server) Serve(bindAddress string) error {
 		}
 	}
 
-	go logIfErrored("gRPC", func() error { return serveGRPC(s.grpc, grpcListener) })
+	go logIfErrored("mux", func() error { return mux.Serve() })
 	go logIfErrored("HTTP", func() error { return serveHTTP(s, s.rest, httpListener) })
-
-	return mux.Serve()
+	return serveGRPC(s.grpc, grpcListener)
 }
 
 // Close closes the server. No attempt to finish active requests is made.
