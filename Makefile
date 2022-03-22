@@ -1,4 +1,4 @@
-.PHONY: install tidy deps \
+.PHONY: install tidy deps check \
 	swag swag-force proto \
 	lint lint-md lint-go \
 	lint-fix lint-fix-md lint-fix-go
@@ -25,6 +25,9 @@ deps:
 	go install github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.0
 	go install github.com/swaggo/swag/cmd/swag@v1.8.0
 	npm install
+
+check:
+	go test ./...
 
 proto:
 	protoc -I . \
