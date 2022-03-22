@@ -1,5 +1,5 @@
 .PHONY: install tidy deps check \
-	swag swag-force proto \
+	docker docker-run swag swag-force proto \
 	lint lint-md lint-go \
 	lint-fix lint-fix-md lint-fix-go
 
@@ -38,6 +38,24 @@ proto:
 		./api/workerapi/v1/worker.proto
 # Generated files have some non-standard formatting, so let's format it.
 	goimports -w ./api/workerapi/v1/.
+
+docker:
+	docker build . \
+		--pull \
+		-t "quay.io/iver-wharf/wharf-cmd:latest" \
+		-t "quay.io/iver-wharf/wharf-cmd:$(version)" \
+		--build-arg BUILD_VERSION="$(version)" \
+		--build-arg BUILD_GIT_COMMIT="$(commit)" \
+		--build-arg BUILD_DATE="$(shell date --iso-8601=seconds)"
+	@echo ""
+	@echo "Push the image by running:"
+	@echo "docker push quay.io/iver-wharf/wharf-cmd:latest"
+ifneq "$(version)" "latest"
+	@echo "docker push quay.io/iver-wharf/wharf-cmd:$(version)"
+endif
+
+docker-run:
+	docker run --rm -it quay.io/iver-wharf/wharf-api:$(version)
 
 swag-force:
 	swag init \
