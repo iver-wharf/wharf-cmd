@@ -173,13 +173,23 @@ type store struct {
 }
 
 func (s *store) UnsubAll() error {
-	if err := s.logPubSub.UnsubAll(); err != nil {
+	writer, err := s.OpenLogWriter(34)
+	if err != nil {
 		return err
 	}
+	writer.WriteLogLine("UnsubAll - statusPubSub")
 	if err := s.statusPubSub.UnsubAll(); err != nil {
+		writer.WriteLogLine(fmt.Sprintf("UnsubAll - statusPubSub: %v", err))
 		return err
 	}
+	writer.WriteLogLine("UnsubAll - artifactPubSub")
 	if err := s.artifactPubSub.UnsubAll(); err != nil {
+		writer.WriteLogLine(fmt.Sprintf("UnsubAll - artifactPubSub: %v", err))
+		return err
+	}
+	writer.WriteLogLine("UnsubAll - logPubSub")
+	if err := s.logPubSub.UnsubAll(); err != nil {
+		log.Error().WithError(err).Message("UnsubAll - logPubSub")
 		return err
 	}
 	return nil
