@@ -123,13 +123,13 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		store.UnsubAll()
 
 		for running.Load() {
-			log.Debug().Message("still running")
+			log.Info().Message("still running")
 			// Infinite sleep for testing.
 			// Should be cancellable through API or something.
 			time.Sleep(time.Second)
 		}
 
-		log.Debug().Message("running is false now")
+		log.Info().Message("running is false now")
 
 		return nil
 	},
