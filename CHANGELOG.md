@@ -123,6 +123,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added HTTP client in `pkg/workerapi/workerclient` to interface with
   worker HTTP server. (#51)
 
+- Added `--version`, `-v` flag to show the version of wharf-cmd. (#76)
+
 - Added dependencies:
 
   - `github.com/alta/protopatch` v0.5.0 (#51)
