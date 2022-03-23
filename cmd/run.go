@@ -121,6 +121,10 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		// Lets subscribed code (like the workerserver) know that no more
 		// data is coming.
 		// store.UnsubAll()
+		// Need to find better way to unsub once no more logs will be written.
+		//
+		// Something in resultstore to say that no more writing will occur
+		// maybe?
 
 		for running.Load() {
 			log.Info().Message("still running")

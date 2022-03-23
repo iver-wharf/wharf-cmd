@@ -1,7 +1,9 @@
 package workerserver
 
 import (
+	"errors"
 	"net"
+	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -37,7 +39,16 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 		return err
 	}
 	defer unsubWithErrorHandle(ch, s.store.UnsubAllLogLines)
-
+	lastMsg := time.Now()
+	timeout := make(chan bool)
+	go func() {
+		for {
+			time.Sleep(10 * time.Millisecond)
+			if time.Since(lastMsg) > 5*time.Second {
+				timeout <- true
+			}
+		}
+	}()
 	for {
 		select {
 		case logLine, ok := <-ch:
@@ -50,8 +61,10 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 				log.Error().WithError(err).Message("Error - StreamLogs")
 				return err
 			}
+			lastMsg = time.Now()
+		case <-timeout:
+			return errors.New("no new messages, timed out")
 		default:
-			log.Info().Message("CONTINUE")
 			continue
 		}
 	}
