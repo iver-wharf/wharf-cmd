@@ -30,8 +30,11 @@ func serveHTTP(workerServer *server, s *restServer, listener net.Listener) error
 	g := r.Group("/api")
 	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 	g.GET("/kill", func(c *gin.Context) {
-		c.Status(200)
-		workerServer.Close()
+		c.JSON(200, "Killing server")
+		go func() {
+			<-c.Request.Context().Done()
+			workerServer.Close()
+		}()
 	})
 
 	s.registerModules(g)
