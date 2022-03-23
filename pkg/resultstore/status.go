@@ -87,7 +87,12 @@ func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read all existing status updates: %w", err)
 	}
-	go s.statusPubSub.WithOnly(ch).PubSliceSync(updates)
+	go func() {
+		s.statusPubSub.WithOnly(ch).PubSliceSync(updates)
+		if s.frozen {
+			s.statusPubSub.Unsub(ch)
+		}
+	}()
 	return ch, nil
 }
 
