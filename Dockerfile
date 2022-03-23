@@ -1,7 +1,7 @@
 ARG REG=docker.io
-FROM ${REG}/library/golang:1.17 AS build
+FROM ${REG}/library/golang:1.18 AS build
 WORKDIR /src
-RUN go install github.com/swaggo/swag/cmd/swag@v1.7.1
+RUN go install github.com/swaggo/swag/cmd/swag@v1.8.0
 COPY go.mod go.sum ./
 RUN go mod download
 
@@ -16,7 +16,7 @@ RUN chmod +x scripts/update-version.sh  \
     && CGO_ENABLED=0 go build -o main
 
 ARG REG=docker.io
-FROM ${REG}/library/alpine:3.14 AS final
+FROM ${REG}/library/alpine:3.15 AS final
 RUN apk add --no-cache ca-certificates tzdata
 WORKDIR /app
 COPY --from=build /src/main ./
