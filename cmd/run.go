@@ -126,15 +126,17 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		//
 		// Something in resultstore to say that no more writing will occur
 		// maybe?
+		//
+		// EDIT: Added now I think should work let's hope so.
 
 		for running.Load() {
-			log.Info().Message("still running")
+			log.Debug().Message("still running")
 			// Infinite sleep for testing.
 			// Should be cancellable through API or something.
 			time.Sleep(time.Second)
 		}
 
-		log.Info().Message("running is false now")
+		log.Debug().Message("running is false now")
 
 		return nil
 	},

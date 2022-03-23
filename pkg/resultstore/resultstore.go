@@ -220,24 +220,6 @@ func (s *store) Freeze() {
 	}
 }
 
-func (s *store) UnsubAll() error {
-	writer, err := s.OpenLogWriter(34)
-	defer writer.Close()
-	if err != nil {
-		return err
-	}
-	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - statusPubSub", time.Now().Format(time.RFC3339Nano)))
-	log.Info().Message("UnsubAll - statusPubSub")
-	s.statusPubSub.UnsubAll()
-	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - artifactPubSub", time.Now().Format(time.RFC3339Nano)))
-	log.Info().Message("UnsubAll - artifactPubSub")
-	s.artifactPubSub.UnsubAll()
-	writer.WriteLogLine(fmt.Sprintf("%s UnsubAll - logPubSub", time.Now().Format(time.RFC3339Nano)))
-	log.Info().Message("UnsubAll - logPubSub")
-	s.logPubSub.UnsubAll()
-	return nil
-}
-
 func (s *store) listAllStepIDs() ([]uint64, error) {
 	entries, err := s.fs.ListDirEntries(dirNameSteps)
 	if err != nil {

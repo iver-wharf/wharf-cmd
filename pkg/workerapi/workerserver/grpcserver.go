@@ -2,7 +2,6 @@ package workerserver
 
 import (
 	"net"
-	"time"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -38,32 +37,19 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 		return err
 	}
 	defer unsubWithErrorHandle(ch, s.store.UnsubAllLogLines)
-	lastMsg := time.Now()
-	timeout := make(chan bool)
-	go func() {
-		for {
-			time.Sleep(10 * time.Millisecond)
-			if time.Since(lastMsg) > 5*time.Second {
-				timeout <- true
-			}
-		}
-	}()
+
 	for {
 		select {
 		case logLine, ok := <-ch:
-			log.Info().WithBool("OK", ok).WithStringer("line", logLine).Message("Received from channel")
+			log.Debug().WithBool("OK", ok).WithStringer("line", logLine).Message("Received from channel")
 			if !ok {
-				// Never getting reached because channel doesn't close when resultstore is "done".
-				log.Info().Message("EOF reached - StreamLogs")
+				log.Debug().Message("EOF reached - StreamLogs")
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
 				log.Error().WithError(err).Message("Error - StreamLogs")
 				return err
 			}
-			lastMsg = time.Now()
-		case <-timeout:
-			return nil
 		default:
 			continue
 		}
@@ -82,13 +68,15 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
-				log.Info().Message("EOF reached - StreamStatusEvents")
+				log.Debug().Message("EOF reached - StreamStatusEvents")
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamStatusEventsResponse(artifactEvent)); err != nil {
 				log.Error().WithError(err).Message("Error - StreamStatusEvents")
 				return err
 			}
+		default:
+			continue
 		}
 	}
 }
@@ -105,13 +93,15 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
-				log.Info().Message("EOF reached - StreamArtifactEvents")
+				log.Debug().Message("EOF reached - StreamArtifactEvents")
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
 				log.Error().WithError(err).Message("Error - StreamArtifactEvents")
 				return err
 			}
+		default:
+			continue
 		}
 	}
 }

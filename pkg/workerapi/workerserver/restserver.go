@@ -60,7 +60,7 @@ func applyGinHandlers(r *gin.Engine) {
 }
 
 func applyCORSConfig(r *gin.Engine) {
-	log.Info().Message("Allowing all origins in CORS.")
+	log.Warn().Message("Allowing all origins in CORS.")
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	r.Use(cors.New(corsConfig))
