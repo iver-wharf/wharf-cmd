@@ -41,13 +41,11 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 	for {
 		select {
 		case logLine, ok := <-ch:
-			log.Debug().WithBool("OK", ok).WithStringer("line", logLine).Message("Received from channel")
 			if !ok {
-				log.Debug().Message("EOF reached - StreamLogs")
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
-				log.Error().WithError(err).Message("Error - StreamLogs")
+				log.Error().WithError(err).Message("Failed sending logs to client.")
 				return err
 			}
 		default:
@@ -66,13 +64,12 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 
 	for {
 		select {
-		case artifactEvent, ok := <-ch:
+		case statusEvent, ok := <-ch:
 			if !ok {
-				log.Debug().Message("EOF reached - StreamStatusEvents")
 				return nil
 			}
-			if err := stream.Send(ConvertToStreamStatusEventsResponse(artifactEvent)); err != nil {
-				log.Error().WithError(err).Message("Error - StreamStatusEvents")
+			if err := stream.Send(ConvertToStreamStatusEventsResponse(statusEvent)); err != nil {
+				log.Error().WithError(err).Message("Failed sending status events to client.")
 				return err
 			}
 		default:
@@ -93,11 +90,10 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 		select {
 		case artifactEvent, ok := <-ch:
 			if !ok {
-				log.Debug().Message("EOF reached - StreamArtifactEvents")
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
-				log.Error().WithError(err).Message("Error - StreamArtifactEvents")
+				log.Error().WithError(err).Message("Failed sending artifact events to client.")
 				return err
 			}
 		default:

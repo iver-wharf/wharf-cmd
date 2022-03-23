@@ -18,6 +18,9 @@ var (
 func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error {
 	s.statusMutex.LockKey(stepID)
 	defer s.statusMutex.UnlockKey(stepID)
+	if s.frozen {
+		return ErrFrozen
+	}
 	list, err := s.readStatusUpdatesFile(stepID)
 	if err != nil {
 		return err

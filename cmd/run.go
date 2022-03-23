@@ -16,7 +16,6 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
-	"go.uber.org/atomic"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -83,11 +82,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
 		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
-		//
-		// May require setting of owner and SUID on wharf-cmd binary to access /var/log.
-		// e.g.:
-		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
-		store := resultstore.NewStore(resultstore.NewFS("/var/log/build_logs"))
+		store := resultstore.NewStore(resultstore.NewFS("/tmp/iver-wharf/wharf-cmd/builds/all"))
 		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
@@ -96,13 +91,12 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 
 		server := workerserver.New(store, nil)
-		running := atomic.NewBool(true)
+		done := make(chan bool)
 		go func() {
 			if err := server.Serve("0.0.0.0:5010"); err != nil {
 				log.Error().WithError(err).Message("Server error.")
 			}
-			log.Debug().Message("Server closed")
-			running.Store(false)
+			done <- true
 		}()
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
@@ -118,26 +112,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
-
-		// Lets subscribed code (like the workerserver) know that no more
-		// data is coming.
-		// store.UnsubAll()
-		// Need to find better way to unsub once no more logs will be written.
-		//
-		// Something in resultstore to say that no more writing will occur
-		// maybe?
-		//
-		// EDIT: Added now I think should work let's hope so.
-
-		for running.Load() {
-			log.Debug().Message("still running")
-			// Infinite sleep for testing.
-			// Should be cancellable through API or something.
-			time.Sleep(time.Second)
-		}
-
-		log.Debug().Message("running is false now")
-
+		<-done
 		return nil
 	},
 }
