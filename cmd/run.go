@@ -87,7 +87,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		// May require setting of owner and SUID on wharf-cmd binary to access /var/log.
 		// e.g.:
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
-		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
+		store := resultstore.NewStore(resultstore.NewFS("/var/log/build_logs"))
 		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
