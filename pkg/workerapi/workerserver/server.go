@@ -75,7 +75,7 @@ func (s *server) Serve(bindAddress string) error {
 
 // Close closes the server.
 //
-// Tries to gracefully stop gRPC requests and connection.
+// Tries to gracefully stop gRPC requests and connections.
 // Abruptly stops active HTTP requests.
 func (s *server) Close() error {
 	if s.grpc != nil && s.grpc.grpc != nil {
