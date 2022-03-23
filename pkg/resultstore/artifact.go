@@ -17,6 +17,9 @@ var (
 func (s *store) AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error {
 	s.artifactMutex.LockKey(stepID)
 	defer s.artifactMutex.UnlockKey(stepID)
+	if s.frozen {
+		return ErrFrozen
+	}
 	list, err := s.readArtifactEventsFile(stepID)
 	if err != nil {
 		return err

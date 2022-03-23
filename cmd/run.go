@@ -95,6 +95,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
+		store.Freeze()
 		if err != nil {
 			return err
 		}
