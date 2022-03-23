@@ -82,7 +82,11 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
 		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
-		store := resultstore.NewStore(resultstore.NewFS("/tmp/iver-wharf/wharf-cmd/builds/all"))
+		//
+		// May require setting of owner and SUID on wharf-cmd binary to access /tmp or similar.
+		// e.g.: (root should not be used in prod)
+		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
+		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
 		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
