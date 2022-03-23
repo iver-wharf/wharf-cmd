@@ -59,13 +59,13 @@ func (s *server) Serve(bindAddress string) error {
 	}
 
 	go logIfErrored("mux", func() error {
-		if err := mux.Serve(); err != nil && !errors.Is(err, cmux.ErrListenerClosed) {
+		if err := mux.Serve(); err != nil && !errors.Is(err, net.ErrClosed) {
 			return err
 		}
 		return nil
 	})
 	go logIfErrored("HTTP", func() error {
-		if err := serveHTTP(s, s.rest, httpListener); err != nil && !errors.Is(err, net.ErrClosed) {
+		if err := serveHTTP(s, s.rest, httpListener); err != nil && !errors.Is(err, cmux.ErrListenerClosed) {
 			return err
 		}
 		return nil
