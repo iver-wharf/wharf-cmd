@@ -38,6 +38,8 @@ type Client interface {
 	StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error)
 	StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error)
 	DownloadArtifact(artifactID uint) (io.ReadCloser, error)
+	Kill() error
+	Ping() error
 
 	Close() error
 }
@@ -99,11 +101,27 @@ func (c *client) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRe
 }
 
 func (c *client) DownloadArtifact(artifactID uint) (io.ReadCloser, error) {
-	res, err := c.rest.get(fmt.Sprintf("%s/api/artifact/%d/download", c.baseURL, artifactID))
+	res, err := c.rest.get(fmt.Sprintf("http://%s/api/artifact/%d/download", c.baseURL, artifactID))
 	if err := assertResponseOK(res, err); err != nil {
 		return nil, err
 	}
 	return res.Body, nil
+}
+
+func (c *client) Kill() error {
+	res, err := c.rest.get(fmt.Sprintf("http://%s/api/kill", c.baseURL))
+	if err := assertResponseOK(res, err); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *client) Ping() error {
+	res, err := c.rest.get(fmt.Sprintf("http://%s/api", c.baseURL))
+	if err := assertResponseOK(res, err); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *client) Close() error {

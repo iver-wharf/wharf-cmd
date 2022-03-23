@@ -1,9 +1,10 @@
 package aggregator
 
 import (
-	"bytes"
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -20,10 +21,10 @@ import (
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
-	workerv1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
+	k8sRuntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -36,9 +37,9 @@ const (
 
 // Copied from pkg/provisioner/k8sprovisioner.go
 var listOptionsMatchLabels = metav1.ListOptions{
-	// LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
-	// 	"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-	// 	"wharf.iver.com/instance=prod",
+	LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+		"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
+		"wharf.iver.com/instance=prod",
 }
 
 // NewK8sAggregator returns a new Aggregator implementation that targets
@@ -66,9 +67,9 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 
 		upgrader:   upgrader,
 		httpClient: httpClient,
-		// wharfClient: wharfapi.Client{
-		// 	APIURL: "http://localhost:5001",
-		// },
+		wharfClient: wharfapi.Client{
+			APIURL: "http://localhost:5001",
+		},
 	}, nil
 }
 
@@ -85,8 +86,19 @@ type k8sAggregator struct {
 }
 
 func (a k8sAggregator) Serve() error {
+	// Silences the output of error messages from internal k8s code to console.
+	//
+	// The console was clogged with forwarding errors when attempting to ping
+	// a worker when its server wasn't running.
+	k8sRuntime.ErrorHandlers = []func(error){}
+	inProgress := make(map[string]bool)
+
+	mut := sync.RWMutex{}
+
 	log.Info().Message("Aggregator started")
 	for {
+		// TODO: Healthcheck for Wharf API, back off if down.
+
 		time.Sleep(time.Second)
 		podList, err := a.listMatchingPods(context.Background())
 		if err != nil {
@@ -94,10 +106,33 @@ func (a k8sAggregator) Serve() error {
 			continue
 		}
 		for _, pod := range podList.Items {
-			if err := a.streamToWharfDB(&pod); err != nil {
-				log.Error().WithError(err).Message("streaming error")
+			if pod.Status.Phase != v1.PodRunning {
 				continue
 			}
+
+			mut.RLock()
+			if _, ok := inProgress[string(pod.UID)]; ok {
+				mut.RUnlock()
+				continue
+			}
+			mut.RUnlock()
+
+			log.Debug().WithString("podName", pod.Name).Message("Pod found")
+			go func(p v1.Pod) {
+				mut.Lock()
+				inProgress[string(p.UID)] = true
+				mut.Unlock()
+
+				a.streamToWharfDB(&p)
+
+				mut.Lock()
+				delete(inProgress, string(p.UID))
+				mut.Unlock()
+			}(pod)
+			// if err := a.streamToWharfDB(&pod); err != nil {
+			// 	// log.Error().WithError(err).Message("streaming error")
+			// 	continue
+			// }
 		}
 	}
 }
@@ -123,28 +158,39 @@ func (a k8sAggregator) connect(namespace, podName string) (*portforward.Forwarde
 	url := net.FormatURL("https", hostIP, hostPort, path)
 	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, url)
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
-	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 	forwarder, err := portforward.New(dialer,
 		[]string{fmt.Sprintf("0:%d", workerAPIExternalPort)},
-		stopCh, readyCh, out, errOut)
+		stopCh, readyCh, nil, nil)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	var forwarderErr error
 	go func() {
-		if err := forwarder.ForwardPorts(); err != nil {
-			log.Error().WithError(err).Message("Error occurred during forwarding.")
+		if forwarderErr = forwarder.ForwardPorts(); forwarderErr != nil {
+			log.Error().WithError(forwarderErr).Message("Error occurred during forwarding.")
+			close(readyCh)
+			close(stopCh)
+			forwarder.Close()
 		}
 	}()
 
 	for range readyCh {
+		if forwarderErr != nil {
+			return nil, nil, forwarderErr
+		}
 	}
+	if forwarderErr != nil {
+		return nil, nil, forwarderErr
+	}
+
 	closerFunc := func() {
 		close(stopCh)
 	}
 
 	ports, err := forwarder.GetPorts()
 	if err != nil {
+		log.Error().WithError(err).Message("Error getting ports")
 		closerFunc()
 		return nil, nil, err
 	}
@@ -157,23 +203,42 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 	if err != nil {
 		return err
 	}
+
+	log.Debug().WithString("name", pod.Name).
+		WithUint("local", uint(port.Local)).
+		WithUint("remote", uint(port.Remote)).
+		Message("Tunnel opened to worker.")
+
 	client, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
 		InsecureSkipVerify: true,
 	})
+	defer func() {
+		client.Close()
+		connCloser()
+	}()
+
+	if err := client.Ping(); err != nil {
+		return err
+	}
 
 	var wg sync.WaitGroup
+	var errs []string
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
-		stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
 		if err != nil {
-			log.Error().WithError(err).Message("Fetching stream failed.")
-			wg.Done()
+			errs = append(errs, err.Error())
 			return
 		}
-		relayToWharf(&wg, relayer[*workerclient.LogLine, response.CreatedLogsSummary, request.Log]{
-			streamReceiver: stream,
-			streamSender:   outStream,
+		stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
+		if err != nil {
+			errs = append(errs, err.Error())
+			return
+		}
+		if err := relayToWharf(relayer[*workerclient.LogLine, response.CreatedLogsSummary, request.Log]{
+			receiver: stream,
+			sender:   outStream,
 			convert: func(v *workerclient.LogLine) request.Log {
 				return request.Log{
 					BuildID:      uint(v.BuildID),
@@ -183,92 +248,110 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 					Message:      v.GetMessage(),
 				}
 			},
-		})
+		}); err != nil {
+			errs = append(errs, err...)
+		}
 	}()
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
 		if err != nil {
-			log.Error().WithError(err).Message("Fetching stream failed.")
-			wg.Done()
+			errs = append(errs, err.Error())
 			return
 		}
-		// No way to send to wharf DB through stream currently (that I know of), so sender is nil
-		relayToWharf(&wg, relayer[*workerclient.ArtifactEvent, nillable, nillable]{
-			streamReceiver: stream,
-		})
+		// No way to send to wharf DB through stream currently (that I know of), so sender and converter is nil for now.
+		if err := relayToWharf(relayer[*workerclient.ArtifactEvent, any, any]{
+			receiver: stream,
+		}); err != nil {
+			errs = append(errs, err...)
+		}
 	}()
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
 		if err != nil {
-			log.Error().WithError(err).Message("Fetching stream failed.")
-			wg.Done()
+			errs = append(errs, err.Error())
 			return
 		}
-		// No way to send to wharf DB through stream currently (that I know of), so sender is nil
-		relayToWharf(&wg, relayer[*workerclient.StatusEvent, nillable, nillable]{
-			streamReceiver: stream,
-		})
+		// No way to send to wharf DB through stream currently (that I know of), so sender and converter is nil for now.
+		if err := relayToWharf(relayer[*workerclient.StatusEvent, any, any]{
+			receiver: stream,
+		}); err != nil {
+			errs = append(errs, err...)
+		}
 	}()
 	wg.Wait()
 
-	client.Close()
-	connCloser()
+	if len(errs) > 0 {
+		return fmt.Errorf("error relaying to wharf: %s", strings.Join(errs, "; "))
+	}
+
+	if err := client.Kill(); err != nil {
+		log.Error().WithError(err).Message("Failed killing worker.")
+	}
+	log.Info().WithString("name", pod.Name).
+		WithString("id", string(pod.UID)).
+		Message("Killed worker")
 
 	return nil
 }
 
-type nillable *int
-
-type workerResponse interface {
-	*workerv1.StreamStatusEventsResponse | *workerv1.StreamArtifactEventsResponse | *workerv1.StreamLogsResponse
-	// used only for debug logging at the moment
-	String() string
+type receiver[fromWorker any] interface {
+	Recv() (fromWorker, error)
+	CloseSend() error
 }
 
-type wharfRequest interface {
-	// nillable added to support nil for now
-	request.Log | request.BuildStatusUpdate | nillable
+type sender[toWharf any, fromWharf any] interface {
+	Send(data toWharf) error
+	CloseAndRecv() (fromWharf, error)
 }
 
-type wharfResponse interface {
-	// nillable added to support nil for now
-	response.CreatedLogsSummary | nillable
-}
-
-type streamReceiver[received workerResponse] interface {
-	Recv() (received, error)
-}
-
-type streamSender[sent wharfRequest, received wharfResponse] interface {
-	Send(data sent) error
-	CloseAndRecv() (received, error)
-}
-
-type relayer[fromWorker workerResponse, fromWharf wharfResponse, toWharf wharfRequest] struct {
-	streamReceiver[fromWorker]
-	streamSender[toWharf, fromWharf]
+type relayer[fromWorker any, fromWharf any, toWharf any] struct {
+	receiver[fromWorker]
+	sender[toWharf, fromWharf]
 	convert func(from fromWorker) toWharf
 }
 
-func relayToWharf[T1 workerResponse, T2 wharfResponse, T3 wharfRequest](wg *sync.WaitGroup, relayer relayer[T1, T2, T3]) error {
-	line, err := relayer.Recv()
-	for err == nil {
-		log.Debug().WithStringer("value", line).Message("Sending to Wharf")
-		if relayer.streamSender != nil {
-			relayer.Send(relayer.convert(line))
+type errorStrings []string
+
+func relayToWharf[T1 any, T2 any, T3 any](relay relayer[T1, T2, T3]) errorStrings {
+	defer relay.CloseSend()
+
+	done := make(chan bool)
+	var errs errorStrings
+	go func() {
+		for {
+			received, err := relay.Recv()
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					errs = append(errs, err.Error())
+				}
+				break
+			}
+			if relay.sender != nil {
+				if err := relay.Send(relay.convert(received)); err != nil {
+					errs = append(errs, err.Error())
+					log.Error().WithError(err).Message("Sending failed.")
+				}
+			}
 		}
-		line, err = relayer.Recv()
-	}
-	if relayer.streamSender != nil {
-		summary, err := relayer.CloseAndRecv()
-		wg.Done()
+		if err := relay.receiver.CloseSend(); err != nil {
+			errs = append(errs, err.Error())
+			log.Error().WithError(err).Message("CloseSend failed.")
+		}
+		done <- true
+	}()
+	<-done
+	if relay.sender != nil {
+		_, err := relay.CloseAndRecv()
 		if err != nil {
-			log.Error().WithError(err).Message("Close and Recv failed.")
-			return err
+			errs = append(errs, err.Error())
 		}
-		log.Debug().WithString("summary", fmt.Sprintf("%v", summary)).Message("Send to Wharf DB finished.")
+	}
+	if len(errs) > 0 {
+		return errs
 	}
 	return nil
 }

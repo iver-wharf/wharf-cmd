@@ -24,7 +24,7 @@ make deps && \
 make swag-force && \
 go install && \
 cd test && \
-wharf-cmd run -s test`}
+wharf-cmd run -s test --loglevel debug`}
 
 type k8sProvisioner struct {
 	Namespace  string
@@ -117,7 +117,7 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			ServiceAccountName: "wharf-builder-sa",
+			ServiceAccountName: "wharf-builder",
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
