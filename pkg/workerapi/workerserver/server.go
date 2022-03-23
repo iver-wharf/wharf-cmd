@@ -3,6 +3,7 @@
 package workerserver
 
 import (
+	"errors"
 	"net"
 	"time"
 
@@ -57,17 +58,28 @@ func (s *server) Serve(bindAddress string) error {
 		}
 	}
 
-	go logIfErrored("mux", func() error { return mux.Serve() })
-	go logIfErrored("HTTP", func() error { return serveHTTP(s, s.rest, httpListener) })
+	go logIfErrored("mux", func() error {
+		if err := mux.Serve(); err != nil && !errors.Is(err, cmux.ErrListenerClosed) {
+			return err
+		}
+		return nil
+	})
+	go logIfErrored("HTTP", func() error {
+		if err := serveHTTP(s, s.rest, httpListener); err != nil && !errors.Is(err, net.ErrClosed) {
+			return err
+		}
+		return nil
+	})
 	return serveGRPC(s.grpc, grpcListener)
 }
 
-// Close closes the server. No attempt to finish active requests is made.
+// Close closes the server.
 //
-// Any active gRPC connections will be notified by connection errors.
+// Tries to gracefully stop gRPC requests and connection.
+// Abruptly stops active HTTP requests.
 func (s *server) Close() error {
 	if s.grpc != nil && s.grpc.grpc != nil {
-		s.grpc.grpc.Stop()
+		s.grpc.grpc.GracefulStop()
 	}
 	return s.listener.Close()
 }
