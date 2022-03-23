@@ -84,7 +84,12 @@ func (s *store) SubAllArtifactEvents(buffer int) (<-chan ArtifactEvent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read all existing artifact events: %w", err)
 	}
-	go s.artifactPubSub.WithOnly(ch).PubSliceSync(events)
+	go func() {
+		s.artifactPubSub.WithOnly(ch).PubSliceSync(events)
+		if s.frozen {
+			s.artifactPubSub.Unsub(ch)
+		}
+	}()
 	return ch, nil
 }
 
