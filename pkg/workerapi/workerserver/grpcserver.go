@@ -41,6 +41,7 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 	for {
 		select {
 		case logLine, ok := <-ch:
+			log.Info().WithBool("OK", ok).WithStringer("line", logLine).Message("Received from channel")
 			if !ok {
 				log.Info().Message("EOF reached - StreamLogs")
 				return nil
@@ -49,6 +50,9 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 				log.Error().WithError(err).Message("Error - StreamLogs")
 				return err
 			}
+		default:
+			log.Info().Message("CONTINUE")
+			continue
 		}
 	}
 }
