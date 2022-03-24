@@ -190,7 +190,6 @@ type store struct {
 }
 
 func (s *store) Freeze() {
-	log.Debug().Message("Freezing store.")
 	s.frozen = true
 	s.logWritersOpened.Range(func(_ any, writer any) bool {
 		if w, ok := writer.(*logLineWriteCloser); ok {
@@ -220,8 +219,6 @@ func (s *store) Freeze() {
 		s.artifactMutex.UnlockKey(stepID)
 		s.statusMutex.UnlockKey(stepID)
 	}
-
-	log.Debug().Message("Store frozen.")
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {
