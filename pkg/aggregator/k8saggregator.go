@@ -120,7 +120,9 @@ func (a k8sAggregator) Serve() error {
 			log.Debug().WithString("podName", pod.Name).Message("Pod found")
 			go func(p v1.Pod) {
 				inProgress.Store(string(p.UID), true)
-				a.relayToWharfDB(&p)
+				if err := a.relayToWharfDB(&p); err != nil {
+					log.Error().WithError(err).Message("relaying returned with errors")
+				}
 				inProgress.Delete(string(p.UID))
 			}(pod)
 		}
@@ -267,7 +269,7 @@ func (a k8sAggregator) relayLogs(client workerclient.Client, errs []string) {
 
 	relay := relayer.New(receiver, sender, func(v *workerclient.LogLine) request.Log {
 		return request.Log{
-			BuildID:      uint(v.BuildID),
+			BuildID:      1,
 			WorkerLogID:  uint(v.LogID),
 			WorkerStepID: uint(v.StepID),
 			Timestamp:    v.GetTimestamp().AsTime(),
