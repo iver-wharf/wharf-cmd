@@ -3,7 +3,11 @@ package relayer
 import (
 	"errors"
 	"io"
+
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
+
+var log = logger.NewScoped("RELAY")
 
 type grpcRelayer[received any, sent any, response any] struct {
 	receiver[received]
@@ -47,6 +51,7 @@ func (r *grpcRelayer[received, sent, response]) close() {
 func (r *grpcRelayer[received, sent, response]) recv() (received, bool) {
 	v, err := r.Recv()
 	if err != nil {
+		log.Error().WithError(err).Message("Error in recv relay")
 		if !errors.Is(err, io.EOF) {
 			r.errs = append(r.errs, err.Error())
 		}
