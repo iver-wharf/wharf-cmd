@@ -177,12 +177,12 @@ func (a k8sAggregator) relayToWharfDB(pod *v1.Pod) error {
 		return fmt.Errorf("error relaying to wharf: %s", strings.Join(errs, "; "))
 	}
 
-	if err := client.Kill(); err != nil {
-		log.Error().WithError(err).Message("Failed killing worker.")
-	}
-	log.Info().WithString("name", pod.Name).
-		WithString("id", string(pod.UID)).
-		Message("Killed worker")
+	// if err := client.Kill(); err != nil {
+	// 	log.Error().WithError(err).Message("Failed killing worker.")
+	// }
+	// log.Info().WithString("name", pod.Name).
+	// 	WithString("id", string(pod.UID)).
+	// 	Message("Killed worker")
 
 	return nil
 }
