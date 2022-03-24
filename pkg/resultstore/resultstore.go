@@ -131,7 +131,7 @@ type Store interface {
 	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) error
 
 	// Freeze waits for all write operations to finish, closes any open writers
-	// and causes future write operations to error.
+	// and causes future write operations to error. This cannot be undone.
 	//
 	// All new subscriptions will be closed after catching up.
 	Freeze()
