@@ -1,6 +1,10 @@
 build:
-  test-wharfable:
-    container:
-      image: golang:latest
-      cmds:
-        - sleep 1
+  wharf-cmd:
+    docker:
+      file: Dockerfile
+      tag: canary
+      args:
+        - BUILD_VERSION=${GIT_BRANCH}
+        - BUILD_GIT_COMMIT=${GIT_COMMIT}
+        - BUILD_REF=${BUILD_REF}
+        - REG=${REG_URL}/hub
