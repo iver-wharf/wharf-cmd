@@ -14,6 +14,7 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/response"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	"github.com/iver-wharf/wharf-cmd/pkg/aggregator/relayer"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"k8s.io/client-go/kubernetes"
@@ -86,23 +87,22 @@ type k8sAggregator struct {
 }
 
 func (a k8sAggregator) Serve() error {
+	log.Info().Message("Aggregator started")
+
 	// Silences the output of error messages from internal k8s code to console.
 	//
 	// The console was clogged with forwarding errors when attempting to ping
-	// a worker when its server wasn't running.
+	// a worker while its server wasn't running.
 	k8sRuntime.ErrorHandlers = []func(error){}
-	inProgress := make(map[string]bool)
 
-	mut := sync.RWMutex{}
-
-	log.Info().Message("Aggregator started")
+	inProgress := sync.Map{}
 	for {
 		// TODO: Healthcheck for Wharf API, back off if down.
 
 		time.Sleep(time.Second)
 		podList, err := a.listMatchingPods(context.Background())
 		if err != nil {
-			log.Error().WithError(err).Message("listing")
+			log.Error().WithError(err).Message("error listing pods")
 			continue
 		}
 		for _, pod := range podList.Items {
@@ -110,29 +110,16 @@ func (a k8sAggregator) Serve() error {
 				continue
 			}
 
-			mut.RLock()
-			if _, ok := inProgress[string(pod.UID)]; ok {
-				mut.RUnlock()
+			if _, ok := inProgress.Load(string(pod.UID)); ok {
 				continue
 			}
-			mut.RUnlock()
 
 			log.Debug().WithString("podName", pod.Name).Message("Pod found")
 			go func(p v1.Pod) {
-				mut.Lock()
-				inProgress[string(p.UID)] = true
-				mut.Unlock()
-
+				inProgress.Store(string(p.UID), true)
 				a.streamToWharfDB(&p)
-
-				mut.Lock()
-				delete(inProgress, string(p.UID))
-				mut.Unlock()
+				inProgress.Delete(string(p.UID))
 			}(pod)
-			// if err := a.streamToWharfDB(&pod); err != nil {
-			// 	// log.Error().WithError(err).Message("streaming error")
-			// 	continue
-			// }
 		}
 	}
 }
@@ -143,14 +130,17 @@ func (a k8sAggregator) listMatchingPods(ctx context.Context) (*v1.PodList, error
 
 type connectionCloser func()
 
-func (a k8sAggregator) connect(namespace, podName string) (*portforward.ForwardedPort, connectionCloser, error) {
+func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, connectionCloser, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		namespace, podName)
+
 	log.Debug().WithString("path", path)
+
 	hostBase := strings.TrimLeft(a.restConfig.Host, "htps:/")
 	hostSplit := strings.Split(hostBase, ":")
 	hostIP := hostSplit[0]
 	hostPort, err := strconv.Atoi(hostSplit[1])
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -161,6 +151,7 @@ func (a k8sAggregator) connect(namespace, podName string) (*portforward.Forwarde
 	forwarder, err := portforward.New(dialer,
 		[]string{fmt.Sprintf("0:%d", workerAPIExternalPort)},
 		stopCh, readyCh, nil, nil)
+
 	if err != nil {
 		return nil, nil, err
 	}
@@ -168,7 +159,7 @@ func (a k8sAggregator) connect(namespace, podName string) (*portforward.Forwarde
 	var forwarderErr error
 	go func() {
 		if forwarderErr = forwarder.ForwardPorts(); forwarderErr != nil {
-			log.Error().WithError(forwarderErr).Message("Error occurred during forwarding.")
+			log.Error().WithError(forwarderErr).Message("Error occurred during tunneling.")
 			close(readyCh)
 			close(stopCh)
 			forwarder.Close()
@@ -190,7 +181,7 @@ func (a k8sAggregator) connect(namespace, podName string) (*portforward.Forwarde
 
 	ports, err := forwarder.GetPorts()
 	if err != nil {
-		log.Error().WithError(err).Message("Error getting ports")
+		log.Error().WithError(err).Message("Error getting ports.")
 		closerFunc()
 		return nil, nil, err
 	}
@@ -199,7 +190,7 @@ func (a k8sAggregator) connect(namespace, podName string) (*portforward.Forwarde
 }
 
 func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
-	port, connCloser, err := a.connect(pod.Namespace, pod.Name)
+	port, connCloser, err := a.establishTunnel(pod.Namespace, pod.Name)
 	if err != nil {
 		return err
 	}
@@ -226,30 +217,36 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		outStream, err := a.wharfClient.CreateBuildLogStream(context.Background())
+		sender, err := relayer.AsSender[request.Log, response.CreatedLogsSummary](
+			func() (any, error) {
+				return a.wharfClient.CreateBuildLogStream(context.Background())
+			})
 		if err != nil {
 			errs = append(errs, err.Error())
 			return
 		}
-		stream, err := client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
+
+		receiver, err := relayer.AsReceiver[*workerclient.LogLine](
+			func() (any, error) {
+				return client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
+			})
 		if err != nil {
 			errs = append(errs, err.Error())
 			return
 		}
-		if err := relayToWharf(relayer[*workerclient.LogLine, response.CreatedLogsSummary, request.Log]{
-			receiver: stream,
-			sender:   outStream,
-			convert: func(v *workerclient.LogLine) request.Log {
-				return request.Log{
-					BuildID:      uint(v.BuildID),
-					WorkerLogID:  uint(v.LogID),
-					WorkerStepID: uint(v.StepID),
-					Timestamp:    v.GetTimestamp().AsTime(),
-					Message:      v.GetMessage(),
-				}
-			},
-		}); err != nil {
-			errs = append(errs, err...)
+
+		relay := relayer.New(receiver, sender, func(v *workerclient.LogLine) request.Log {
+			return request.Log{
+				BuildID:      uint(v.BuildID),
+				WorkerLogID:  uint(v.LogID),
+				WorkerStepID: uint(v.StepID),
+				Timestamp:    v.GetTimestamp().AsTime(),
+				Message:      v.GetMessage(),
+			}
+		})
+
+		if errs2 := relay.Relay(); errs2 != nil {
+			errs = append(errs, errs2...)
 		}
 	}()
 	wg.Add(1)
@@ -260,12 +257,19 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 			errs = append(errs, err.Error())
 			return
 		}
-		// No way to send to wharf DB through stream currently (that I know of), so sender and converter is nil for now.
-		if err := relayToWharf(relayer[*workerclient.ArtifactEvent, any, any]{
-			receiver: stream,
-		}); err != nil {
-			errs = append(errs, err...)
+		// No way to send to wharf DB through stream currently (that I know of)
+		// so we're just printing here.
+		for {
+			artifactEvent, err := stream.Recv()
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					errs = append(errs, err.Error())
+				}
+				break
+			}
+			log.Debug().WithStringer("value", artifactEvent).Message("Received artifact event.")
 		}
+		stream.CloseSend()
 	}()
 	wg.Add(1)
 	go func() {
@@ -275,12 +279,19 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 			errs = append(errs, err.Error())
 			return
 		}
-		// No way to send to wharf DB through stream currently (that I know of), so sender and converter is nil for now.
-		if err := relayToWharf(relayer[*workerclient.StatusEvent, any, any]{
-			receiver: stream,
-		}); err != nil {
-			errs = append(errs, err...)
+		// No way to send to wharf DB through stream currently (that I know of)
+		// so we're just printing here.
+		for {
+			statusEvent, err := stream.Recv()
+			if err != nil {
+				if !errors.Is(err, io.EOF) {
+					errs = append(errs, err.Error())
+				}
+				break
+			}
+			log.Debug().WithStringer("value", statusEvent).Message("Received status event.")
 		}
+		stream.CloseSend()
 	}()
 	wg.Wait()
 
@@ -295,63 +306,5 @@ func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
 		WithString("id", string(pod.UID)).
 		Message("Killed worker")
 
-	return nil
-}
-
-type receiver[fromWorker any] interface {
-	Recv() (fromWorker, error)
-	CloseSend() error
-}
-
-type sender[toWharf any, fromWharf any] interface {
-	Send(data toWharf) error
-	CloseAndRecv() (fromWharf, error)
-}
-
-type relayer[fromWorker any, fromWharf any, toWharf any] struct {
-	receiver[fromWorker]
-	sender[toWharf, fromWharf]
-	convert func(from fromWorker) toWharf
-}
-
-type errorStrings []string
-
-func relayToWharf[T1 any, T2 any, T3 any](relay relayer[T1, T2, T3]) errorStrings {
-	defer relay.CloseSend()
-
-	done := make(chan bool)
-	var errs errorStrings
-	go func() {
-		for {
-			received, err := relay.Recv()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					errs = append(errs, err.Error())
-				}
-				break
-			}
-			if relay.sender != nil {
-				if err := relay.Send(relay.convert(received)); err != nil {
-					errs = append(errs, err.Error())
-					log.Error().WithError(err).Message("Sending failed.")
-				}
-			}
-		}
-		if err := relay.receiver.CloseSend(); err != nil {
-			errs = append(errs, err.Error())
-			log.Error().WithError(err).Message("CloseSend failed.")
-		}
-		done <- true
-	}()
-	<-done
-	if relay.sender != nil {
-		_, err := relay.CloseAndRecv()
-		if err != nil {
-			errs = append(errs, err.Error())
-		}
-	}
-	if len(errs) > 0 {
-		return errs
-	}
 	return nil
 }
