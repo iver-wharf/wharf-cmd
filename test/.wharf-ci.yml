@@ -10,4 +10,4 @@ test:
     container:
       image: busybox:latest
       cmds:
-      - date
+      - echo 'nice message that is not confusing to the timestamp parser'
