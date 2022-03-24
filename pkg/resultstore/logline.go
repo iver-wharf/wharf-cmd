@@ -28,7 +28,13 @@ func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 		return nil, fmt.Errorf("open all log file handles: %w", err)
 	}
 	ch := s.logPubSub.SubBuf(buffer)
-	go s.pubAllLogsToChanToCatchUp(readers, s.logPubSub.WithOnly(ch))
+	func() {
+		pubSub := s.logPubSub.WithOnly(ch)
+		s.pubAllLogsToChanToCatchUp(readers, pubSub)
+		if s.frozen {
+			pubSub.UnsubAll()
+		}
+	}()
 	return ch, nil
 }
 
@@ -62,22 +68,16 @@ func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *c
 
 func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, pubSub *chans.PubSub[LogLine]) error {
 	defer r.Close()
-	defer func() {
-		if s.frozen {
-			pubSub.UnsubAll()
-		}
-	}()
 	for {
 		line, err := r.ReadLogLine()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				break
+				return nil
 			}
 			return err
 		}
 		pubSub.PubSync(line)
 	}
-	return nil
 }
 
 func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) error {
