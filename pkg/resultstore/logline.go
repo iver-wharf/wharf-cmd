@@ -71,12 +71,13 @@ func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, pubSub *chans.PubSub
 		line, err := r.ReadLogLine()
 		if err != nil {
 			if errors.Is(err, io.EOF) {
-				return nil
+				break
 			}
 			return err
 		}
 		pubSub.PubSync(line)
 	}
+	return nil
 }
 
 func (s *store) UnsubAllLogLines(logLineCh <-chan LogLine) error {
