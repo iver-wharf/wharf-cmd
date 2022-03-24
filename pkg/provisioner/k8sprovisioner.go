@@ -18,6 +18,10 @@ var listOptionsMatchLabels = metav1.ListOptions{
 }
 
 var podInitCloneArgs = []string{"git", "clone"}
+
+// TODO: Needs better implementation.
+// Currently works for wharf-cmd, but is not thought through. Takes a long
+// time to get running.
 var podContainerListArgs = []string{"/bin/sh", "-c", `apt-get update && \
 apt-get install -y npm && \
 make deps && \
@@ -124,13 +128,24 @@ func createPodMeta() v1.Pod {
 					Name:            "init",
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            append(podInitCloneArgs, "-b", "feature/aggregator-issue-15", "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
-					VolumeMounts:    volumeMounts,
+					// TODO: Should not target branch when merged.
+					Args:         append(podInitCloneArgs, "-b", "feature/aggregator-issue-15", "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
+					VolumeMounts: volumeMounts,
 				},
 			},
 			Containers: []v1.Container{
 				{
-					Name:            "app",
+					Name: "app",
+					// TODO: Do some research on which image would be best to use.
+					//
+					// Note: golang:latest was faster than ubuntu:20.04 up until
+					// running `go install`, by around 20 seconds.
+					//
+					// Note2: The testing environment's internet speed was very
+					// fast, so the larger size:
+					//  Go: 353MB compressed
+					//  ubuntu: 73 MB uncompressed
+					// was barely a factor.
 					Image:           "golang:latest",
 					ImagePullPolicy: v1.PullAlways,
 					Command:         podContainerListArgs,
