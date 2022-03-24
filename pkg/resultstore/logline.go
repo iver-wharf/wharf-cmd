@@ -29,11 +29,10 @@ func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 	}
 	ch := s.logPubSub.SubBuf(buffer)
 	func() {
-		pubSub := s.logPubSub.WithOnly(ch)
-		s.pubAllLogsToChanToCatchUp(readers, pubSub)
+		s.pubAllLogsToChanToCatchUp(readers, s.logPubSub.WithOnly(ch))
 		if s.frozen {
-			if err := pubSub.UnsubAll(); err != nil {
-				log.Error().WithError(err).Message("pubSub.UnsubAll")
+			if err := s.logPubSub.Unsub(ch); err != nil {
+				log.Error().WithError(err).Message("Failed to unsub")
 			}
 		}
 	}()
@@ -64,8 +63,9 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 
 func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *chans.PubSub[LogLine]) {
 	for _, r := range readers {
+		reader := r
 		go func() {
-			if err := s.pubLogsToChanToCatchUp(r, pubSub); err != nil {
+			if err := s.pubLogsToChanToCatchUp(reader, pubSub); err != nil {
 				log.Error().WithError(err).Message("publLogsToChanToCatchUp failed")
 			}
 		}()

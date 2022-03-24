@@ -38,11 +38,9 @@ func (r *grpcRelayer[received, sent, response]) close() {
 		r.errs = append(r.errs, err.Error())
 	}
 
-	if r.sender != nil {
-		_, err := r.CloseAndRecv()
-		if err != nil {
-			r.errs = append(r.errs, err.Error())
-		}
+	_, err := r.CloseAndRecv()
+	if err != nil {
+		r.errs = append(r.errs, err.Error())
 	}
 }
 
@@ -58,9 +56,6 @@ func (r *grpcRelayer[received, sent, response]) recv() (received, bool) {
 }
 
 func (r *grpcRelayer[received, sent, response]) send(v received) bool {
-	if r.sender == nil {
-		return true
-	}
 	if err := r.Send(r.convert(v)); err != nil {
 		r.errs = append(r.errs, err.Error())
 		return false

@@ -1,7 +1,7 @@
 package relayer
 
 // Relayer is an interface used for sending received data to another location,
-// with the option of supplying a different type for the sent data.
+// converting it in the process.
 type Relayer[received any, sent any, response any] interface {
 	// Relay receives data from a source, and sends it to a destination.
 	//

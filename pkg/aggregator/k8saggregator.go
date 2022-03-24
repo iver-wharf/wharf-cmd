@@ -102,7 +102,7 @@ func (a k8sAggregator) Serve() error {
 		// Would prevent pod listing and opening a tunnel to each pod each
 		// iteration.
 
-		time.Sleep(time.Second)
+		time.Sleep(5 * time.Second)
 		podList, err := a.listMatchingPods(context.Background())
 		if err != nil {
 			log.Error().WithError(err).Message("error listing pods")
@@ -160,15 +160,15 @@ func (a k8sAggregator) relayToWharfDB(pod *v1.Pod) error {
 	var errs []string
 	wg.Add(3)
 	go func() {
-		a.relayLogs(client, errs)
+		a.relayLogs(client, &errs)
 		wg.Done()
 	}()
 	go func() {
-		a.relayArtifactEvents(client, errs)
+		a.relayArtifactEvents(client, &errs)
 		wg.Done()
 	}()
 	go func() {
-		a.relayStatusEvents(client, errs)
+		a.relayStatusEvents(client, &errs)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -248,13 +248,13 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	return &ports[0], closerFunc, nil
 }
 
-func (a k8sAggregator) relayLogs(client workerclient.Client, errs []string) {
+func (a k8sAggregator) relayLogs(client workerclient.Client, errs *[]string) {
 	sender, err := relayer.AsSender[request.Log, response.CreatedLogsSummary](
 		func() (any, error) {
 			return a.wharfClient.CreateBuildLogStream(context.Background())
 		})
 	if err != nil {
-		errs = append(errs, err.Error())
+		*errs = append(*errs, err.Error())
 		return
 	}
 
@@ -263,7 +263,7 @@ func (a k8sAggregator) relayLogs(client workerclient.Client, errs []string) {
 			return client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
 		})
 	if err != nil {
-		errs = append(errs, err.Error())
+		*errs = append(*errs, err.Error())
 		return
 	}
 
@@ -278,14 +278,14 @@ func (a k8sAggregator) relayLogs(client workerclient.Client, errs []string) {
 	})
 
 	if errs2 := relay.Relay(); errs2 != nil {
-		errs = append(errs, errs2...)
+		*errs = append(*errs, errs2...)
 	}
 }
 
-func (a k8sAggregator) relayArtifactEvents(client workerclient.Client, errs []string) {
+func (a k8sAggregator) relayArtifactEvents(client workerclient.Client, errs *[]string) {
 	stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
 	if err != nil {
-		errs = append(errs, err.Error())
+		*errs = append(*errs, err.Error())
 		return
 	}
 	// No way to send to wharf DB through stream currently (that I know of)
@@ -294,7 +294,7 @@ func (a k8sAggregator) relayArtifactEvents(client workerclient.Client, errs []st
 		artifactEvent, err := stream.Recv()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				errs = append(errs, err.Error())
+				*errs = append(*errs, err.Error())
 			}
 			break
 		}
@@ -303,10 +303,10 @@ func (a k8sAggregator) relayArtifactEvents(client workerclient.Client, errs []st
 	stream.CloseSend()
 }
 
-func (a k8sAggregator) relayStatusEvents(client workerclient.Client, errs []string) {
+func (a k8sAggregator) relayStatusEvents(client workerclient.Client, errs *[]string) {
 	stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
 	if err != nil {
-		errs = append(errs, err.Error())
+		*errs = append(*errs, err.Error())
 		return
 	}
 	// No way to send to wharf DB through stream currently (that I know of)
@@ -315,7 +315,7 @@ func (a k8sAggregator) relayStatusEvents(client workerclient.Client, errs []stri
 		statusEvent, err := stream.Recv()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				errs = append(errs, err.Error())
+				*errs = append(*errs, err.Error())
 			}
 			break
 		}
