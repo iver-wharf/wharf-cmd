@@ -102,7 +102,6 @@ func (a k8sAggregator) Serve() error {
 		// Would prevent pod listing and opening a tunnel to each pod each
 		// iteration.
 
-		time.Sleep(5 * time.Second)
 		podList, err := a.listMatchingPods(context.Background())
 		if err != nil {
 			continue
@@ -125,6 +124,7 @@ func (a k8sAggregator) Serve() error {
 				inProgress.Delete(string(p.UID))
 			}(pod)
 		}
+		time.Sleep(5 * time.Second)
 	}
 }
 

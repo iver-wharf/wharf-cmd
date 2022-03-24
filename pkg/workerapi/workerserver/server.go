@@ -5,7 +5,6 @@ package workerserver
 import (
 	"errors"
 	"net"
-	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -45,8 +44,6 @@ func (s *server) Serve(bindAddress string) error {
 	if err != nil {
 		return err
 	}
-	time.Sleep(5 * time.Second)
-
 	mux := cmux.New(s.listener)
 	grpcListener := mux.MatchWithWriters(
 		cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
