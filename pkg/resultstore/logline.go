@@ -6,6 +6,7 @@ import (
 	"io"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"gopkg.in/typ.v3/pkg/chans"
@@ -55,17 +56,23 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 }
 
 func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *chans.PubSub[LogLine]) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(readers))
 	for _, r := range readers {
 		reader := r
 		go func() {
 			if err := s.pubLogsToChanToCatchUp(reader, pubSub); err != nil {
 				log.Error().WithError(err).Message("publLogsToChanToCatchUp failed")
 			}
+			wg.Done()
 		}()
 	}
-	if s.frozen {
-		pubSub.UnsubAll()
-	}
+	go func() {
+		wg.Wait()
+		if s.frozen {
+			pubSub.UnsubAll()
+		}
+	}()
 }
 
 func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, pubSub *chans.PubSub[LogLine]) error {
