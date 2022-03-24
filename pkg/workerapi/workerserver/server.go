@@ -49,24 +49,14 @@ func (s *server) Serve(bindAddress string) error {
 		cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 	httpListener := mux.Match(cmux.Any())
 
-	logIfErrored := func(protocol string, f func() error) {
-		if err := f(); err != nil {
+	logIfErrored := func(protocol string, err error) {
+		if err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, cmux.ErrListenerClosed) {
 			log.Error().WithError(err).Messagef("Error during serving %s.", protocol)
 		}
 	}
 
-	go logIfErrored("mux", func() error {
-		if err := mux.Serve(); err != nil && !errors.Is(err, net.ErrClosed) {
-			return err
-		}
-		return nil
-	})
-	go logIfErrored("HTTP", func() error {
-		if err := serveHTTP(s, s.rest, httpListener); err != nil && !errors.Is(err, cmux.ErrListenerClosed) {
-			return err
-		}
-		return nil
-	})
+	go logIfErrored("mux", mux.Serve())
+	go logIfErrored("HTTP", serveHTTP(s, s.rest, httpListener))
 	return serveGRPC(s.grpc, grpcListener)
 }
 
