@@ -16,10 +16,9 @@ var aggregatorFlags = struct {
 var aggregatorCmd = &cobra.Command{
 	Use:   "aggregator",
 	Short: "Forwards build results from workers to the Wharf API.",
-	Long: `Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do
-eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-consequat.`,
+	Long: `Streams build results from workers to the Wharf API through gRPC.
+	After streaming from a worker is done, the aggregator will kill it using the
+	kill endpoint.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		restConfig, ns, err := loadKubeconfig(aggregatorFlags.k8sOverrides)
 		if err != nil {
