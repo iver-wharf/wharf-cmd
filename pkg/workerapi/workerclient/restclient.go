@@ -19,8 +19,8 @@ func newRestClient(opts Options) (*restClient, error) {
 		return nil, fmt.Errorf("load system cert pool: %w", err)
 	}
 	if opts.InsecureSkipVerify {
-		// log.Warn().Message("Client is running without cert verification, this is insecure and should" +
-		// 	" not be done in production.")
+		log.Warn().Message("Client is running without cert verification, this is insecure and should" +
+			" not be done in production.")
 		rootCAs = nil
 	}
 	return &restClient{
