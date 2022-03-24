@@ -14,6 +14,9 @@ var (
 )
 
 func (s *store) OpenLogWriter(stepID uint64) (LogLineWriteCloser, error) {
+	if s.frozen {
+		return nil, ErrFrozen
+	}
 	w := &logLineWriteCloser{
 		stepID: stepID,
 		store:  s,

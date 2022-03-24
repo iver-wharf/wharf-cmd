@@ -1,6 +1,7 @@
 package resultstore
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -14,6 +15,11 @@ import (
 )
 
 var log = logger.NewScoped("RESULTSTORE")
+
+var (
+	// ErrFrozen is returned when doing a write operation on a frozen store.
+	ErrFrozen = errors.New("store frozen")
+)
 
 var (
 	dirNameSteps = "steps"
@@ -73,6 +79,8 @@ type Store interface {
 	// OpenLogWriter opens a file handle abstraction for writing log lines. Logs
 	// will be automatically parsed when written and published to any active
 	// subscriptions.
+	//
+	// Will return ErrFrozen if the store is frozen.
 	OpenLogWriter(stepID uint64) (LogLineWriteCloser, error)
 
 	// OpenLogReader opens a file handle abstraction for reading log lines. Logs
@@ -93,6 +101,8 @@ type Store interface {
 	// update found for the step is the same as the new status, then this
 	// status update is skipped. Any written status update is also published to
 	// any active subscriptions.
+	//
+	// Will return ErrFrozen if the store is frozen.
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error
 
 	// SubAllStatusUpdates creates a new channel that streams all status updates
@@ -106,6 +116,8 @@ type Store interface {
 
 	// AddArtifactEvent adds an artifact event to a step.
 	// Any written artifact event is also published to any active subscriptions.
+	//
+	// Will return ErrFrozen if the store is frozen.
 	AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error
 
 	// SubAllArtifactEvents creates a new channel that streams all artifact
@@ -116,6 +128,12 @@ type Store interface {
 	// UnsubAllArtifactEvents unsubscribes a subscription of all artifact
 	// events created via SubAllStatusUpdates.
 	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) error
+
+	// Freeze waits for all write operations to finish, closes any open writers
+	// and causes future write operations to error.
+	//
+	// All new subscriptions will be closed after catching up.
+	Freeze()
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -166,6 +184,40 @@ type store struct {
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
 	artifactMutex    sync2.KeyedMutex[uint64]
+
+	frozen bool
+}
+
+func (s *store) Freeze() {
+	s.frozen = true
+	s.logWritersOpened.Range(func(_ any, writer any) bool {
+		if w, ok := writer.(*logLineWriteCloser); ok {
+			if err := w.Close(); err != nil {
+				log.Error().WithError(err).Message("Failed closing log writer.")
+			}
+		}
+		return true
+	})
+
+	stepIDs, err := s.listAllStepIDs()
+	if err != nil {
+		log.Error().WithError(err).Message("Aborting freeze. Failed listing step IDs.")
+		return
+	}
+
+	for _, stepID := range stepIDs {
+		s.artifactMutex.LockKey(stepID)
+		s.statusMutex.LockKey(stepID)
+	}
+
+	s.artifactPubSub.UnsubAll()
+	s.logPubSub.UnsubAll()
+	s.statusPubSub.UnsubAll()
+
+	for _, stepID := range stepIDs {
+		s.artifactMutex.UnlockKey(stepID)
+		s.statusMutex.UnlockKey(stepID)
+	}
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

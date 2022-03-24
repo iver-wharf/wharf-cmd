@@ -14,6 +14,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -82,19 +83,29 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
 		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
 		//
-		// May require setting of owner and SUID on wharf-cmd binary to access /var/log.
-		// e.g.:
+		// May require setting of owner and SUID on wharf-cmd binary to access /tmp or similar.
+		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
-		store := resultstore.NewStore(resultstore.NewFS("/var/log/build_logs"))
+		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
 		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
 		})
 		if err != nil {
 			return err
 		}
+
+		server := workerserver.New(store, nil)
+		done := make(chan bool)
+		go func() {
+			if err := server.Serve("0.0.0.0:5010"); err != nil {
+				log.Error().WithError(err).Message("Server error.")
+			}
+			done <- true
+		}()
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
+		store.Freeze()
 		if err != nil {
 			return err
 		}
@@ -105,6 +116,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
+		<-done
 		return nil
 	},
 }

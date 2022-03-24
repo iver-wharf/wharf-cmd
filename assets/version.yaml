@@ -1,0 +1,5 @@
+# This file is updated by scripts/update-version.sh in our CI/CD pipeline
+version: local dev
+buildGitCommit: HEAD
+buildDate: null
+buildRef: 0
