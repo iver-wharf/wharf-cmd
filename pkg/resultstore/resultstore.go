@@ -84,8 +84,9 @@ type Store interface {
 	OpenLogWriter(stepID uint64) (LogLineWriteCloser, error)
 
 	// OpenLogReader opens a file handle abstraction for reading log lines. Logs
-	// will be automatically parsed when read. Will return fs.ErrNotExist if
-	// the log file does not exist yet.
+	// will be automatically parsed when read.
+	//
+	// Will return fs.ErrNotExist if the log file does not exist yet.
 	OpenLogReader(stepID uint64) (LogLineReadCloser, error)
 
 	// SubAllLogLines creates a new channel that streams all log lines
