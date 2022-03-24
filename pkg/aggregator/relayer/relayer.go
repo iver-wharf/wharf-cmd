@@ -10,7 +10,7 @@ type Relayer[received any, sent any, response any] interface {
 	Relay() []string
 }
 
-type convert[received any, sent any] func(toConvert received) sent
+type convert[received any, sent any] func(v received) sent
 
 // New creates a new relayer that relays data from the receiver to the sender.
 func New[received any, sent any, response any](r receiver[received], s sender[sent, response], c convert[received, sent]) Relayer[received, sent, response] {

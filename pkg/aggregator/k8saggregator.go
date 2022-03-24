@@ -97,7 +97,10 @@ func (a k8sAggregator) Serve() error {
 
 	inProgress := sync.Map{}
 	for {
-		// TODO: Healthcheck for Wharf API, back off if down.
+		// Maybe healthcheck Wharf API and back off if down?
+		//
+		// Would prevent pod listing and opening a tunnel to each pod each
+		// iteration.
 
 		time.Sleep(time.Second)
 		podList, err := a.listMatchingPods(context.Background())
@@ -117,7 +120,7 @@ func (a k8sAggregator) Serve() error {
 			log.Debug().WithString("podName", pod.Name).Message("Pod found")
 			go func(p v1.Pod) {
 				inProgress.Store(string(p.UID), true)
-				a.streamToWharfDB(&p)
+				a.relayToWharfDB(&p)
 				inProgress.Delete(string(p.UID))
 			}(pod)
 		}
@@ -126,6 +129,60 @@ func (a k8sAggregator) Serve() error {
 
 func (a k8sAggregator) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
 	return a.Pods.List(ctx, listOptionsMatchLabels)
+}
+
+func (a k8sAggregator) relayToWharfDB(pod *v1.Pod) error {
+	port, connCloser, err := a.establishTunnel(pod.Namespace, pod.Name)
+	if err != nil {
+		return err
+	}
+
+	log.Debug().WithString("name", pod.Name).
+		WithUint("local", uint(port.Local)).
+		WithUint("remote", uint(port.Remote)).
+		Message("Tunnel opened to worker.")
+
+	client, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
+		InsecureSkipVerify: true,
+	})
+	defer func() {
+		client.Close()
+		connCloser()
+	}()
+
+	if err := client.Ping(); err != nil {
+		return err
+	}
+
+	var wg sync.WaitGroup
+	var errs []string
+	wg.Add(3)
+	go func() {
+		a.relayLogs(client, errs)
+		wg.Done()
+	}()
+	go func() {
+		a.relayArtifactEvents(client, errs)
+		wg.Done()
+	}()
+	go func() {
+		a.relayStatusEvents(client, errs)
+		wg.Done()
+	}()
+	wg.Wait()
+
+	if len(errs) > 0 {
+		return fmt.Errorf("error relaying to wharf: %s", strings.Join(errs, "; "))
+	}
+
+	if err := client.Kill(); err != nil {
+		log.Error().WithError(err).Message("Failed killing worker.")
+	}
+	log.Info().WithString("name", pod.Name).
+		WithString("id", string(pod.UID)).
+		Message("Killed worker")
+
+	return nil
 }
 
 type connectionCloser func()
@@ -189,122 +246,78 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	return &ports[0], closerFunc, nil
 }
 
-func (a k8sAggregator) streamToWharfDB(pod *v1.Pod) error {
-	port, connCloser, err := a.establishTunnel(pod.Namespace, pod.Name)
-	if err != nil {
-		return err
-	}
-
-	log.Debug().WithString("name", pod.Name).
-		WithUint("local", uint(port.Local)).
-		WithUint("remote", uint(port.Remote)).
-		Message("Tunnel opened to worker.")
-
-	client, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
-		InsecureSkipVerify: true,
-	})
-	defer func() {
-		client.Close()
-		connCloser()
-	}()
-
-	if err := client.Ping(); err != nil {
-		return err
-	}
-
-	var wg sync.WaitGroup
-	var errs []string
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		sender, err := relayer.AsSender[request.Log, response.CreatedLogsSummary](
-			func() (any, error) {
-				return a.wharfClient.CreateBuildLogStream(context.Background())
-			})
-		if err != nil {
-			errs = append(errs, err.Error())
-			return
-		}
-
-		receiver, err := relayer.AsReceiver[*workerclient.LogLine](
-			func() (any, error) {
-				return client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
-			})
-		if err != nil {
-			errs = append(errs, err.Error())
-			return
-		}
-
-		relay := relayer.New(receiver, sender, func(v *workerclient.LogLine) request.Log {
-			return request.Log{
-				BuildID:      uint(v.BuildID),
-				WorkerLogID:  uint(v.LogID),
-				WorkerStepID: uint(v.StepID),
-				Timestamp:    v.GetTimestamp().AsTime(),
-				Message:      v.GetMessage(),
-			}
+func (a k8sAggregator) relayLogs(client workerclient.Client, errs []string) {
+	sender, err := relayer.AsSender[request.Log, response.CreatedLogsSummary](
+		func() (any, error) {
+			return a.wharfClient.CreateBuildLogStream(context.Background())
 		})
-
-		if errs2 := relay.Relay(); errs2 != nil {
-			errs = append(errs, errs2...)
-		}
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
-		if err != nil {
-			errs = append(errs, err.Error())
-			return
-		}
-		// No way to send to wharf DB through stream currently (that I know of)
-		// so we're just printing here.
-		for {
-			artifactEvent, err := stream.Recv()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					errs = append(errs, err.Error())
-				}
-				break
-			}
-			log.Debug().WithStringer("value", artifactEvent).Message("Received artifact event.")
-		}
-		stream.CloseSend()
-	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
-		if err != nil {
-			errs = append(errs, err.Error())
-			return
-		}
-		// No way to send to wharf DB through stream currently (that I know of)
-		// so we're just printing here.
-		for {
-			statusEvent, err := stream.Recv()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					errs = append(errs, err.Error())
-				}
-				break
-			}
-			log.Debug().WithStringer("value", statusEvent).Message("Received status event.")
-		}
-		stream.CloseSend()
-	}()
-	wg.Wait()
-
-	if len(errs) > 0 {
-		return fmt.Errorf("error relaying to wharf: %s", strings.Join(errs, "; "))
+	if err != nil {
+		errs = append(errs, err.Error())
+		return
 	}
 
-	if err := client.Kill(); err != nil {
-		log.Error().WithError(err).Message("Failed killing worker.")
+	receiver, err := relayer.AsReceiver[*workerclient.LogLine](
+		func() (any, error) {
+			return client.StreamLogs(context.Background(), &workerclient.LogsRequest{})
+		})
+	if err != nil {
+		errs = append(errs, err.Error())
+		return
 	}
-	log.Info().WithString("name", pod.Name).
-		WithString("id", string(pod.UID)).
-		Message("Killed worker")
 
-	return nil
+	relay := relayer.New(receiver, sender, func(v *workerclient.LogLine) request.Log {
+		return request.Log{
+			BuildID:      uint(v.BuildID),
+			WorkerLogID:  uint(v.LogID),
+			WorkerStepID: uint(v.StepID),
+			Timestamp:    v.GetTimestamp().AsTime(),
+			Message:      v.GetMessage(),
+		}
+	})
+
+	if errs2 := relay.Relay(); errs2 != nil {
+		errs = append(errs, errs2...)
+	}
+}
+
+func (a k8sAggregator) relayArtifactEvents(client workerclient.Client, errs []string) {
+	stream, err := client.StreamArtifactEvents(context.Background(), &workerclient.ArtifactEventsRequest{})
+	if err != nil {
+		errs = append(errs, err.Error())
+		return
+	}
+	// No way to send to wharf DB through stream currently (that I know of)
+	// so we're just printing here.
+	for {
+		artifactEvent, err := stream.Recv()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				errs = append(errs, err.Error())
+			}
+			break
+		}
+		log.Debug().WithStringer("value", artifactEvent).Message("Received artifact event.")
+	}
+	stream.CloseSend()
+}
+
+func (a k8sAggregator) relayStatusEvents(client workerclient.Client, errs []string) {
+	stream, err := client.StreamStatusEvents(context.Background(), &workerclient.StatusEventsRequest{})
+	if err != nil {
+		errs = append(errs, err.Error())
+		return
+	}
+	// No way to send to wharf DB through stream currently (that I know of)
+	// so we're just printing here.
+	for {
+		statusEvent, err := stream.Recv()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				errs = append(errs, err.Error())
+			}
+			break
+		}
+		log.Debug().WithStringer("value", statusEvent).Message("Received status event.")
+	}
+	stream.CloseSend()
 }
