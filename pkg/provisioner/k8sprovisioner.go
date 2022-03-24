@@ -124,7 +124,7 @@ func createPodMeta() v1.Pod {
 					Name:            "init",
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            append(podInitCloneArgs, "-b", "test/worker-with-server", "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
+					Args:            append(podInitCloneArgs, "-b", "feature/aggregator-issue-15", "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
 					VolumeMounts:    volumeMounts,
 				},
 			},
