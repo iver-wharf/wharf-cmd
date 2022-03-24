@@ -72,6 +72,7 @@ func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, pubSub *chans.PubSub
 	defer r.Close()
 	for {
 		line, err := r.ReadLogLine()
+		log.Debug().WithStringf("line", "%v", line).WithError(err).Message("Read log line.")
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return nil
