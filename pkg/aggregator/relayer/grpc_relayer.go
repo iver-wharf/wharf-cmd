@@ -51,7 +51,6 @@ func (r *grpcRelayer[received, sent, response]) close() {
 func (r *grpcRelayer[received, sent, response]) recv() (received, bool) {
 	v, err := r.Recv()
 	if err != nil {
-		log.Error().WithError(err).Message("Error in recv relay")
 		if !errors.Is(err, io.EOF) {
 			r.errs = append(r.errs, err.Error())
 		}

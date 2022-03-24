@@ -36,13 +36,11 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 	const bufferSize = 100
 	ch, err := s.store.SubAllLogLines(bufferSize)
 	if err != nil {
-		log.Error().WithError(err).Message("sub log lines error")
 		return err
 	}
 	for {
 		select {
 		case logLine, ok := <-ch:
-			log.Debug().WithStringf("line", "%v", logLine).WithBool("OK", ok).Message("channel receive")
 			if !ok {
 				return nil
 			}

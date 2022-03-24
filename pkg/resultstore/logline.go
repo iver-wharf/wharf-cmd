@@ -61,9 +61,7 @@ func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *c
 	for _, r := range readers {
 		reader := r
 		go func() {
-			if err := s.pubLogsToChanToCatchUp(reader, pubSub); err != nil {
-				log.Error().WithError(err).Message("publLogsToChanToCatchUp failed")
-			}
+			s.pubLogsToChanToCatchUp(reader, pubSub)
 			wg.Done()
 		}()
 	}

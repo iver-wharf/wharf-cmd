@@ -105,7 +105,6 @@ func (a k8sAggregator) Serve() error {
 		time.Sleep(5 * time.Second)
 		podList, err := a.listMatchingPods(context.Background())
 		if err != nil {
-			log.Error().WithError(err).Message("error listing pods")
 			continue
 		}
 		for _, pod := range podList.Items {
@@ -121,7 +120,7 @@ func (a k8sAggregator) Serve() error {
 			go func(p v1.Pod) {
 				inProgress.Store(string(p.UID), true)
 				if err := a.relayToWharfDB(&p); err != nil {
-					log.Error().WithError(err).Message("relaying returned with errors")
+					log.Error().WithError(err).Message("Relay error.")
 				}
 				inProgress.Delete(string(p.UID))
 			}(pod)
@@ -177,12 +176,12 @@ func (a k8sAggregator) relayToWharfDB(pod *v1.Pod) error {
 		return fmt.Errorf("error relaying to wharf: %s", strings.Join(errs, "; "))
 	}
 
-	// if err := client.Kill(); err != nil {
-	// 	log.Error().WithError(err).Message("Failed killing worker.")
-	// }
-	// log.Info().WithString("name", pod.Name).
-	// 	WithString("id", string(pod.UID)).
-	// 	Message("Killed worker")
+	if err := client.Kill(); err != nil {
+		log.Error().WithError(err).Message("Failed killing worker.")
+	}
+	log.Info().WithString("name", pod.Name).
+		WithString("id", string(pod.UID)).
+		Message("Killed worker")
 
 	return nil
 }
