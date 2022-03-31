@@ -52,16 +52,16 @@ func (r *logLineReadCloser) Close() error {
 }
 
 func (r *logLineReadCloser) ReadLastLogLine() (LogLine, error) {
-	var any bool
+	var anyLine bool
 	var lastLine string
 	for r.scan() {
-		any = true
+		anyLine = true
 		lastLine = r.scanner.Text()
 	}
 	if err := r.scanner.Err(); err != nil {
 		return LogLine{}, err
 	}
-	if !any {
+	if !anyLine {
 		return LogLine{}, io.EOF
 	}
 	return r.parseLogLine(lastLine), nil
