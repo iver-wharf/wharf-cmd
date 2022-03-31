@@ -29,6 +29,7 @@ import (
 var log = logger.NewScoped("AGGREGATOR")
 
 const (
+	// TODO: Get these ports from params
 	wharfAPIExternalPort  = 5011
 	workerAPIExternalPort = 5010
 )
@@ -66,6 +67,7 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 		upgrader:   upgrader,
 		httpClient: httpClient,
 		wharfClient: wharfapi.Client{
+			// TODO: Get from params
 			APIURL: "http://localhost:5001",
 		},
 	}, nil
@@ -167,6 +169,9 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		// This will not show all the errors, but that's fine.
 		return fmt.Errorf("relaying to wharf: %w", err)
 	}
+
+	// TODO: Check build results from already-streamed status events if the
+	// build is actually done. If not, then handle that as an error
 
 	if err := client.Kill(ctx); err != nil {
 		log.Error().WithError(err).WithString("pod", pod.Name).
