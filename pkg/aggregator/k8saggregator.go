@@ -59,9 +59,9 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 		return nil, err
 	}
 	return k8sAggregator{
-		Namespace:  namespace,
-		Clientset:  clientset,
-		Pods:       clientset.CoreV1().Pods(namespace),
+		namespace:  namespace,
+		clientset:  clientset,
+		pods:       clientset.CoreV1().Pods(namespace),
 		restConfig: restConfig,
 
 		upgrader:   upgrader,
@@ -74,9 +74,9 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 }
 
 type k8sAggregator struct {
-	Namespace string
-	Clientset *kubernetes.Clientset
-	Pods      corev1.PodInterface
+	namespace string
+	clientset *kubernetes.Clientset
+	pods      corev1.PodInterface
 
 	restConfig *rest.Config
 	upgrader   spdy.Upgrader
@@ -127,7 +127,7 @@ func (a k8sAggregator) Serve(ctx context.Context) error {
 }
 
 func (a k8sAggregator) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
-	return a.Pods.List(ctx, listOptionsMatchLabels)
+	return a.pods.List(ctx, listOptionsMatchLabels)
 }
 
 func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
