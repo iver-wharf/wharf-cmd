@@ -102,7 +102,7 @@ func (c *client) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRe
 }
 
 func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error) {
-	res, err := c.rest.get(ctx, fmt.Sprintf("http://%s/api/artifact/%d/download", c.baseURL, artifactID))
+	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api/artifact/%d/download", c.baseURL, artifactID))
 	if err := assertResponseOK(res, err); err != nil {
 		return nil, err
 	}
@@ -110,7 +110,7 @@ func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 }
 
 func (c *client) Kill(ctx context.Context) error {
-	res, err := c.rest.do(ctx, http.MethodDelete, fmt.Sprintf("http://%s/api", c.baseURL))
+	res, err := c.rest.do(ctx, http.MethodDelete, fmt.Sprintf("%s/api", c.baseURL))
 	if err := assertResponseOK(res, err); err != nil {
 		return err
 	}
@@ -118,7 +118,7 @@ func (c *client) Kill(ctx context.Context) error {
 }
 
 func (c *client) Ping(ctx context.Context) error {
-	res, err := c.rest.get(ctx, fmt.Sprintf("http://%s/api", c.baseURL))
+	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api", c.baseURL))
 	if err := assertResponseOK(res, err); err != nil {
 		return err
 	}
