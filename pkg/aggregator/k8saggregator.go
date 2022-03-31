@@ -7,8 +7,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
@@ -154,29 +152,25 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		return err
 	}
 
-	var wg sync.WaitGroup
-	var errs []string
-	wg.Add(3)
-	go func() {
-		a.relayLogs(ctx, client, &errs)
-		wg.Done()
-	}()
-	go func() {
-		a.relayArtifactEvents(ctx, client, &errs)
-		wg.Done()
-	}()
-	go func() {
-		a.relayStatusEvents(ctx, client, &errs)
-		wg.Done()
-	}()
-	wg.Wait()
+	var cg cancelGroup
+	cg.add(func(ctx context.Context) error {
+		return a.relayLogs(ctx, client)
+	})
+	cg.add(func(ctx context.Context) error {
+		return a.relayArtifactEvents(ctx, client)
+	})
+	cg.add(func(ctx context.Context) error {
+		return a.relayStatusEvents(ctx, client)
+	})
 
-	if len(errs) > 0 {
-		return fmt.Errorf("error relaying to wharf: %s", strings.Join(errs, "; "))
+	if err := cg.runInParallelFailFast(ctx); err != nil {
+		// This will not show all the errors, but that's fine.
+		return fmt.Errorf("relaying to wharf: %w", err)
 	}
 
 	if err := client.Kill(ctx); err != nil {
-		log.Error().WithError(err).WithString("pod", pod.Name).Message("Failed killing worker.")
+		log.Error().WithError(err).WithString("pod", pod.Name).
+			Message("Failed to kill worker.")
 		return err
 	}
 	log.Info().WithString("pod", pod.Name).
@@ -248,18 +242,16 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	return &ports[0], closePortForward, nil
 }
 
-func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client, errs *[]string) {
+func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client) error {
 	reader, err := client.StreamLogs(ctx, &workerclient.StreamLogsRequest{})
 	if err != nil {
-		*errs = append(*errs, err.Error())
-		return
+		return fmt.Errorf("open logs stream from wharf-cmd-worker: %w", err)
 	}
 	defer reader.CloseSend()
 
 	writer, err := a.wharfClient.CreateBuildLogStream(ctx)
 	if err != nil {
-		*errs = append(*errs, err.Error())
-		return
+		return fmt.Errorf("open logs stream to wharf-api: %w", err)
 	}
 	defer writer.CloseAndRecv()
 
@@ -267,7 +259,7 @@ func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client
 		logLine, err := reader.Recv()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				*errs = append(*errs, err.Error())
+				return err
 			}
 			break
 		}
@@ -279,45 +271,53 @@ func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client
 			Message:      logLine.Message,
 		})
 	}
+	return nil
 }
 
-func (a k8sAggregator) relayArtifactEvents(ctx context.Context, client workerclient.Client, errs *[]string) {
+func (a k8sAggregator) relayArtifactEvents(ctx context.Context, client workerclient.Client) error {
 	stream, err := client.StreamArtifactEvents(ctx, &workerclient.ArtifactEventsRequest{})
 	if err != nil {
-		*errs = append(*errs, err.Error())
-		return
+		return fmt.Errorf("open artifact events stream from wharf-cmd-worker: %w", err)
 	}
-	// No way to send to wharf DB through stream currently
-	// so we're just logging it here.
+	defer stream.CloseSend()
+
 	for {
 		artifactEvent, err := stream.Recv()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				*errs = append(*errs, err.Error())
+				return err
 			}
 			break
 		}
-		log.Debug().WithStringer("value", artifactEvent).Message("Received artifact event.")
+		// No way to send to wharf DB through stream currently
+		// so we're just logging it here.
+		log.Debug().
+			WithString("name", artifactEvent.Name).
+			WithUint64("id", artifactEvent.ArtifactID).
+			Message("Received artifact event.")
 	}
-	stream.CloseSend()
+	return nil
 }
 
-func (a k8sAggregator) relayStatusEvents(ctx context.Context, client workerclient.Client, errs *[]string) {
+func (a k8sAggregator) relayStatusEvents(ctx context.Context, client workerclient.Client) error {
 	stream, err := client.StreamStatusEvents(ctx, &workerclient.StatusEventsRequest{})
 	if err != nil {
-		*errs = append(*errs, err.Error())
-		return
+		return fmt.Errorf("open status events stream from wharf-cmd-worker: %w", err)
 	}
+	defer stream.CloseSend()
+
 	// TODO: Update build status based on statuses
 	for {
 		statusEvent, err := stream.Recv()
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
-				*errs = append(*errs, err.Error())
+				return err
 			}
 			break
 		}
-		log.Debug().WithStringer("value", statusEvent).Message("Received status event.")
+		log.Debug().
+			WithStringer("status", statusEvent.Status).
+			Message("Received status event.")
 	}
-	stream.CloseSend()
+	return nil
 }
