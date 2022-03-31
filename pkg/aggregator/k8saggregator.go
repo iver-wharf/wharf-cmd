@@ -12,9 +12,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
-	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/response"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
-	"github.com/iver-wharf/wharf-cmd/pkg/aggregator/relayer"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/sync2"
@@ -251,36 +249,35 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 }
 
 func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client, errs *[]string) {
-	sender, err := relayer.AsSender[request.Log, response.CreatedLogsSummary](
-		func() (any, error) {
-			return a.wharfClient.CreateBuildLogStream(ctx)
-		})
+	reader, err := client.StreamLogs(ctx, &workerclient.StreamLogsRequest{})
 	if err != nil {
 		*errs = append(*errs, err.Error())
 		return
 	}
+	defer reader.CloseSend()
 
-	receiver, err := relayer.AsReceiver[*workerclient.LogLine](
-		func() (any, error) {
-			return client.StreamLogs(ctx, &workerclient.LogsRequest{})
-		})
+	writer, err := a.wharfClient.CreateBuildLogStream(ctx)
 	if err != nil {
 		*errs = append(*errs, err.Error())
 		return
 	}
+	defer writer.CloseAndRecv()
 
-	relay := relayer.New(receiver, sender, func(v *workerclient.LogLine) request.Log {
-		return request.Log{
-			BuildID:      1,
-			WorkerLogID:  uint(v.LogID),
-			WorkerStepID: uint(v.StepID),
-			Timestamp:    v.GetTimestamp().AsTime(),
-			Message:      v.GetMessage(),
+	for {
+		logLine, err := reader.Recv()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				*errs = append(*errs, err.Error())
+			}
+			break
 		}
-	})
-
-	if errs2 := relay.Relay(); errs2 != nil {
-		*errs = append(*errs, errs2...)
+		writer.Send(request.Log{
+			BuildID:      uint(logLine.BuildID),
+			WorkerLogID:  uint(logLine.LogID),
+			WorkerStepID: uint(logLine.StepID),
+			Timestamp:    logLine.Timestamp.AsTime(),
+			Message:      logLine.Message,
+		})
 	}
 }
 
@@ -290,8 +287,8 @@ func (a k8sAggregator) relayArtifactEvents(ctx context.Context, client workercli
 		*errs = append(*errs, err.Error())
 		return
 	}
-	// No way to send to wharf DB through stream currently (that I know of)
-	// so we're just printing here.
+	// No way to send to wharf DB through stream currently
+	// so we're just logging it here.
 	for {
 		artifactEvent, err := stream.Recv()
 		if err != nil {
@@ -311,8 +308,7 @@ func (a k8sAggregator) relayStatusEvents(ctx context.Context, client workerclien
 		*errs = append(*errs, err.Error())
 		return
 	}
-	// No way to send to wharf DB through stream currently (that I know of)
-	// so we're just printing here.
+	// TODO: Update build status based on statuses
 	for {
 		statusEvent, err := stream.Recv()
 		if err != nil {
