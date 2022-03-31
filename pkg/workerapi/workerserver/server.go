@@ -5,6 +5,7 @@ package workerserver
 import (
 	"errors"
 	"net"
+	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
