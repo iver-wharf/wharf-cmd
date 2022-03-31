@@ -3,7 +3,6 @@
 package workerserver
 
 import (
-	"errors"
 	"net"
 	"time"
 
@@ -50,15 +49,15 @@ func (s *server) Serve(bindAddress string) error {
 		cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
 	httpListener := mux.Match(cmux.Any())
 
-	logIfErrored := func(protocol string, err error) {
-		if err != nil && !errors.Is(err, net.ErrClosed) && !errors.Is(err, cmux.ErrListenerClosed) {
+	logIfErrored := func(protocol string, f func() error) {
+		if err := f(); err != nil {
 			log.Error().WithError(err).Messagef("Error during serving %s.", protocol)
 		}
 	}
 
-	go logIfErrored("mux", mux.Serve())
-	go logIfErrored("HTTP", serveHTTP(s, s.rest, httpListener))
-	return serveGRPC(s.grpc, grpcListener)
+	go logIfErrored("gRPC", func() error { return serveGRPC(s.grpc, grpcListener) })
+	go logIfErrored("REST", func() error { return serveHTTP(s.rest, httpListener) })
+	return mux.Serve()
 }
 
 // Close closes the server.
