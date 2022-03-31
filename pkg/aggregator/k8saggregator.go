@@ -17,6 +17,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/aggregator/relayer"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"gopkg.in/typ.v3/pkg/sync2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -24,6 +25,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/net"
 	k8sruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -95,7 +97,7 @@ func (a k8sAggregator) Serve() error {
 	// a worker while its server wasn't running.
 	k8sruntime.ErrorHandlers = []func(error){}
 
-	inProgress := sync.Map{}
+	inProgress := sync2.Map[types.UID, bool]{}
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
@@ -110,18 +112,17 @@ func (a k8sAggregator) Serve() error {
 			if pod.Status.Phase != v1.PodRunning {
 				continue
 			}
-
-			if _, ok := inProgress.Load(string(pod.UID)); ok {
+			if _, ok := inProgress.Load(pod.UID); ok {
 				continue
 			}
 
 			log.Debug().WithString("pod", pod.Name).Message("Pod found.")
 			go func(p v1.Pod) {
-				inProgress.Store(string(p.UID), true)
+				inProgress.Store(p.UID, true)
 				if err := a.relayToWharfDB(&p); err != nil {
 					log.Error().WithError(err).Message("Relay error.")
 				}
-				inProgress.Delete(string(p.UID))
+				inProgress.Delete(p.UID)
 			}(pod)
 		}
 		time.Sleep(5 * time.Second)
