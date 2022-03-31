@@ -25,7 +25,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/net"
-	k8sRuntime "k8s.io/apimachinery/pkg/util/runtime"
+	k8sruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -93,7 +93,7 @@ func (a k8sAggregator) Serve() error {
 	//
 	// The console was clogged with forwarding errors when attempting to ping
 	// a worker while its server wasn't running.
-	k8sRuntime.ErrorHandlers = []func(error){}
+	k8sruntime.ErrorHandlers = []func(error){}
 
 	inProgress := sync.Map{}
 	for {
