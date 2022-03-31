@@ -16,7 +16,9 @@ func (c chanCloser[C, E]) Close() error {
 	return nil
 }
 
-// NewChanCloser returns an io.Closer that closes
+// NewChanCloser returns an io.Closer that closes a channel. The
+// io.Closer.Close() function will always return nil. It does not try to check
+// if the channel is already closed.
 func NewChanCloser[C chans.Sender[E], E any](ch C) io.Closer {
 	return chanCloser[C, E]{ch}
 }
