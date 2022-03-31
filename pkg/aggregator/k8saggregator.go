@@ -138,6 +138,7 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	if err != nil {
 		return err
 	}
+	defer connCloser.Close()
 
 	log.Info().WithString("pod", pod.Name).
 		WithUint("local", uint(port.Local)).
@@ -150,10 +151,7 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		// Don't need to add TLS on top of TLS.
 		InsecureSkipVerify: true,
 	})
-	defer func() {
-		client.Close()
-		connCloser()
-	}()
+	defer client.Close()
 
 	if err := client.Ping(ctx); err != nil {
 		return err
@@ -190,9 +188,14 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	return nil
 }
 
-type connectionCloser func()
+type closerFunc func()
 
-func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, connectionCloser, error) {
+func (f closerFunc) Close() error {
+	f()
+	return nil
+}
+
+func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, io.Closer, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		namespace, podName)
 
@@ -234,18 +237,18 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 		return nil, nil, forwarderErr
 	}
 
-	closerFunc := func() {
+	closePortForward := closerFunc(func() {
 		close(stopCh)
-	}
+	})
 
 	ports, err := forwarder.GetPorts()
 	if err != nil {
 		log.Error().WithError(err).Message("Error getting ports.")
-		closerFunc()
+		closePortForward()
 		return nil, nil, err
 	}
 
-	return &ports[0], closerFunc, nil
+	return &ports[0], closePortForward, nil
 }
 
 func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client, errs *[]string) {
