@@ -190,7 +190,7 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		url.PathEscape(namespace), url.PathEscape(podName))
 
-	portForwardUrl, err := url.Parse(a.restConfig.Host)
+	portForwardURL, err := url.Parse(a.restConfig.Host)
 	if err != nil {
 		return nil, nil, fmt.Errorf("parse URL from kubeconfig: %w", err)
 	}
@@ -201,9 +201,9 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	// We add the path to that, to produce the correct results:
 	//   https://172.50.123.3:6443/api/v1/namespaces/my-ns/pods/my-pod/portforward
 	//   https://rancher.example.com/k8s/clusters/c-m-13mz8a32/api/v1/namespaces/my-ns/pods/my-pod/port-forward
-	portForwardUrl.Path += path
+	portForwardURL.Path += path
 
-	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, portForwardUrl)
+	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, portForwardURL)
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
 	forwarder, err := portforward.New(dialer,
 		// From random unused local port (port 0) to the worker HTTP API port.

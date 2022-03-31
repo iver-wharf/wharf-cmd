@@ -111,18 +111,12 @@ func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 
 func (c *client) Kill(ctx context.Context) error {
 	res, err := c.rest.do(ctx, http.MethodDelete, fmt.Sprintf("%s/api", c.baseURL))
-	if err := assertResponseOK(res, err); err != nil {
-		return err
-	}
-	return nil
+	return assertResponseOK(res, err)
 }
 
 func (c *client) Ping(ctx context.Context) error {
 	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api", c.baseURL))
-	if err := assertResponseOK(res, err); err != nil {
-		return err
-	}
-	return nil
+	return assertResponseOK(res, err)
 }
 
 func (c *client) Close() error {
