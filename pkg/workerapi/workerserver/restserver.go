@@ -28,8 +28,8 @@ func serveHTTP(workerServer *server, s *restServer, listener net.Listener) error
 	applyCORSConfig(r)
 
 	g := r.Group("/api")
-	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
-	g.GET("/kill", func(c *gin.Context) {
+	g.GET("", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
+	g.DELETE("", func(c *gin.Context) {
 		c.JSON(200, "Killing server")
 		go func() {
 			<-c.Request.Context().Done()

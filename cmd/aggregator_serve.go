@@ -1,6 +1,8 @@
 package cmd
 
 import (
+	"context"
+
 	"github.com/iver-wharf/wharf-cmd/pkg/aggregator"
 	"github.com/spf13/cobra"
 )
@@ -15,7 +17,7 @@ the Wharf API through gRPC, killing the worker upon completion.`,
 		if err != nil {
 			return err
 		}
-		return k8sAggregator.Serve()
+		return k8sAggregator.Serve(context.Background())
 	},
 }
 
