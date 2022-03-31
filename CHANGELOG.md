@@ -96,7 +96,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   ```
 
 - Added Git integration by executing `git` locally to obtain current branch,
-  commit SHA, tags, etc. (#67)
+  commit SHA, tags, etc. (#67, #78)
 
 - Fixed `wharf run` not reading a pod's logs when it fails immediately on start.
   (#50)
@@ -128,6 +128,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added dependencies:
 
   - `github.com/alta/protopatch` v0.5.0 (#51)
+  - `github.com/cli/safeexec` v1.0.0 (#78)
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
