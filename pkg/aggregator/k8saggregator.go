@@ -32,7 +32,7 @@ import (
 var log = logger.NewScoped("AGGREGATOR")
 
 const (
-	wharfAPIExternalPort  = 5001
+	wharfAPIExternalPort  = 5011
 	workerAPIExternalPort = 5010
 )
 
@@ -97,7 +97,7 @@ func (a k8sAggregator) Serve() error {
 
 	inProgress := sync.Map{}
 	for {
-		// Maybe healthcheck Wharf API and back off if down?
+		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
 		// Would prevent pod listing and opening a tunnel to each pod each
 		// iteration.
@@ -115,7 +115,7 @@ func (a k8sAggregator) Serve() error {
 				continue
 			}
 
-			log.Debug().WithString("podName", pod.Name).Message("Pod found")
+			log.Debug().WithString("pod", pod.Name).Message("Pod found.")
 			go func(p v1.Pod) {
 				inProgress.Store(string(p.UID), true)
 				if err := a.relayToWharfDB(&p); err != nil {
@@ -138,12 +138,15 @@ func (a k8sAggregator) relayToWharfDB(pod *v1.Pod) error {
 		return err
 	}
 
-	log.Debug().WithString("name", pod.Name).
+	log.Info().WithString("pod", pod.Name).
 		WithUint("local", uint(port.Local)).
 		WithUint("remote", uint(port.Remote)).
-		Message("Tunnel opened to worker.")
+		Message("Connected to worker. Port-forwarding from pod.")
 
 	client, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
+		// Skipping security because we've already authenticated with Kubernetes
+		// and are communicating through a secured port-forwarding tunnel.
+		// Don't need to add TLS on top of TLS.
 		InsecureSkipVerify: true,
 	})
 	defer func() {
@@ -177,11 +180,11 @@ func (a k8sAggregator) relayToWharfDB(pod *v1.Pod) error {
 	}
 
 	if err := client.Kill(); err != nil {
-		log.Error().WithError(err).Message("Failed killing worker.")
+		log.Error().WithError(err).WithString("pod", pod.Name).Message("Failed killing worker.")
+		return err
 	}
-	log.Info().WithString("name", pod.Name).
-		WithString("id", string(pod.UID)).
-		Message("Killed worker")
+	log.Info().WithString("pod", pod.Name).
+		Message("Done with worker. Killed pod.")
 
 	return nil
 }
@@ -200,13 +203,14 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	hostPort, err := strconv.Atoi(hostSplit[1])
 
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("parse URL port: %w", err)
 	}
 
 	url := net.FormatURL("https", hostIP, hostPort, path)
 	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, url)
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
 	forwarder, err := portforward.New(dialer,
+		// From random unused local port (port 0) to the worker HTTP API port.
 		[]string{fmt.Sprintf("0:%d", workerAPIExternalPort)},
 		stopCh, readyCh, nil, nil)
 
@@ -224,11 +228,7 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 		}
 	}()
 
-	for range readyCh {
-		if forwarderErr != nil {
-			return nil, nil, forwarderErr
-		}
-	}
+	<-readyCh
 	if forwarderErr != nil {
 		return nil, nil, forwarderErr
 	}

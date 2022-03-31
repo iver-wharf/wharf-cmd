@@ -15,10 +15,10 @@ func AsSender[sent any, response any](f func() (any, error)) (sender[sent, respo
 		return nil, err
 	}
 
-	receiver, ok := v.(sender[sent, response])
+	sender, ok := v.(sender[sent, response])
 	if !ok {
-		return nil, errors.New("can't convert to response")
+		return nil, errors.New("can't convert to sender")
 	}
 
-	return receiver, nil
+	return sender, nil
 }

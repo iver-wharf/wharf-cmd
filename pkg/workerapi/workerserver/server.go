@@ -66,7 +66,16 @@ func (s *server) Serve(bindAddress string) error {
 // Abruptly stops active HTTP requests.
 func (s *server) Close() error {
 	if s.grpc != nil && s.grpc.grpc != nil {
+		const timeout = 5 * time.Second
+		log.Debug().WithDuration("timeout", timeout).
+			Message("Attempting to shut down gracefully.")
+
+		timer := time.AfterFunc(timeout, func() {
+			log.Debug().Message("Timeout exceeded. Shutting down immediately.")
+			s.grpc.grpc.Stop()
+		})
 		s.grpc.grpc.GracefulStop()
+		timer.Stop()
 	}
 	return s.listener.Close()
 }
