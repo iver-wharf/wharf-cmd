@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -26,7 +26,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/net"
 	k8sruntime "k8s.io/apimachinery/pkg/util/runtime"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
@@ -197,27 +196,27 @@ func (f closerFunc) Close() error {
 
 func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, io.Closer, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
-		namespace, podName)
+		url.PathEscape(namespace), url.PathEscape(podName))
 
-	log.Debug().WithString("path", path)
-
-	hostBase := strings.TrimLeft(a.restConfig.Host, "htps:/")
-	hostSplit := strings.Split(hostBase, ":")
-	hostIP := hostSplit[0]
-	hostPort, err := strconv.Atoi(hostSplit[1])
-
+	portForwardUrl, err := url.Parse(a.restConfig.Host)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse URL port: %w", err)
+		return nil, nil, fmt.Errorf("parse URL from kubeconfig: %w", err)
 	}
+	// rest.Config.Host can look something like one of these:
+	//   https://172.50.123.3:6443
+	//   https://rancher.example.com/k8s/clusters/c-m-13mz8a32
+	//
+	// We add the path to that, to produce the correct results:
+	//   https://172.50.123.3:6443/api/v1/namespaces/my-ns/pods/my-pod/portforward
+	//   https://rancher.example.com/k8s/clusters/c-m-13mz8a32/api/v1/namespaces/my-ns/pods/my-pod/port-forward
+	portForwardUrl.Path += path
 
-	url := net.FormatURL("https", hostIP, hostPort, path)
-	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, url)
+	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, portForwardUrl)
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
 	forwarder, err := portforward.New(dialer,
 		// From random unused local port (port 0) to the worker HTTP API port.
 		[]string{fmt.Sprintf("0:%d", workerAPIExternalPort)},
 		stopCh, readyCh, nil, nil)
-
 	if err != nil {
 		return nil, nil, err
 	}
