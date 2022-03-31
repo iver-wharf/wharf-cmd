@@ -96,22 +96,28 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return err
 		}
 
+		ctx := context.Background()
 		var serverWaitGroup sync.WaitGroup
 		if runFlags.serve {
 			server := workerserver.New(store, nil)
 			serverWaitGroup.Add(1)
+
+			var cancel context.CancelFunc
+			ctx, cancel = context.WithCancel(ctx)
+
 			go func() {
 				log.Info().WithString("address", "0.0.0.0:5010").
 					Message("Serving build results via REST & gRPC.")
 				defer serverWaitGroup.Done()
 				if err := server.Serve("0.0.0.0:5010"); err != nil {
 					log.Error().WithError(err).Message("Server error.")
+					cancel()
 				}
 			}()
 		}
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
-		res, err := b.Build(context.Background())
+		res, err := b.Build(ctx)
 		store.Freeze()
 		if err != nil {
 			return err
