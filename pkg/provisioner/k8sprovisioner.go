@@ -28,7 +28,7 @@ make deps && \
 make swag-force && \
 go install && \
 cd test && \
-wharf-cmd run -s test --loglevel debug`}
+wharf-cmd run --serve --stage test --loglevel debug`}
 
 type k8sProvisioner struct {
 	Namespace  string

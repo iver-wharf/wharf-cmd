@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
@@ -23,6 +24,7 @@ var runFlags = struct {
 	path         string
 	stage        string
 	env          string
+	serve        bool
 	k8sOverrides clientcmd.ConfigOverrides
 }{}
 
@@ -94,14 +96,19 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 			return err
 		}
 
-		server := workerserver.New(store, nil)
-		done := make(chan bool)
-		go func() {
-			if err := server.Serve("0.0.0.0:5010"); err != nil {
-				log.Error().WithError(err).Message("Server error.")
-			}
-			done <- true
-		}()
+		var serverWaitGroup sync.WaitGroup
+		if runFlags.serve {
+			server := workerserver.New(store, nil)
+			serverWaitGroup.Add(1)
+			go func() {
+				log.Info().WithString("address", "0.0.0.0:5010").
+					Message("Serving build results via REST & gRPC.")
+				defer serverWaitGroup.Done()
+				if err := server.Serve("0.0.0.0:5010"); err != nil {
+					log.Error().WithError(err).Message("Server error.")
+				}
+			}()
+		}
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(context.Background())
@@ -116,7 +123,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
-		<-done
+		serverWaitGroup.Wait()
 		return nil
 	},
 }
@@ -175,5 +182,6 @@ func init() {
 	runCmd.Flags().StringVarP(&runFlags.path, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
+	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until stopped via HTTP")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }
