@@ -11,6 +11,7 @@ import (
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	"github.com/iver-wharf/wharf-cmd/internal/closer"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/sync2"
@@ -184,13 +185,6 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	return nil
 }
 
-type closerFunc func()
-
-func (f closerFunc) Close() error {
-	f()
-	return nil
-}
-
 func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, io.Closer, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		url.PathEscape(namespace), url.PathEscape(podName))
@@ -233,14 +227,12 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 		return nil, nil, forwarderErr
 	}
 
-	closePortForward := closerFunc(func() {
-		close(stopCh)
-	})
+	closePortForward := closer.NewChanCloser(stopCh)
 
 	ports, err := forwarder.GetPorts()
 	if err != nil {
 		log.Error().WithError(err).Message("Error getting ports.")
-		closePortForward()
+		closePortForward.Close()
 		return nil, nil, err
 	}
 
