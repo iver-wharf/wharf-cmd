@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/cli/safeexec"
 )
 
 var (
@@ -239,7 +241,11 @@ func execGitCmdLines(dir string, args ...string) ([]string, error) {
 }
 
 func execGitCmd(dir string, args ...string) (string, error) {
-	cmd := exec.Command("git", append([]string{"-C", dir, "--no-pager"}, args...)...)
+	gitBin, err := safeexec.LookPath("git")
+	if err != nil {
+		return "", wrapGitExecError(err, args)
+	}
+	cmd := exec.Command(gitBin, append([]string{"-C", dir, "--no-pager"}, args...)...)
 	outBytes, err := cmd.CombinedOutput()
 	outBytes = bytes.TrimSpace(outBytes)
 	if err != nil {
