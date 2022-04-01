@@ -184,21 +184,10 @@ func (pc portConnection) Close() error {
 }
 
 func (a k8sAggr) establishTunnel(namespace, podName string) (portConnection, error) {
-	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
-		url.PathEscape(namespace), url.PathEscape(podName))
-
-	portForwardURL, err := url.Parse(a.restConfig.Host)
+	portForwardURL, err := newPortForwardURL(a.restConfig.Host, namespace, podName)
 	if err != nil {
-		return portConnection{}, fmt.Errorf("parse URL from kubeconfig: %w", err)
+		return portConnection{}, err
 	}
-	// rest.Config.Host can look something like one of these:
-	//   https://172.50.123.3:6443
-	//   https://rancher.example.com/k8s/clusters/c-m-13mz8a32
-	//
-	// We add the path to that, to produce the correct results:
-	//   https://172.50.123.3:6443/api/v1/namespaces/my-ns/pods/my-pod/portforward
-	//   https://rancher.example.com/k8s/clusters/c-m-13mz8a32/api/v1/namespaces/my-ns/pods/my-pod/port-forward
-	portForwardURL.Path += path
 
 	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, portForwardURL)
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
@@ -237,4 +226,16 @@ func (a k8sAggr) establishTunnel(namespace, podName string) (portConnection, err
 		ForwardedPort: ports[0],
 		stopCh:        stopCh,
 	}, nil
+}
+
+func newPortForwardURL(apiURL, namespace, podName string) (*url.URL, error) {
+	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
+		url.PathEscape(namespace), url.PathEscape(podName))
+
+	portForwardURL, err := url.Parse(apiURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse URL from kubeconfig: %w", err)
+	}
+	portForwardURL.Path += path
+	return portForwardURL, nil
 }
