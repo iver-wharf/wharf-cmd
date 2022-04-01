@@ -2,14 +2,12 @@ package aggregator
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"time"
 
-	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/internal/closer"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
@@ -59,7 +57,7 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 	if err != nil {
 		return nil, err
 	}
-	return k8sAggregator{
+	return k8sAggr{
 		namespace:  namespace,
 		clientset:  clientset,
 		pods:       clientset.CoreV1().Pods(namespace),
@@ -67,14 +65,14 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 
 		upgrader:   upgrader,
 		httpClient: httpClient,
-		wharfClient: wharfapi.Client{
+		wharfapi: wharfapi.Client{
 			// TODO: Get from params
 			APIURL: "http://localhost:5001",
 		},
 	}, nil
 }
 
-type k8sAggregator struct {
+type k8sAggr struct {
 	namespace string
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
@@ -83,10 +81,10 @@ type k8sAggregator struct {
 	upgrader   spdy.Upgrader
 	httpClient *http.Client
 
-	wharfClient wharfapi.Client
+	wharfapi wharfapi.Client
 }
 
-func (a k8sAggregator) Serve(ctx context.Context) error {
+func (a k8sAggr) Serve(ctx context.Context) error {
 	log.Info().Message("Aggregator started")
 
 	// Silences the output of error messages from internal k8s code to console.
@@ -127,11 +125,11 @@ func (a k8sAggregator) Serve(ctx context.Context) error {
 	}
 }
 
-func (a k8sAggregator) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
+func (a k8sAggr) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
 	return a.pods.List(ctx, listOptionsMatchLabels)
 }
 
-func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
+func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	port, connCloser, err := a.establishTunnel(pod.Namespace, pod.Name)
 	if err != nil {
 		return err
@@ -143,30 +141,19 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		WithUint("remote", uint(port.Remote)).
 		Message("Connected to worker. Port-forwarding from pod.")
 
-	client, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
+	worker, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
 		// Don't need to add TLS on top of TLS.
 		InsecureSkipVerify: true,
 	})
-	defer client.Close()
+	defer worker.Close()
 
-	if err := client.Ping(ctx); err != nil {
+	if err := worker.Ping(ctx); err != nil {
 		return err
 	}
 
-	var cg cancelGroup
-	cg.add(func(ctx context.Context) error {
-		return a.relayLogs(ctx, client)
-	})
-	cg.add(func(ctx context.Context) error {
-		return a.relayArtifactEvents(ctx, client)
-	})
-	cg.add(func(ctx context.Context) error {
-		return a.relayStatusEvents(ctx, client)
-	})
-
-	if err := cg.runInParallelFailFast(ctx); err != nil {
+	if err := relayAll(ctx, a.wharfapi, worker); err != nil {
 		// This will not show all the errors, but that's fine.
 		return fmt.Errorf("relaying to wharf: %w", err)
 	}
@@ -174,7 +161,7 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	// TODO: Check build results from already-streamed status events if the
 	// build is actually done. If not, then handle that as an error
 
-	if err := client.Kill(ctx); err != nil {
+	if err := worker.Kill(ctx); err != nil {
 		log.Error().WithError(err).WithString("pod", pod.Name).
 			Message("Failed to kill worker.")
 		return err
@@ -185,7 +172,7 @@ func (a k8sAggregator) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	return nil
 }
 
-func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, io.Closer, error) {
+func (a k8sAggr) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, io.Closer, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		url.PathEscape(namespace), url.PathEscape(podName))
 
@@ -237,84 +224,4 @@ func (a k8sAggregator) establishTunnel(namespace, podName string) (*portforward.
 	}
 
 	return &ports[0], closePortForward, nil
-}
-
-func (a k8sAggregator) relayLogs(ctx context.Context, client workerclient.Client) error {
-	reader, err := client.StreamLogs(ctx, &workerclient.StreamLogsRequest{})
-	if err != nil {
-		return fmt.Errorf("open logs stream from wharf-cmd-worker: %w", err)
-	}
-	defer reader.CloseSend()
-
-	writer, err := a.wharfClient.CreateBuildLogStream(ctx)
-	if err != nil {
-		return fmt.Errorf("open logs stream to wharf-api: %w", err)
-	}
-	defer writer.CloseAndRecv()
-
-	for {
-		logLine, err := reader.Recv()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return err
-			}
-			break
-		}
-		writer.Send(request.Log{
-			BuildID:      uint(logLine.BuildID),
-			WorkerLogID:  uint(logLine.LogID),
-			WorkerStepID: uint(logLine.StepID),
-			Timestamp:    logLine.Timestamp.AsTime(),
-			Message:      logLine.Message,
-		})
-	}
-	return nil
-}
-
-func (a k8sAggregator) relayArtifactEvents(ctx context.Context, client workerclient.Client) error {
-	stream, err := client.StreamArtifactEvents(ctx, &workerclient.ArtifactEventsRequest{})
-	if err != nil {
-		return fmt.Errorf("open artifact events stream from wharf-cmd-worker: %w", err)
-	}
-	defer stream.CloseSend()
-
-	for {
-		artifactEvent, err := stream.Recv()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return err
-			}
-			break
-		}
-		// No way to send to wharf DB through stream currently
-		// so we're just logging it here.
-		log.Debug().
-			WithString("name", artifactEvent.Name).
-			WithUint64("id", artifactEvent.ArtifactID).
-			Message("Received artifact event.")
-	}
-	return nil
-}
-
-func (a k8sAggregator) relayStatusEvents(ctx context.Context, client workerclient.Client) error {
-	stream, err := client.StreamStatusEvents(ctx, &workerclient.StatusEventsRequest{})
-	if err != nil {
-		return fmt.Errorf("open status events stream from wharf-cmd-worker: %w", err)
-	}
-	defer stream.CloseSend()
-
-	// TODO: Update build status based on statuses
-	for {
-		statusEvent, err := stream.Recv()
-		if err != nil {
-			if !errors.Is(err, io.EOF) {
-				return err
-			}
-			break
-		}
-		log.Debug().
-			WithStringer("status", statusEvent.Status).
-			Message("Received status event.")
-	}
-	return nil
 }
