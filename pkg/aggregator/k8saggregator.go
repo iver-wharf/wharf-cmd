@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"gopkg.in/typ.v3/pkg/sync2"
+	"gopkg.in/typ.v3/pkg/sets"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -83,15 +84,17 @@ type k8sAggr struct {
 }
 
 func (a k8sAggr) Serve(ctx context.Context) error {
-	log.Info().Message("Aggregator started")
+	const pollDelay = 5 * time.Second
+	log.Info().WithDuration("pollDelay", pollDelay).Message("Aggregator started.")
 
 	// Silences the output of error messages from internal k8s code to console.
 	//
-	// The console was clogged with forwarding errors when attempting to ping
+	// The console gets clogged with forwarding errors when attempting to ping
 	// a worker while its server wasn't running.
 	k8sruntime.ErrorHandlers = []func(error){}
 
-	inProgress := sync2.Map[types.UID, bool]{}
+	var mutex sync.Mutex
+	inProgress := make(sets.Set[types.UID])
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
@@ -100,26 +103,33 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 
 		podList, err := a.listMatchingPods(ctx)
 		if err != nil {
+			log.Warn().WithError(err).WithDuration("pollDelay", pollDelay).
+				Message("Failed to list pods. Retrying after delay.")
+			time.Sleep(pollDelay)
 			continue
 		}
+		mutex.Lock()
 		for _, pod := range podList.Items {
 			if pod.Status.Phase != v1.PodRunning {
 				continue
 			}
-			if _, ok := inProgress.Load(pod.UID); ok {
+			if inProgress.Has(pod.UID) {
 				continue
 			}
-
+			inProgress.Add(pod.UID)
 			log.Debug().WithString("pod", pod.Name).Message("Pod found.")
+
 			go func(p v1.Pod) {
-				inProgress.Store(p.UID, true)
 				if err := a.relayToWharfDB(ctx, &p); err != nil {
 					log.Error().WithError(err).Message("Relay error.")
 				}
-				inProgress.Delete(p.UID)
+				mutex.Lock()
+				inProgress.Remove(p.UID)
+				mutex.Unlock()
 			}(pod)
 		}
-		time.Sleep(5 * time.Second)
+		mutex.Unlock()
+		time.Sleep(pollDelay)
 	}
 }
 
@@ -139,6 +149,7 @@ func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		WithUint("remote", uint(portConn.Remote)).
 		Message("Connected to worker. Port-forwarding from pod.")
 
+	// Intentionally "localhost" because we're port-forwarding
 	worker, err := workerclient.New(fmt.Sprintf("localhost:%d", portConn.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
