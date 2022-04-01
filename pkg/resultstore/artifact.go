@@ -49,8 +49,11 @@ func (s *store) readArtifactEventsFile(stepID uint64) (ArtifactEventList, error)
 	}
 	defer file.Close()
 	dec := json.NewDecoder(file)
+	if errors.Is(err, io.EOF) {
+		return ArtifactEventList{}, nil
+	}
 	var list ArtifactEventList
-	if err := dec.Decode(&list); err != nil && !errors.Is(err, io.EOF) {
+	if err := dec.Decode(&list); err != nil {
 		return ArtifactEventList{}, fmt.Errorf("decode artifact events: %w", err)
 	}
 	for i := range list.ArtifactEvents {

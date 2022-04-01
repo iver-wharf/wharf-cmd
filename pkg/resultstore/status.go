@@ -56,8 +56,11 @@ func (s *store) readStatusUpdatesFile(stepID uint64) (StatusList, error) {
 	}
 	defer file.Close()
 	dec := json.NewDecoder(file)
+	if errors.Is(err, io.EOF) {
+		return StatusList{}, nil
+	}
 	var list StatusList
-	if err := dec.Decode(&list); err != nil && !errors.Is(err, io.EOF) {
+	if err := dec.Decode(&list); err != nil {
 		return StatusList{}, fmt.Errorf("decode status updates: %w", err)
 	}
 	for i := range list.StatusUpdates {
