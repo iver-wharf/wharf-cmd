@@ -59,11 +59,10 @@ func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *c
 	wg := sync.WaitGroup{}
 	wg.Add(len(readers))
 	for _, r := range readers {
-		reader := r
-		go func() {
-			s.pubLogsToChanToCatchUp(reader, pubSub)
+		go func(r LogLineReadCloser) {
+			s.pubLogsToChanToCatchUp(r, pubSub)
 			wg.Done()
-		}()
+		}(r)
 	}
 	wg.Wait()
 	if s.frozen {
