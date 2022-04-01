@@ -3,13 +3,11 @@ package aggregator
 import (
 	"context"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
-	"github.com/iver-wharf/wharf-cmd/internal/closer"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/sync2"
@@ -130,18 +128,18 @@ func (a k8sAggr) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
 }
 
 func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
-	port, connCloser, err := a.establishTunnel(pod.Namespace, pod.Name)
+	portConn, err := a.establishTunnel(pod.Namespace, pod.Name)
 	if err != nil {
 		return err
 	}
-	defer connCloser.Close()
+	defer portConn.Close()
 
 	log.Info().WithString("pod", pod.Name).
-		WithUint("local", uint(port.Local)).
-		WithUint("remote", uint(port.Remote)).
+		WithUint("local", uint(portConn.Local)).
+		WithUint("remote", uint(portConn.Remote)).
 		Message("Connected to worker. Port-forwarding from pod.")
 
-	worker, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", port.Local), workerclient.Options{
+	worker, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", portConn.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
 		// Don't need to add TLS on top of TLS.
@@ -175,13 +173,23 @@ func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	return nil
 }
 
-func (a k8sAggr) establishTunnel(namespace, podName string) (*portforward.ForwardedPort, io.Closer, error) {
+type portConnection struct {
+	portforward.ForwardedPort
+	stopCh chan struct{}
+}
+
+func (pc portConnection) Close() error {
+	close(pc.stopCh)
+	return nil
+}
+
+func (a k8sAggr) establishTunnel(namespace, podName string) (portConnection, error) {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		url.PathEscape(namespace), url.PathEscape(podName))
 
 	portForwardURL, err := url.Parse(a.restConfig.Host)
 	if err != nil {
-		return nil, nil, fmt.Errorf("parse URL from kubeconfig: %w", err)
+		return portConnection{}, fmt.Errorf("parse URL from kubeconfig: %w", err)
 	}
 	// rest.Config.Host can look something like one of these:
 	//   https://172.50.123.3:6443
@@ -199,32 +207,34 @@ func (a k8sAggr) establishTunnel(namespace, podName string) (*portforward.Forwar
 		[]string{fmt.Sprintf("0:%d", workerAPIExternalPort)},
 		stopCh, readyCh, nil, nil)
 	if err != nil {
-		return nil, nil, err
+		return portConnection{}, err
 	}
 
 	var forwarderErr error
 	go func() {
 		if forwarderErr = forwarder.ForwardPorts(); forwarderErr != nil {
-			log.Error().WithError(forwarderErr).Message("Error occurred during tunneling.")
-			close(readyCh)
+			log.Error().WithError(forwarderErr).Message("Error occurred when forwarding ports.")
 			close(stopCh)
-			forwarder.Close()
 		}
 	}()
 
-	<-readyCh
-	if forwarderErr != nil {
-		return nil, nil, forwarderErr
+	select {
+	case <-readyCh:
+	case <-stopCh:
 	}
-
-	closePortForward := closer.NewChanCloser(stopCh)
+	if forwarderErr != nil {
+		return portConnection{}, forwarderErr
+	}
 
 	ports, err := forwarder.GetPorts()
 	if err != nil {
 		log.Error().WithError(err).Message("Error getting ports.")
-		closePortForward.Close()
-		return nil, nil, err
+		close(stopCh)
+		return portConnection{}, err
 	}
 
-	return &ports[0], closePortForward, nil
+	return portConnection{
+		ForwardedPort: ports[0],
+		stopCh:        stopCh,
+	}, nil
 }
