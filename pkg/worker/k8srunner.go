@@ -276,6 +276,12 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	writer, err := r.store.OpenLogWriter(uint64(r.stepID))
 	if err != nil {
 		r.log.Error().WithError(err).Message("Failed to open log writer. No logs will be written.")
+	} else {
+		defer func() {
+			if err := writer.Close(); err != nil {
+				r.log.Error().WithError(err).Message("Failed to close log writer.")
+			}
+		}()
 	}
 	for scanner.Scan() {
 		txt := scanner.Text()
@@ -288,11 +294,6 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 			if err := writer.WriteLogLine(txt); err != nil {
 				r.log.Error().WithError(err).Message("Failed to write log line.")
 			}
-		}
-	}
-	if writer != nil {
-		if err := writer.Close(); err != nil {
-			r.log.Error().WithError(err).Message("Failed to close log writer.")
 		}
 	}
 	return scanner.Err()
