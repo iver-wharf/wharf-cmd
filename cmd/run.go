@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
@@ -97,24 +96,10 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 
 		ctx := context.Background()
-		var serverWaitGroup sync.WaitGroup
 		if runFlags.serve {
-			server := workerserver.New(store, nil)
-			serverWaitGroup.Add(1)
-
-			var cancel context.CancelFunc
-			ctx, cancel = context.WithCancel(ctx)
-
-			go func() {
-				log.Info().WithString("address", "0.0.0.0:5010").
-					Message("Serving build results via REST & gRPC.")
-				defer serverWaitGroup.Done()
-				if err := server.Serve("0.0.0.0:5010"); err != nil {
-					log.Error().WithError(err).Message("Server error.")
-					cancel()
-				}
-			}()
+			ctx = startWorkerServerWithCancel(ctx, store)
 		}
+
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(ctx)
@@ -129,9 +114,28 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if res.Status != workermodel.StatusSuccess {
 			return errors.New("build failed")
 		}
-		serverWaitGroup.Wait()
+
+		if runFlags.serve {
+			<-ctx.Done()
+		}
 		return nil
 	},
+}
+
+func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) context.Context {
+	ctx, cancel := context.WithCancel(ctx)
+	server := workerserver.New(store, nil)
+
+	go func() {
+		log.Info().WithString("address", "0.0.0.0:5010").
+			Message("Serving build results via REST & gRPC.")
+		defer cancel()
+		if err := server.Serve("0.0.0.0:5010"); err != nil {
+			log.Error().WithError(err).Message("Server error.")
+		}
+	}()
+
+	return ctx
 }
 
 func logParseErrors(errs wharfyml.Errors, currentDir string) {
