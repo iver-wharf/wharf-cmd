@@ -29,7 +29,7 @@ func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 		return nil, fmt.Errorf("open all log file handles: %w", err)
 	}
 	ch := s.logPubSub.SubBuf(buffer)
-	go s.pubAllLogsToChanToCatchUp(readers, s.logPubSub.WithOnly(ch))
+	go s.pubAllLogsToChanToCatchUp(readers, s.logPubSub.WithOnly(ch), ch)
 	return ch, nil
 }
 
@@ -55,7 +55,7 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 	return readers, nil
 }
 
-func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *chans.PubSub[LogLine]) {
+func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *chans.PubSub[LogLine], ch <-chan LogLine) {
 	wg := sync.WaitGroup{}
 	wg.Add(len(readers))
 	for _, r := range readers {
@@ -66,7 +66,7 @@ func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *c
 	}
 	wg.Wait()
 	if s.frozen {
-		pubSub.UnsubAll()
+		s.logPubSub.Unsub(ch)
 	}
 }
 
