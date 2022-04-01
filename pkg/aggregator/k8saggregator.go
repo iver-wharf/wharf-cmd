@@ -165,9 +165,15 @@ func (a k8sAggr) relayToWharfDB(ctx context.Context, podName string) error {
 	}
 
 	// TODO: Check build results from already-streamed status events if the
-	// build is actually done. If not, then handle that as an error
+	// build is actually done. If not, then set build as failed via wharfapi.
 
-	// TODO: Terminate pod
+	log.Debug().
+		WithStringf("pod", "%s/%s", a.namespace, podName).
+		Message("Done relaying. Terminating pod.")
+
+	if err := a.pods.Delete(ctx, podName, metav1.DeleteOptions{}); err != nil {
+		return fmt.Errorf("terminate pod after done with relay build results: %w", err)
+	}
 
 	log.Info().
 		WithStringf("pod", "%s/%s", a.namespace, podName).
