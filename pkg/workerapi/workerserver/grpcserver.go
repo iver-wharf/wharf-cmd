@@ -1,7 +1,6 @@
 package workerserver
 
 import (
-	"errors"
 	"net"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
@@ -9,7 +8,6 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
-	"gopkg.in/typ.v3/pkg/chans"
 )
 
 func serveGRPC(grpcWorkerServer *grpcWorkerServer, listener net.Listener) error {
@@ -38,6 +36,8 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 	if err != nil {
 		return err
 	}
+	defer unsubWithErrorHandle(ch, s.store.UnsubAllLogLines)
+
 	for {
 		select {
 		case logLine, ok := <-ch:
@@ -45,10 +45,6 @@ func (s *grpcWorkerServer) StreamLogs(_ *v1.StreamLogsRequest, stream v1.Worker_
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamLogsResponse(logLine)); err != nil {
-				log.Error().WithError(err).Message("Failed sending logs to client.")
-				if err := s.store.UnsubAllLogLines(ch); err != nil && !errors.Is(err, chans.ErrAlreadyUnsubscribed) {
-					log.Warn().WithError(err).Message("Failed to unsubscribe channel.")
-				}
 				return err
 			}
 		default:
@@ -63,6 +59,7 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 	if err != nil {
 		return err
 	}
+	defer unsubWithErrorHandle(ch, s.store.UnsubAllStatusUpdates)
 
 	for {
 		select {
@@ -71,10 +68,6 @@ func (s *grpcWorkerServer) StreamStatusEvents(_ *v1.StreamStatusEventsRequest, s
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamStatusEventsResponse(statusEvent)); err != nil {
-				log.Error().WithError(err).Message("Failed sending status events to client.")
-				if err := s.store.UnsubAllStatusUpdates(ch); err != nil && !errors.Is(err, chans.ErrAlreadyUnsubscribed) {
-					log.Warn().WithError(err).Message("Failed to unsubscribe channel.")
-				}
 				return err
 			}
 		default:
@@ -89,6 +82,8 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 	if err != nil {
 		return err
 	}
+	defer unsubWithErrorHandle(ch, s.store.UnsubAllArtifactEvents)
+
 	for {
 		select {
 		case artifactEvent, ok := <-ch:
@@ -96,15 +91,17 @@ func (s *grpcWorkerServer) StreamArtifactEvents(_ *v1.StreamArtifactEventsReques
 				return nil
 			}
 			if err := stream.Send(ConvertToStreamArtifactEventsResponse(artifactEvent)); err != nil {
-				log.Error().WithError(err).Message("Failed sending artifact events to client.")
-				if err := s.store.UnsubAllArtifactEvents(ch); err != nil && !errors.Is(err, chans.ErrAlreadyUnsubscribed) {
-					log.Warn().WithError(err).Message("Failed to unsubscribe channel.")
-				}
 				return err
 			}
 		default:
 			continue
 		}
+	}
+}
+
+func unsubWithErrorHandle[E any](ch <-chan E, unsub func(ch <-chan E) error) {
+	if err := unsub(ch); err != nil {
+		log.Warn().WithError(err).Message("Failed to unsubscribe channel.")
 	}
 }
 
