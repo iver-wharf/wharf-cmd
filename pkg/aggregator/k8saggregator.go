@@ -147,6 +147,9 @@ func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		// Don't need to add TLS on top of TLS.
 		InsecureSkipVerify: true,
 	})
+	if err != nil {
+		return err
+	}
 	defer worker.Close()
 
 	if err := worker.Ping(ctx); err != nil {

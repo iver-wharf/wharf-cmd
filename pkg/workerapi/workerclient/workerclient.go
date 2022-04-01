@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"net/http"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -110,7 +109,7 @@ func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 }
 
 func (c *client) Kill(ctx context.Context) error {
-	res, err := c.rest.do(ctx, http.MethodDelete, fmt.Sprintf("%s/api", c.baseURL))
+	res, err := c.rest.delete(ctx, fmt.Sprintf("%s/api", c.baseURL))
 	return assertResponseOK(res, err)
 }
 
