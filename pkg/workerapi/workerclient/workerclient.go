@@ -38,7 +38,6 @@ type Client interface {
 	StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error)
 	StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error)
 	DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error)
-	Kill(ctx context.Context) error
 	Ping(ctx context.Context) error
 
 	Close() error
@@ -106,11 +105,6 @@ func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 		return nil, err
 	}
 	return res.Body, nil
-}
-
-func (c *client) Kill(ctx context.Context) error {
-	res, err := c.rest.delete(ctx, fmt.Sprintf("%s/api", c.baseURL))
-	return assertResponseOK(res, err)
 }
 
 func (c *client) Ping(ctx context.Context) error {

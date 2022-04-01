@@ -36,20 +36,12 @@ func newRestClient(opts Options) (*restClient, error) {
 	}, nil
 }
 
-func (c *restClient) do(ctx context.Context, method, url string) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, method, url, nil)
+func (c *restClient) get(ctx context.Context, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 	return c.client.Do(req)
-}
-
-func (c *restClient) delete(ctx context.Context, url string) (*http.Response, error) {
-	return c.do(ctx, http.MethodDelete, url)
-}
-
-func (c *restClient) get(ctx context.Context, url string) (*http.Response, error) {
-	return c.do(ctx, http.MethodGet, url)
 }
 
 func assertResponseOK(res *http.Response, err error) error {

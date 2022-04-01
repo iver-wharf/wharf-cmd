@@ -188,6 +188,6 @@ func init() {
 	runCmd.Flags().StringVarP(&runFlags.path, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
-	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until stopped via HTTP")
+	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }

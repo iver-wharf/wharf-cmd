@@ -28,7 +28,7 @@ var log = logger.NewScoped("AGGREGATOR")
 
 const (
 	// TODO: Get these ports from params
-	wharfAPIExternalPort  = 5011
+	wharfAPIExternalPort  = 5001
 	workerAPIExternalPort = 5010
 )
 
@@ -85,7 +85,9 @@ type k8sAggr struct {
 
 func (a k8sAggr) Serve(ctx context.Context) error {
 	const pollDelay = 5 * time.Second
-	log.Info().WithDuration("pollDelay", pollDelay).Message("Aggregator started.")
+	log.Info().
+		WithDuration("pollDelay", pollDelay).
+		Message("Aggregator started.")
 
 	// Silences the output of error messages from internal k8s code to console.
 	//
@@ -103,7 +105,8 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 
 		podList, err := a.listMatchingPods(ctx)
 		if err != nil {
-			log.Warn().WithError(err).WithDuration("pollDelay", pollDelay).
+			log.Warn().WithError(err).
+				WithDuration("pollDelay", pollDelay).
 				Message("Failed to list pods. Retrying after delay.")
 			time.Sleep(pollDelay)
 			continue
@@ -117,10 +120,12 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 				continue
 			}
 			inProgress.Add(pod.UID)
-			log.Debug().WithString("pod", pod.Name).Message("Pod found.")
+			log.Debug().
+				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+				Message("Pod found.")
 
 			go func(p v1.Pod) {
-				if err := a.relayToWharfDB(ctx, &p); err != nil {
+				if err := a.relayToWharfDB(ctx, p.Name); err != nil {
 					log.Error().WithError(err).Message("Relay error.")
 				}
 				mutex.Lock()
@@ -137,25 +142,14 @@ func (a k8sAggr) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
 	return a.pods.List(ctx, listOptionsMatchLabels)
 }
 
-func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
-	portConn, err := a.establishTunnel(pod.Namespace, pod.Name)
+func (a k8sAggr) relayToWharfDB(ctx context.Context, podName string) error {
+	portConn, err := a.newPortForwarding(a.namespace, podName)
 	if err != nil {
 		return err
 	}
 	defer portConn.Close()
 
-	log.Info().WithString("pod", pod.Name).
-		WithUint("local", uint(portConn.Local)).
-		WithUint("remote", uint(portConn.Remote)).
-		Message("Connected to worker. Port-forwarding from pod.")
-
-	// Intentionally "localhost" because we're port-forwarding
-	worker, err := workerclient.New(fmt.Sprintf("localhost:%d", portConn.Local), workerclient.Options{
-		// Skipping security because we've already authenticated with Kubernetes
-		// and are communicating through a secured port-forwarding tunnel.
-		// Don't need to add TLS on top of TLS.
-		InsecureSkipVerify: true,
-	})
+	worker, err := a.newWorkerClient(a.namespace, podName, portConn)
 	if err != nil {
 		return err
 	}
@@ -173,15 +167,22 @@ func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 	// TODO: Check build results from already-streamed status events if the
 	// build is actually done. If not, then handle that as an error
 
-	if err := worker.Kill(ctx); err != nil {
-		log.Error().WithError(err).WithString("pod", pod.Name).
-			Message("Failed to kill worker.")
-		return err
-	}
-	log.Info().WithString("pod", pod.Name).
-		Message("Done with worker. Killed pod.")
+	// TODO: Terminate pod
 
+	log.Info().
+		WithStringf("pod", "%s/%s", a.namespace, podName).
+		Message("Done with worker.")
 	return nil
+}
+
+func (a k8sAggr) newWorkerClient(namespace, podName string, portConn portConnection) (workerclient.Client, error) {
+	// Intentionally "localhost" because we're port-forwarding
+	return workerclient.New(fmt.Sprintf("localhost:%d", portConn.Local), workerclient.Options{
+		// Skipping security because we've already authenticated with Kubernetes
+		// and are communicating through a secured port-forwarding tunnel.
+		// Don't need to add TLS on top of TLS.
+		InsecureSkipVerify: true,
+	})
 }
 
 type portConnection struct {
@@ -194,7 +195,7 @@ func (pc portConnection) Close() error {
 	return nil
 }
 
-func (a k8sAggr) establishTunnel(namespace, podName string) (portConnection, error) {
+func (a k8sAggr) newPortForwarding(namespace, podName string) (portConnection, error) {
 	portForwardURL, err := newPortForwardURL(a.restConfig.Host, namespace, podName)
 	if err != nil {
 		return portConnection{}, err
@@ -232,9 +233,16 @@ func (a k8sAggr) establishTunnel(namespace, podName string) (portConnection, err
 		close(stopCh)
 		return portConnection{}, err
 	}
+	port := ports[0]
+
+	log.Info().
+		WithStringf("pod", "%s/%s", a.namespace, podName).
+		WithUint("local", uint(port.Local)).
+		WithUint("remote", uint(port.Remote)).
+		Message("Connected to worker. Port-forwarding from pod.")
 
 	return portConnection{
-		ForwardedPort: ports[0],
+		ForwardedPort: port,
 		stopCh:        stopCh,
 	}, nil
 }
