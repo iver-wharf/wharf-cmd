@@ -139,7 +139,7 @@ func (a k8sAggr) relayToWharfDB(ctx context.Context, pod *v1.Pod) error {
 		WithUint("remote", uint(portConn.Remote)).
 		Message("Connected to worker. Port-forwarding from pod.")
 
-	worker, err := workerclient.New(fmt.Sprintf("127.0.0.1:%d", portConn.Local), workerclient.Options{
+	worker, err := workerclient.New(fmt.Sprintf("localhost:%d", portConn.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
 		// Don't need to add TLS on top of TLS.
