@@ -9,12 +9,9 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/chans"
 	"gopkg.in/typ.v3/pkg/sync2"
 )
-
-var log = logger.NewScoped("RESULTSTORE")
 
 var (
 	// ErrFrozen is returned when doing a write operation on a frozen store.
@@ -134,7 +131,7 @@ type Store interface {
 	// and causes future write operations to error. This cannot be undone.
 	//
 	// All new subscriptions will be closed after catching up.
-	Freeze()
+	Freeze() error
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -189,19 +186,23 @@ type store struct {
 	frozen bool
 }
 
-func (s *store) Freeze() {
+func (s *store) Freeze() error {
 	s.frozen = true
+	var closeWriterErr error
 	s.logWritersOpened.Range(func(_ uint64, writer *logLineWriteCloser) bool {
 		if err := writer.Close(); err != nil {
-			log.Error().WithError(err).Message("Failed closing log writer.")
+			closeWriterErr = err
+			return false
 		}
 		return true
 	})
+	if closeWriterErr != nil {
+		return closeWriterErr
+	}
 
 	stepIDs, err := s.listAllStepIDs()
 	if err != nil {
-		log.Error().WithError(err).Message("Aborting freeze. Failed listing step IDs.")
-		return
+		return err
 	}
 
 	for _, stepID := range stepIDs {
@@ -217,6 +218,7 @@ func (s *store) Freeze() {
 		s.artifactMutex.UnlockKey(stepID)
 		s.statusMutex.UnlockKey(stepID)
 	}
+	return nil
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

@@ -45,16 +45,6 @@ func (fs osFS) OpenWrite(name string) (io.WriteCloser, error) {
 
 func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
 	path := filepath.Join(fs.dir, name)
-	log.Debug().WithString("path", path).Message("Opening file for reading.")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		writer, err := fs.openFileMkdirAll(name, os.O_WRONLY|os.O_CREATE, 0644)
-		if err != nil {
-			return nil, err
-		}
-		if err := writer.Close(); err != nil {
-			log.Warn().WithError(err).Message("Failed closing file handle.")
-		}
-	}
 	return os.OpenFile(path, os.O_RDONLY, 0644)
 }
 
@@ -64,13 +54,13 @@ func (fs osFS) ListDirEntries(name string) ([]fs.DirEntry, error) {
 
 func (fs osFS) openFileMkdirAll(name string, flags int, perm fs.FileMode) (io.WriteCloser, error) {
 	path := filepath.Join(fs.dir, name)
-	log.Debug().WithString("path", path).Message("Opening file for writing.")
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		log.Debug().WithString("path", path).Message("File does not exist. Creating.")
+	file, err := os.OpenFile(path, flags, perm)
+	if os.IsNotExist(err) {
 		dir := filepath.Dir(path)
 		if err := os.MkdirAll(dir, perm); err != nil {
-			log.Error().WithError(err).WithString("dir", dir).Message("Failed to create parent directory recursively.")
+			return nil, err
 		}
+		return os.OpenFile(path, flags, perm)
 	}
-	return os.OpenFile(path, flags, perm)
+	return file, err
 }

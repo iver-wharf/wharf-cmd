@@ -67,24 +67,28 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 
 		ctx := context.Background()
 		if runFlags.serve {
-			ctx = startWorkerServerWithCancel(ctx, store)
+			var server workerserver.Server
+			ctx, server = startWorkerServerWithCancel(ctx, store)
+			defer server.Close()
 		}
 
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
 		res, err := b.Build(ctx)
-		store.Freeze()
 		if err != nil {
 			return err
+		}
+		if res.Status != workermodel.StatusSuccess {
+			return errors.New("build failed")
 		}
 		log.Info().
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
 			WithStringer("status", res.Status).
 			Message("Done with build.")
-		if res.Status != workermodel.StatusSuccess {
-			return errors.New("build failed")
-		}
 
+		if err := store.Freeze(); err != nil {
+			return fmt.Errorf("freeze result store: %w", err)
+		}
 		if runFlags.serve {
 			<-ctx.Done()
 		}
@@ -131,20 +135,28 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 	return def, nil
 }
 
-func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) context.Context {
+func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (context.Context, workerserver.Server) {
 	ctx, cancel := context.WithCancel(ctx)
 	server := workerserver.New(store, nil)
 
 	go func() {
-		log.Info().WithString("address", "0.0.0.0:5010").
+		select {
+		case <-ctx.Done():
+			server.Close()
+		}
+	}()
+
+	go func() {
+		const address = "0.0.0.0:5010"
+		log.Info().WithString("address", address).
 			Message("Serving build results via REST & gRPC.")
 		defer cancel()
-		if err := server.Serve("0.0.0.0:5010"); err != nil {
+		if err := server.Serve(address); err != nil {
 			log.Error().WithError(err).Message("Server error.")
 		}
 	}()
 
-	return ctx
+	return ctx, server
 }
 
 func logParseErrors(errs wharfyml.Errors, currentDir string) {
