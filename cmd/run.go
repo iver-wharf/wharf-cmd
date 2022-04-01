@@ -46,42 +46,12 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if err != nil {
 			return err
 		}
-		ymlAbsPath, err := filepath.Abs(runFlags.path)
+		def, err := parseBuildDefinition(runFlags.path)
 		if err != nil {
-			return fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
-		}
-		currentDir := filepath.Dir(ymlAbsPath)
-
-		var varSources varsub.SourceSlice
-
-		varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
-		if len(errs) > 0 {
-			logParseErrors(errs, currentDir)
-			return errors.New("failed to parse variable files")
-		}
-		if varFileSource != nil {
-			varSources = append(varSources, varFileSource)
-		}
-
-		gitStats, err := gitstat.FromExec(currentDir)
-		if err != nil {
-			log.Warn().WithError(err).
-				Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")
-		} else {
-			log.Debug().Message("Read REPO_ and GIT_ variables from Git:\n" +
-				gitStats.String())
-			varSources = append(varSources, gitStats)
-		}
-
-		def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
-			Env:       runFlags.env,
-			VarSource: varSources,
-		})
-		if len(errs) > 0 {
-			logParseErrors(errs, currentDir)
-			return errors.New("failed to parse .wharf-ci.yml")
+			return err
 		}
 		log.Debug().Message("Successfully parsed .wharf-ci.yml")
+
 		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
 		//
 		// May require setting of owner and SUID on wharf-cmd binary to access /tmp or similar.
@@ -120,6 +90,45 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		}
 		return nil
 	},
+}
+
+func parseBuildDefinition(path string) (wharfyml.Definition, error) {
+	ymlAbsPath, err := filepath.Abs(path)
+	if err != nil {
+		return wharfyml.Definition{}, fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
+	}
+	currentDir := filepath.Dir(ymlAbsPath)
+
+	var varSources varsub.SourceSlice
+
+	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
+	if len(errs) > 0 {
+		logParseErrors(errs, currentDir)
+		return wharfyml.Definition{}, errors.New("failed to parse variable files")
+	}
+	if varFileSource != nil {
+		varSources = append(varSources, varFileSource)
+	}
+
+	gitStats, err := gitstat.FromExec(currentDir)
+	if err != nil {
+		log.Warn().WithError(err).
+			Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")
+	} else {
+		log.Debug().Message("Read REPO_ and GIT_ variables from Git:\n" +
+			gitStats.String())
+		varSources = append(varSources, gitStats)
+	}
+
+	def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
+		Env:       runFlags.env,
+		VarSource: varSources,
+	})
+	if len(errs) > 0 {
+		logParseErrors(errs, currentDir)
+		return wharfyml.Definition{}, errors.New("failed to parse .wharf-ci.yml")
+	}
+	return def, nil
 }
 
 func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) context.Context {
