@@ -17,19 +17,6 @@ var listOptionsMatchLabels = metav1.ListOptions{
 		"wharf.iver.com/instance=prod",
 }
 
-var podInitCloneArgs = []string{"git", "clone"}
-
-// TODO: Needs better implementation.
-// Currently works for wharf-cmd, but is not thought through. Takes a long
-// time to get running.
-var podContainerListArgs = []string{"/bin/sh", "-c", `apt-get update && \
-apt-get install -y npm && \
-make deps && \
-make swag-force && \
-go install && \
-cd test && \
-wharf-cmd run --serve --stage test --loglevel debug`}
-
 type k8sProvisioner struct {
 	Namespace  string
 	Clientset  *kubernetes.Clientset
@@ -128,8 +115,15 @@ func createPodMeta() v1.Pod {
 					Name:            "init",
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					// TODO: Should not target branch when merged.
-					Args:         append(podInitCloneArgs, "-b", "feature/aggregator-issue-15", "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
+					// TODO: Should use repo URL and branch from build params.
+					Args: []string{
+						"git",
+						"clone",
+						"--single-branch",
+						"--branch", "feature/aggregator-issue-15",
+						"http://github.com/iver-wharf/wharf-cmd",
+						repoVolumeMountPath,
+					},
 					VolumeMounts: volumeMounts,
 				},
 			},
@@ -148,9 +142,21 @@ func createPodMeta() v1.Pod {
 					// was barely a factor.
 					Image:           "golang:latest",
 					ImagePullPolicy: v1.PullAlways,
-					Command:         podContainerListArgs,
-					WorkingDir:      repoVolumeMountPath,
-					VolumeMounts:    volumeMounts,
+					// TODO: Needs better implementation.
+					// Currently works for wharf-cmd, but is not thought through. Takes a long
+					// time to get running.
+					Command: []string{
+						"/bin/sh", "-c",
+						`apt-get update && \
+apt-get install -y npm && \
+make deps && \
+make swag-force && \
+go install && \
+cd test && \
+wharf-cmd run --serve --stage test --loglevel debug`,
+					},
+					WorkingDir:   repoVolumeMountPath,
+					VolumeMounts: volumeMounts,
 				},
 			},
 			Volumes: []v1.Volume{
