@@ -65,12 +65,10 @@ func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *c
 			wg.Done()
 		}()
 	}
-	go func() {
-		wg.Wait()
-		if s.frozen {
-			pubSub.UnsubAll()
-		}
-	}()
+	wg.Wait()
+	if s.frozen {
+		pubSub.UnsubAll()
+	}
 }
 
 func (s *store) pubLogsToChanToCatchUp(r LogLineReadCloser, pubSub *chans.PubSub[LogLine]) error {
