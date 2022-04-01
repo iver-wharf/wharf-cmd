@@ -44,8 +44,7 @@ func (fs osFS) OpenWrite(name string) (io.WriteCloser, error) {
 }
 
 func (fs osFS) OpenRead(name string) (io.ReadCloser, error) {
-	path := filepath.Join(fs.dir, name)
-	return os.OpenFile(path, os.O_RDONLY, 0644)
+	return os.OpenFile(filepath.Join(fs.dir, name), os.O_RDONLY, 0644)
 }
 
 func (fs osFS) ListDirEntries(name string) ([]fs.DirEntry, error) {
