@@ -23,10 +23,10 @@ func relayAll(ctx context.Context, wharfapi wharfapi.Client, worker workerclient
 		worker:   worker,
 	}
 	var pg parallel.Group
-	pg.AddFunc(r.relayLogs)
-	pg.AddFunc(r.relayArtifactEvents)
-	pg.AddFunc(r.relayStatusEvents)
-	return pg.RunFailFast(ctx)
+	pg.AddFunc("logs", r.relayLogs)
+	pg.AddFunc("artifact events", r.relayArtifactEvents)
+	pg.AddFunc("status events", r.relayStatusEvents)
+	return pg.RunCancelEarly(ctx)
 }
 
 type relayer struct {
