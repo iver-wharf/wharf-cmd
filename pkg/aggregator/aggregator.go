@@ -35,7 +35,7 @@ type relayer struct {
 }
 
 func (r relayer) relayLogs(ctx context.Context) error {
-	reader, err := r.worker.StreamLogs(ctx, &workerclient.StreamLogsRequest{})
+	reader, err := r.worker.StreamLogs(ctx, &workerclient.LogsRequest{})
 	if err != nil {
 		return fmt.Errorf("open logs stream from wharf-cmd-worker: %w", err)
 	}

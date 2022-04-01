@@ -17,8 +17,8 @@ var log = logger.NewScoped("WORKER-CLIENT")
 // LogLine is an alias for workerapi/v1.StreamLogsResponse.
 type LogLine = v1.StreamLogsResponse
 
-// StreamLogsRequest is an alias for workerapi/v1.StreamLogsRequest.
-type StreamLogsRequest = v1.StreamLogsRequest
+// LogsRequest is an alias for workerapi/v1.LogsRequest.
+type LogsRequest = v1.StreamLogsRequest
 
 // StatusEvent is an alias for workerapi/v1.StreamStatusEventsResponse.
 type StatusEvent = v1.StreamStatusEventsResponse
@@ -34,7 +34,7 @@ type ArtifactEventsRequest = v1.StreamArtifactEventsRequest
 
 // Client is an interface with methods to communicate with a Wharf worker server.
 type Client interface {
-	StreamLogs(ctx context.Context, req *StreamLogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error)
+	StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error)
 	StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error)
 	StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error)
 	DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error)
@@ -74,7 +74,7 @@ type Options struct {
 }
 
 // StreamLogs returns a stream that will receive log lines from the worker.
-func (c *client) StreamLogs(ctx context.Context, req *StreamLogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error) {
+func (c *client) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error) {
 	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
