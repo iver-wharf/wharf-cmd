@@ -43,7 +43,7 @@ func (s *store) getLogWriter(stepID uint64) (*logLineWriteCloser, bool) {
 	if !ok {
 		return nil, false
 	}
-	return val.(*logLineWriteCloser), true
+	return val, true
 }
 
 func (s *store) getLastLogLineID(stepID uint64) (uint64, error) {

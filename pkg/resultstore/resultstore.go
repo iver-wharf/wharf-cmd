@@ -180,7 +180,7 @@ type store struct {
 
 	logSubMutex      sync.RWMutex
 	logPubSub        chans.PubSub[LogLine]
-	logWritersOpened sync.Map
+	logWritersOpened sync2.Map[uint64, *logLineWriteCloser]
 
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
@@ -191,11 +191,9 @@ type store struct {
 
 func (s *store) Freeze() {
 	s.frozen = true
-	s.logWritersOpened.Range(func(_ any, writer any) bool {
-		if w, ok := writer.(*logLineWriteCloser); ok {
-			if err := w.Close(); err != nil {
-				log.Error().WithError(err).Message("Failed closing log writer.")
-			}
+	s.logWritersOpened.Range(func(_ uint64, writer *logLineWriteCloser) bool {
+		if err := writer.Close(); err != nil {
+			log.Error().WithError(err).Message("Failed closing log writer.")
 		}
 		return true
 	})
