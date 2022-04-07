@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
@@ -106,9 +105,6 @@ func (s *store) listAllArtifactEvents() ([]ArtifactEvent, error) {
 	for _, stepID := range stepIDs {
 		list, err := s.readArtifactEventsFile(stepID)
 		if err != nil {
-			if os.IsNotExist(err) {
-				continue
-			}
 			return nil, err
 		}
 		artifacts = append(artifacts, list.ArtifactEvents...)
