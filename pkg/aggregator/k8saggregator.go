@@ -187,7 +187,7 @@ func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
 
 func (a k8sAggr) newWorkerClient(namespace, podName string, portConn portConnection) (workerclient.Client, error) {
 	// Intentionally "localhost" because we're port-forwarding
-	return workerclient.New(fmt.Sprintf("localhost:%d", portConn.Local), workerclient.Options{
+	return workerclient.New(fmt.Sprintf("http://localhost:%d", portConn.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
 		// Don't need to add TLS on top of TLS.
