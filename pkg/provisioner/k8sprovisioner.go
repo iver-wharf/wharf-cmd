@@ -121,7 +121,7 @@ func createPodMeta() v1.Pod {
 						"clone",
 						"--single-branch",
 						"--branch", "feature/aggregator-issue-15",
-						"http://github.com/iver-wharf/wharf-cmd",
+						"https://github.com/iver-wharf/wharf-cmd",
 						repoVolumeMountPath,
 					},
 					VolumeMounts: volumeMounts,
@@ -149,8 +149,7 @@ func createPodMeta() v1.Pod {
 						"/bin/sh", "-c",
 						`apt-get update && \
 apt-get install -y npm && \
-make deps && \
-make swag-force && \
+make deps swag-force && \
 go install && \
 cd test && \
 wharf-cmd run --serve --stage test --loglevel debug`,
