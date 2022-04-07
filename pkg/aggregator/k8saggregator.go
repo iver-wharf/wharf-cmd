@@ -103,7 +103,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		// Would prevent pod listing and opening a tunnel to each pod each
 		// iteration.
 
-		podList, err := a.listMatchingPods(ctx)
+		pods, err := a.fetchPods(ctx)
 		if err != nil {
 			log.Warn().WithError(err).
 				WithDuration("pollDelay", pollDelay).
@@ -112,7 +112,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			continue
 		}
 		mutex.Lock()
-		for _, pod := range podList.Items {
+		for _, pod := range pods {
 			if pod.Status.Phase != v1.PodRunning {
 				continue
 			}
@@ -125,7 +125,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 				Message("Pod found.")
 
 			go func(p v1.Pod) {
-				if err := a.relayToWharfDB(ctx, p.Name); err != nil {
+				if err := a.relayToWharfAPI(ctx, p.Name); err != nil {
 					log.Error().WithError(err).Message("Relay error.")
 				}
 				mutex.Lock()
@@ -138,11 +138,15 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 	}
 }
 
-func (a k8sAggr) listMatchingPods(ctx context.Context) (*v1.PodList, error) {
-	return a.pods.List(ctx, listOptionsMatchLabels)
+func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
+	list, err := a.pods.List(ctx, listOptionsMatchLabels)
+	if err != nil {
+		return nil, err
+	}
+	return list.Items, nil
 }
 
-func (a k8sAggr) relayToWharfDB(ctx context.Context, podName string) error {
+func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
 	portConn, err := a.newPortForwarding(a.namespace, podName)
 	if err != nil {
 		return err
