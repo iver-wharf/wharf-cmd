@@ -147,11 +147,9 @@ func createPodMeta() v1.Pod {
 					// time to get running.
 					Command: []string{
 						"/bin/sh", "-c",
-						`apt-get update && \
-apt-get install -y npm && \
-make deps swag-force && \
-go install && \
-cd test && \
+						`
+make deps-go swag install && \
+cd test/wharf-ci-simple && \
 wharf-cmd run --serve --stage test --loglevel debug`,
 					},
 					WorkingDir:   repoVolumeMountPath,
