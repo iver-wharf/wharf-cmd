@@ -55,6 +55,7 @@ func (r relayer) relayLogs(ctx context.Context) error {
 			}
 			break
 		}
+		log.Debug().Message(logLine.Message)
 		writer.Send(request.Log{
 			BuildID:      uint(logLine.BuildID),
 			WorkerLogID:  uint(logLine.LogID),
@@ -109,6 +110,7 @@ func (r relayer) relayStatusEvents(ctx context.Context) error {
 		}
 		log.Debug().
 			WithStringer("status", statusEvent.Status).
+			WithUint64("step", statusEvent.StepID).
 			Message("Received status event.")
 	}
 	return nil

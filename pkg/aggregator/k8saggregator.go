@@ -143,12 +143,13 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Filter out terminating pods
 	var pods []v1.Pod
 	for _, pod := range list.Items {
+		// Skip terminating pods
 		if pod.ObjectMeta.DeletionTimestamp != nil {
-			pods = append(pods, pod)
+			continue
 		}
+		pods = append(pods, pod)
 	}
 	return pods, nil
 }
@@ -167,7 +168,10 @@ func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
 	defer worker.Close()
 
 	if err := worker.Ping(ctx); err != nil {
-		return err
+		log.Debug().
+			WithStringf("pod", "%s/%s", a.namespace, podName).
+			Message("Failed to ping worker pod. Assuming it's not running yet. Skipping.")
+		return nil
 	}
 
 	if err := relayAll(ctx, a.wharfapi, worker); err != nil {
@@ -252,7 +256,7 @@ func (a k8sAggr) newPortForwarding(namespace, podName string) (portConnection, e
 	}
 	port := ports[0]
 
-	log.Info().
+	log.Debug().
 		WithStringf("pod", "%s/%s", a.namespace, podName).
 		WithUint("local", uint(port.Local)).
 		WithUint("remote", uint(port.Remote)).
