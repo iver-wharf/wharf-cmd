@@ -143,7 +143,14 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 	if err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	// Filter out terminating pods
+	var pods []v1.Pod
+	for _, pod := range list.Items {
+		if pod.ObjectMeta.DeletionTimestamp != nil {
+			pods = append(pods, pod)
+		}
+	}
+	return pods, nil
 }
 
 func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
