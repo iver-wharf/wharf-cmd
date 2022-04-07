@@ -149,6 +149,10 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 		if pod.ObjectMeta.DeletionTimestamp != nil {
 			continue
 		}
+		// Skip failed or pending pods
+		if pod.Status.Phase != "Running" {
+			continue
+		}
 		pods = append(pods, pod)
 	}
 	return pods, nil
