@@ -44,6 +44,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort
     to clean up forgotten builds/workers.
 
+- Added aggregator command `wharf-cmd aggregator serve` that looks for
+  wharf-cmd-worker pods and pipes build results over to the wharf-api. (#77)
+
 - Added new implementation for `wharf run`. (#33, #45, #66)
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
