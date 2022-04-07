@@ -17,7 +17,7 @@ var log = logger.NewScoped("WORKER-CLIENT")
 // LogLine is an alias for workerapi/v1.StreamLogsResponse.
 type LogLine = v1.StreamLogsResponse
 
-// LogsRequest is an alias for workerapi/v1.LogsRequest.
+// LogsRequest is an alias for workerapi/v1.StreamLogsRequest.
 type LogsRequest = v1.StreamLogsRequest
 
 // StatusEvent is an alias for workerapi/v1.StreamStatusEventsResponse.
