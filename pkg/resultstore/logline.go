@@ -39,8 +39,8 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list all steps: %w", err)
 	}
-	readers := make([]LogLineReadCloser, len(stepIDs))
-	for i, stepID := range stepIDs {
+	readers := make([]LogLineReadCloser, 0, len(stepIDs))
+	for _, stepID := range stepIDs {
 		r, err := s.OpenLogReader(stepID)
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -54,7 +54,7 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 			// will get published via writers.
 			r.SetMaxLogID(w.lastLogID)
 		}
-		readers[i] = r
+		readers = append(readers, r)
 	}
 	return readers, nil
 }
