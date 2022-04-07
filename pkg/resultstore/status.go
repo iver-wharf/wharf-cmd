@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -112,6 +113,9 @@ func (s *store) listAllStatusUpdates() ([]StatusUpdate, error) {
 	for _, stepID := range stepIDs {
 		list, err := s.readStatusUpdatesFile(stepID)
 		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
 			return nil, err
 		}
 		updates = append(updates, list.StatusUpdates...)

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -41,14 +42,17 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 	readers := make([]LogLineReadCloser, len(stepIDs))
 	for i, stepID := range stepIDs {
 		r, err := s.OpenLogReader(stepID)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read logs for step %d: %w", stepID, err)
+		}
 		w, ok := s.getLogWriter(stepID)
 		if ok {
 			// Any additional logs that come in before this catching-up is done
 			// will get published via writers.
 			r.SetMaxLogID(w.lastLogID)
-		}
-		if err != nil {
-			return nil, fmt.Errorf("read logs for step %d: %w", stepID, err)
 		}
 		readers[i] = r
 	}
