@@ -3,12 +3,14 @@
 package workerserver
 
 import (
+	"errors"
 	"net"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/soheilhy/cmux"
+	"gopkg.in/typ.v3"
 )
 
 var log = logger.NewScoped("WORKER-SERVER")
@@ -50,14 +52,15 @@ func (s *server) Serve(bindAddress string) error {
 	httpListener := mux.Match(cmux.Any())
 
 	logIfErrored := func(protocol string, f func() error) {
-		if err := f(); err != nil {
+		if err := f(); err != nil && !errors.Is(err, cmux.ErrListenerClosed) {
 			log.Error().WithError(err).Messagef("Error during serving %s.", protocol)
 		}
 	}
 
 	go logIfErrored("gRPC", func() error { return serveGRPC(s.grpc, grpcListener) })
 	go logIfErrored("REST", func() error { return serveHTTP(s.rest, httpListener) })
-	return mux.Serve()
+	err = mux.Serve()
+	return typ.Tern(errors.Is(err, net.ErrClosed), nil, err)
 }
 
 // Close closes the server.
