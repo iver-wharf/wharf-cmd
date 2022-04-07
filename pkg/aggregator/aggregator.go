@@ -41,11 +41,25 @@ func (r relayer) relayLogs(ctx context.Context) error {
 	}
 	defer reader.CloseSend()
 
+	var sentLogs uint
+
 	writer, err := r.wharfapi.CreateBuildLogStream(ctx)
 	if err != nil {
 		return fmt.Errorf("open logs stream to wharf-api: %w", err)
 	}
-	defer writer.CloseAndRecv()
+	defer func() {
+		resp, err := writer.CloseAndRecv()
+		if err != nil {
+			log.Warn().
+				WithError(err).
+				Message("Unexpected error when closing log writer stream to wharf-api.")
+			return
+		}
+		log.Debug().
+			WithUint("sent", sentLogs).
+			WithUint("inserted", resp.LogsInserted).
+			Message("Inserted logs into wharf-api.")
+	}()
 
 	for {
 		logLine, err := reader.Recv()
@@ -65,6 +79,7 @@ func (r relayer) relayLogs(ctx context.Context) error {
 			Timestamp:    logLine.Timestamp.AsTime(),
 			Message:      logLine.Message,
 		})
+		sentLogs++
 	}
 	return nil
 }
