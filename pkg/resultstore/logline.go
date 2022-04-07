@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"gopkg.in/typ.v3/pkg/chans"
@@ -28,7 +30,7 @@ func (s *store) SubAllLogLines(buffer int) (<-chan LogLine, error) {
 		return nil, fmt.Errorf("open all log file handles: %w", err)
 	}
 	ch := s.logPubSub.SubBuf(buffer)
-	go s.pubAllLogsToChanToCatchUp(readers, s.logPubSub.WithOnly(ch))
+	go s.pubAllLogsToChanToCatchUp(readers, ch)
 	return ch, nil
 }
 
@@ -37,26 +39,39 @@ func (s *store) openAllLogReadersForCatchingUp() ([]LogLineReadCloser, error) {
 	if err != nil {
 		return nil, fmt.Errorf("list all steps: %w", err)
 	}
-	readers := make([]LogLineReadCloser, len(stepIDs))
-	for i, stepID := range stepIDs {
+	readers := make([]LogLineReadCloser, 0, len(stepIDs))
+	for _, stepID := range stepIDs {
 		r, err := s.OpenLogReader(stepID)
+		if err != nil {
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read logs for step %d: %w", stepID, err)
+		}
 		w, ok := s.getLogWriter(stepID)
 		if ok {
 			// Any additional logs that come in before this catching-up is done
 			// will get published via writers.
 			r.SetMaxLogID(w.lastLogID)
 		}
-		if err != nil {
-			return nil, fmt.Errorf("read logs for step %d: %w", stepID, err)
-		}
-		readers[i] = r
+		readers = append(readers, r)
 	}
 	return readers, nil
 }
 
-func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, pubSub *chans.PubSub[LogLine]) {
+func (s *store) pubAllLogsToChanToCatchUp(readers []LogLineReadCloser, ch <-chan LogLine) {
+	wg := sync.WaitGroup{}
+	wg.Add(len(readers))
+	pubSub := s.logPubSub.WithOnly(ch)
 	for _, r := range readers {
-		go s.pubLogsToChanToCatchUp(r, pubSub)
+		go func(r LogLineReadCloser) {
+			s.pubLogsToChanToCatchUp(r, pubSub)
+			wg.Done()
+		}(r)
+	}
+	wg.Wait()
+	if s.frozen {
+		s.logPubSub.Unsub(ch)
 	}
 }
 

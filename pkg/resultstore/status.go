@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"time"
@@ -18,6 +19,9 @@ var (
 func (s *store) AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error {
 	s.statusMutex.LockKey(stepID)
 	defer s.statusMutex.UnlockKey(stepID)
+	if s.frozen {
+		return ErrFrozen
+	}
 	list, err := s.readStatusUpdatesFile(stepID)
 	if err != nil {
 		return err
@@ -52,6 +56,9 @@ func (s *store) readStatusUpdatesFile(stepID uint64) (StatusList, error) {
 	}
 	defer file.Close()
 	dec := json.NewDecoder(file)
+	if errors.Is(err, io.EOF) {
+		return StatusList{}, nil
+	}
 	var list StatusList
 	if err := dec.Decode(&list); err != nil {
 		return StatusList{}, fmt.Errorf("decode status updates: %w", err)
@@ -87,7 +94,12 @@ func (s *store) SubAllStatusUpdates(buffer int) (<-chan StatusUpdate, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read all existing status updates: %w", err)
 	}
-	go s.statusPubSub.WithOnly(ch).PubSliceSync(updates)
+	go func() {
+		s.statusPubSub.WithOnly(ch).PubSliceSync(updates)
+		if s.frozen {
+			s.statusPubSub.Unsub(ch)
+		}
+	}()
 	return ch, nil
 }
 

@@ -1,6 +1,7 @@
 package resultstore
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -8,12 +9,14 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/chans"
 	"gopkg.in/typ.v3/pkg/sync2"
 )
 
-var log = logger.NewScoped("RESULTSTORE")
+var (
+	// ErrFrozen is returned when doing a write operation on a frozen store.
+	ErrFrozen = errors.New("store frozen")
+)
 
 var (
 	dirNameSteps = "steps"
@@ -73,11 +76,14 @@ type Store interface {
 	// OpenLogWriter opens a file handle abstraction for writing log lines. Logs
 	// will be automatically parsed when written and published to any active
 	// subscriptions.
+	//
+	// Will return ErrFrozen if the store is frozen.
 	OpenLogWriter(stepID uint64) (LogLineWriteCloser, error)
 
 	// OpenLogReader opens a file handle abstraction for reading log lines. Logs
-	// will be automatically parsed when read. Will return fs.ErrNotExist if
-	// the log file does not exist yet.
+	// will be automatically parsed when read.
+	//
+	// Will return fs.ErrNotExist if the log file does not exist yet.
 	OpenLogReader(stepID uint64) (LogLineReadCloser, error)
 
 	// SubAllLogLines creates a new channel that streams all log lines
@@ -93,6 +99,8 @@ type Store interface {
 	// update found for the step is the same as the new status, then this
 	// status update is skipped. Any written status update is also published to
 	// any active subscriptions.
+	//
+	// Will return ErrFrozen if the store is frozen.
 	AddStatusUpdate(stepID uint64, timestamp time.Time, newStatus workermodel.Status) error
 
 	// SubAllStatusUpdates creates a new channel that streams all status updates
@@ -106,6 +114,8 @@ type Store interface {
 
 	// AddArtifactEvent adds an artifact event to a step.
 	// Any written artifact event is also published to any active subscriptions.
+	//
+	// Will return ErrFrozen if the store is frozen.
 	AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error
 
 	// SubAllArtifactEvents creates a new channel that streams all artifact
@@ -116,6 +126,12 @@ type Store interface {
 	// UnsubAllArtifactEvents unsubscribes a subscription of all artifact
 	// events created via SubAllStatusUpdates.
 	UnsubAllArtifactEvents(ch <-chan ArtifactEvent) error
+
+	// Freeze waits for all write operations to finish, closes any open writers
+	// and causes future write operations to error. This cannot be undone.
+	//
+	// All new subscriptions will be closed after catching up.
+	Freeze() error
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -161,11 +177,48 @@ type store struct {
 
 	logSubMutex      sync.RWMutex
 	logPubSub        chans.PubSub[LogLine]
-	logWritersOpened sync.Map
+	logWritersOpened sync2.Map[uint64, *logLineWriteCloser]
 
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
 	artifactMutex    sync2.KeyedMutex[uint64]
+
+	frozen bool
+}
+
+func (s *store) Freeze() error {
+	s.frozen = true
+	var closeWriterErr error
+	s.logWritersOpened.Range(func(_ uint64, writer *logLineWriteCloser) bool {
+		if err := writer.Close(); err != nil {
+			closeWriterErr = err
+			return false
+		}
+		return true
+	})
+	if closeWriterErr != nil {
+		return closeWriterErr
+	}
+
+	stepIDs, err := s.listAllStepIDs()
+	if err != nil {
+		return err
+	}
+
+	for _, stepID := range stepIDs {
+		s.artifactMutex.LockKey(stepID)
+		s.statusMutex.LockKey(stepID)
+	}
+
+	s.artifactPubSub.UnsubAll()
+	s.logPubSub.UnsubAll()
+	s.statusPubSub.UnsubAll()
+
+	for _, stepID := range stepIDs {
+		s.artifactMutex.UnlockKey(stepID)
+		s.statusMutex.UnlockKey(stepID)
+	}
+	return nil
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

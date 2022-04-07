@@ -3,11 +3,14 @@
 package workerserver
 
 import (
+	"errors"
 	"net"
+	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/soheilhy/cmux"
+	"gopkg.in/typ.v3"
 )
 
 var log = logger.NewScoped("WORKER-SERVER")
@@ -49,23 +52,33 @@ func (s *server) Serve(bindAddress string) error {
 	httpListener := mux.Match(cmux.Any())
 
 	logIfErrored := func(protocol string, f func() error) {
-		if err := f(); err != nil {
+		if err := f(); err != nil && !errors.Is(err, cmux.ErrListenerClosed) {
 			log.Error().WithError(err).Messagef("Error during serving %s.", protocol)
 		}
 	}
 
 	go logIfErrored("gRPC", func() error { return serveGRPC(s.grpc, grpcListener) })
-	go logIfErrored("HTTP", func() error { return serveHTTP(s.rest, httpListener) })
-
-	return mux.Serve()
+	go logIfErrored("REST", func() error { return serveHTTP(s.rest, httpListener) })
+	err = mux.Serve()
+	return typ.Tern(errors.Is(err, net.ErrClosed), nil, err)
 }
 
-// Close closes the server. No attempt to finish active requests is made.
+// Close closes the server.
 //
-// Any active gRPC connections will be notified by connection errors.
+// Tries to gracefully stop gRPC requests and connections.
+// Abruptly stops active HTTP requests.
 func (s *server) Close() error {
 	if s.grpc != nil && s.grpc.grpc != nil {
-		s.grpc.grpc.Stop()
+		const timeout = 5 * time.Second
+		log.Debug().WithDuration("timeout", timeout).
+			Message("Attempting to shut down gracefully.")
+
+		timer := time.AfterFunc(timeout, func() {
+			log.Debug().Message("Timeout exceeded. Shutting down immediately.")
+			s.grpc.grpc.Stop()
+		})
+		s.grpc.grpc.GracefulStop()
+		timer.Stop()
 	}
 	return s.listener.Close()
 }

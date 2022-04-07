@@ -1,6 +1,7 @@
 package workerclient
 
 import (
+	"context"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
@@ -35,8 +36,12 @@ func newRestClient(opts Options) (*restClient, error) {
 	}, nil
 }
 
-func (c *restClient) get(url string) (*http.Response, error) {
-	return c.client.Get(url)
+func (c *restClient) get(ctx context.Context, url string) (*http.Response, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.client.Do(req)
 }
 
 func assertResponseOK(res *http.Response, err error) error {

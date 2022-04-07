@@ -17,9 +17,6 @@ var listOptionsMatchLabels = metav1.ListOptions{
 		"wharf.iver.com/instance=prod",
 }
 
-var podInitCloneArgs = []string{"git", "clone"}
-var podContainerListArgs = []string{"/bin/sh", "-c", "ls -alh"}
-
 type k8sProvisioner struct {
 	Namespace  string
 	Clientset  *kubernetes.Clientset
@@ -111,25 +108,52 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			AutomountServiceAccountToken: new(bool),
-			RestartPolicy:                v1.RestartPolicyNever,
+			ServiceAccountName: "wharf-cmd",
+			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            append(podInitCloneArgs, "http://github.com/iver-wharf/wharf-cmd", repoVolumeMountPath),
-					VolumeMounts:    volumeMounts,
+					// TODO: Should use repo URL and branch from build params.
+					Args: []string{
+						"git",
+						"clone",
+						"--single-branch",
+						"--branch", "feature/aggregator-issue-15",
+						"https://github.com/iver-wharf/wharf-cmd",
+						repoVolumeMountPath,
+					},
+					VolumeMounts: volumeMounts,
 				},
 			},
 			Containers: []v1.Container{
 				{
-					Name:            "app",
-					Image:           "ubuntu:20.04",
+					Name: "app",
+					// TODO: Do some research on which image would be best to use.
+					//
+					// Note: golang:latest was faster than ubuntu:20.04 up until
+					// running `go install`, by around 20 seconds.
+					//
+					// Note2: The testing environment's internet speed was very
+					// fast, so the larger size:
+					//  Go: 353MB compressed
+					//  ubuntu: 73 MB uncompressed
+					// was barely a factor.
+					Image:           "golang:latest",
 					ImagePullPolicy: v1.PullAlways,
-					Command:         podContainerListArgs,
-					WorkingDir:      repoVolumeMountPath,
-					VolumeMounts:    volumeMounts,
+					// TODO: Needs better implementation.
+					// Currently works for wharf-cmd, but is not thought through. Takes a long
+					// time to get running.
+					Command: []string{
+						"/bin/sh", "-c",
+						`
+make deps-go swag install && \
+cd test/wharf-ci-simple && \
+wharf-cmd run --serve --stage test --loglevel debug`,
+					},
+					WorkingDir:   repoVolumeMountPath,
+					VolumeMounts: volumeMounts,
 				},
 			},
 			Volumes: []v1.Volume{

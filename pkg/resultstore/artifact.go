@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"path/filepath"
 
@@ -17,6 +18,9 @@ var (
 func (s *store) AddArtifactEvent(stepID uint64, artifactMeta workermodel.ArtifactMeta) error {
 	s.artifactMutex.LockKey(stepID)
 	defer s.artifactMutex.UnlockKey(stepID)
+	if s.frozen {
+		return ErrFrozen
+	}
 	list, err := s.readArtifactEventsFile(stepID)
 	if err != nil {
 		return err
@@ -45,6 +49,9 @@ func (s *store) readArtifactEventsFile(stepID uint64) (ArtifactEventList, error)
 	}
 	defer file.Close()
 	dec := json.NewDecoder(file)
+	if errors.Is(err, io.EOF) {
+		return ArtifactEventList{}, nil
+	}
 	var list ArtifactEventList
 	if err := dec.Decode(&list); err != nil {
 		return ArtifactEventList{}, fmt.Errorf("decode artifact events: %w", err)
@@ -80,7 +87,12 @@ func (s *store) SubAllArtifactEvents(buffer int) (<-chan ArtifactEvent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read all existing artifact events: %w", err)
 	}
-	go s.artifactPubSub.WithOnly(ch).PubSliceSync(events)
+	go func() {
+		s.artifactPubSub.WithOnly(ch).PubSliceSync(events)
+		if s.frozen {
+			s.artifactPubSub.Unsub(ch)
+		}
+	}()
 	return ch, nil
 }
 

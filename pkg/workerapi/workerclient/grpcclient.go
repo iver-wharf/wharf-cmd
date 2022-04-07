@@ -2,6 +2,8 @@ package workerclient
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"google.golang.org/grpc"
@@ -33,7 +35,7 @@ func (c *grpcClient) ensureOpen() error {
 	if c.opts.InsecureSkipVerify {
 		opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	}
-	conn, err := grpc.Dial(c.address, opts...)
+	conn, err := grpc.Dial(trimProtocol(c.address), opts...)
 	if err != nil {
 		return fmt.Errorf("failed connecting to server: %v", err)
 	}
@@ -51,4 +53,12 @@ func (c *grpcClient) close() error {
 		return err
 	}
 	return nil
+}
+
+func trimProtocol(addr string) string {
+	u, err := url.Parse(addr)
+	if err != nil {
+		return addr
+	}
+	return strings.TrimPrefix(addr, u.Scheme+"://")
 }

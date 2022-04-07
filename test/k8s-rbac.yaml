@@ -1,0 +1,42 @@
+# These is not finalized roles and service account names.
+# Do not use in production!
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: wharf-cmd
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: wharf-cmd
+rules:
+- apiGroups: [""]
+  resources: [pods]
+  verbs: ["*"]
+
+- apiGroups: [""]
+  resources: [pods/log]
+  verbs: [get, list, watch]
+
+- apiGroups: [""]
+  resources: [pods/portforward]
+  verbs: [get, list, create]
+
+- apiGroups: [""]
+  resources: [pods/exec]
+  verbs: [create]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: wharf-cmd
+subjects:
+- kind: ServiceAccount
+  name: wharf-cmd
+roleRef:
+  kind: Role
+  name: wharf-cmd
+  apiGroup: ""

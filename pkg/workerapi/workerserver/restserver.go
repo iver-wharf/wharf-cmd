@@ -28,7 +28,7 @@ func serveHTTP(s *restServer, listener net.Listener) error {
 	applyCORSConfig(r)
 
 	g := r.Group("/api")
-	g.GET("/", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
+	g.GET("", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
 
 	s.registerModules(g)
 	return r.RunListener(listener)
@@ -53,7 +53,7 @@ func applyGinHandlers(r *gin.Engine) {
 }
 
 func applyCORSConfig(r *gin.Engine) {
-	log.Info().Message("Allowing all origins in CORS.")
+	log.Warn().Message("Allowing all origins in CORS.")
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	r.Use(cors.New(corsConfig))
