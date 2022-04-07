@@ -55,7 +55,9 @@ func (r relayer) relayLogs(ctx context.Context) error {
 			}
 			break
 		}
-		log.Debug().Message(logLine.Message)
+		log.Debug().
+			WithUint64("step", logLine.StepID).
+			Message(logLine.Message)
 		writer.Send(request.Log{
 			BuildID:      uint(logLine.BuildID),
 			WorkerLogID:  uint(logLine.LogID),
@@ -85,6 +87,7 @@ func (r relayer) relayArtifactEvents(ctx context.Context) error {
 		// No way to send to wharf DB through stream currently
 		// so we're just logging it here.
 		log.Debug().
+			WithUint64("step", artifactEvent.StepID).
 			WithString("name", artifactEvent.Name).
 			WithUint64("id", artifactEvent.ArtifactID).
 			Message("Received artifact event.")
@@ -109,8 +112,8 @@ func (r relayer) relayStatusEvents(ctx context.Context) error {
 			break
 		}
 		log.Debug().
-			WithStringer("status", statusEvent.Status).
 			WithUint64("step", statusEvent.StepID).
+			WithStringer("status", statusEvent.Status).
 			Message("Received status event.")
 	}
 	return nil
