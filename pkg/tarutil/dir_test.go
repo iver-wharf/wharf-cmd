@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -15,7 +16,39 @@ func TestDir(t *testing.T) {
 	err := Dir(&buf, "../../test/tarutil/dirtest")
 	require.NoError(t, err)
 
-	tr := tar.NewReader(&buf)
+	gotFilenames := readFilenamesFromTar(t, &buf)
+	wantFilenames := []string{
+		"bar/",
+		"bar/moo",
+		"somedir/",
+		"somedir/.hidden",
+		"somefile.txt",
+	}
+	assert.ElementsMatch(t, wantFilenames, gotFilenames)
+}
+
+type antiBarIgnorer struct{}
+
+func (i antiBarIgnorer) Ignore(info os.FileInfo) bool { return info.Name() == "bar" }
+
+func TestDirIgnore(t *testing.T) {
+	var buf bytes.Buffer
+	err := DirIgnore(&buf, "../../test/tarutil/dirtest", antiBarIgnorer{})
+	require.NoError(t, err)
+
+	gotFilenames := readFilenamesFromTar(t, &buf)
+	wantFilenames := []string{
+		// "bar/",
+		// "bar/moo",
+		"somedir/",
+		"somedir/.hidden",
+		"somefile.txt",
+	}
+	assert.ElementsMatch(t, wantFilenames, gotFilenames)
+}
+
+func readFilenamesFromTar(t *testing.T, reader io.Reader) []string {
+	tr := tar.NewReader(reader)
 	var gotFilenames []string
 	for {
 		head, err := tr.Next()
@@ -28,12 +61,5 @@ func TestDir(t *testing.T) {
 		assert.Equal(t, head.Size, int64(len(bytes)), head.Name)
 		gotFilenames = append(gotFilenames, head.Name)
 	}
-	wantFilenames := []string{
-		"bar/",
-		"bar/moo",
-		"somedir/",
-		"somedir/.hidden",
-		"somefile.txt",
-	}
-	assert.ElementsMatch(t, wantFilenames, gotFilenames)
+	return gotFilenames
 }
