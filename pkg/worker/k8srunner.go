@@ -14,6 +14,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"gopkg.in/typ.v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -30,7 +31,7 @@ var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 // NewK8s is a helper function that creates a new builder using the
 // NewK8sStepRunnerFactory.
 func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, restConfig *rest.Config, store resultstore.Store, opts BuildOptions) (Builder, error) {
-	stageFactory, err := NewK8sStageRunnerFactory(namespace, restConfig, store)
+	stageFactory, err := NewK8sStageRunnerFactory(namespace, restConfig, store, typ.Coal(opts.RepoDir, "."))
 	if err != nil {
 		return nil, err
 	}
@@ -39,8 +40,8 @@ func NewK8s(ctx context.Context, def wharfyml.Definition, namespace string, rest
 
 // NewK8sStageRunnerFactory is a helper function that creates a new stage runner
 // factory using the NewK8sStepRunnerFactory.
-func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config, store resultstore.Store) (StageRunnerFactory, error) {
-	stepFactory, err := NewK8sStepRunnerFactory(namespace, restConfig, store)
+func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config, store resultstore.Store, repoDir string) (StageRunnerFactory, error) {
+	stepFactory, err := NewK8sStepRunnerFactory(namespace, restConfig, store, repoDir)
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +51,7 @@ func NewK8sStageRunnerFactory(namespace string, restConfig *rest.Config, store r
 // NewK8sStepRunnerFactory returns a new step runner factory that creates
 // step runners with implementation that targets Kubernetes using a specific
 // Kubernetes namespace and REST config.
-func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config, store resultstore.Store) (StepRunnerFactory, error) {
+func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config, store resultstore.Store, repoDir string) (StepRunnerFactory, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -60,6 +61,7 @@ func NewK8sStepRunnerFactory(namespace string, restConfig *rest.Config, store re
 		restConfig: restConfig,
 		clientset:  clientset,
 		store:      store,
+		repoDir:    repoDir,
 	}, nil
 }
 
@@ -68,6 +70,7 @@ type k8sStepRunnerFactory struct {
 	restConfig *rest.Config
 	clientset  *kubernetes.Clientset
 	store      resultstore.Store
+	repoDir    string
 }
 
 func (f k8sStepRunnerFactory) NewStepRunner(
@@ -87,6 +90,7 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 		pods:       f.clientset.CoreV1().Pods(f.namespace),
 		store:      f.store,
 		stepID:     stepID,
+		repoDir:    f.repoDir,
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
@@ -104,6 +108,7 @@ type k8sStepRunner struct {
 	pods       corev1.PodInterface
 	store      resultstore.Store
 	stepID     uint64
+	repoDir    string
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -171,7 +176,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, r.repoDir, "/mnt/repo", r.namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")

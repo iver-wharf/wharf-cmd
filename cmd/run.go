@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,11 +17,11 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
+	"gopkg.in/typ.v3/pkg/slices"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
 var runFlags = struct {
-	path         string
 	stage        string
 	env          string
 	serve        bool
@@ -28,10 +29,13 @@ var runFlags = struct {
 }{}
 
 var runCmd = &cobra.Command{
-	Use:   "run",
+	Use:   "run [path]",
 	Short: "Runs a new build from a .wharf-ci.yml file",
 	Long: `Runs a new build in a Kubernetes cluster using pods
 based on a .wharf-ci.yml file.
+
+Use the optional "path" argument to specify a .wharf-ci.yml file or a
+directory containing a .wharf-ci.yml file. Defaults to current directory ("./")
 
 If no stage is specified via --stage then wharf-cmd will run all stages
 in sequence, based on their order of declaration in the .wharf-ci.yml file.
@@ -39,14 +43,21 @@ in sequence, based on their order of declaration in the .wharf-ci.yml file.
 All steps in each stage will be run in parallel for each stage.
 
 Read more about the .wharf-ci.yml file here:
-https://iver-wharf.github.io/#/usage-wharfyml/
-`,
+https://iver-wharf.github.io/#/usage-wharfyml/`,
+	Args: cobra.MaximumNArgs(1),
+	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
+		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
+	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		kubeconfig, ns, err := loadKubeconfig(runFlags.k8sOverrides)
 		if err != nil {
 			return err
 		}
-		def, err := parseBuildDefinition(runFlags.path)
+		currentDir, err := parseCurrentDir(slices.SafeGet(args, 0))
+		if err != nil {
+			return err
+		}
+		def, err := parseBuildDefinition(currentDir)
 		if err != nil {
 			return err
 		}
@@ -60,6 +71,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
 		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
 			StageFilter: runFlags.stage,
+			RepoDir:     currentDir,
 		})
 		if err != nil {
 			return err
@@ -96,13 +108,37 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 	},
 }
 
-func parseBuildDefinition(path string) (wharfyml.Definition, error) {
-	ymlAbsPath, err := filepath.Abs(path)
-	if err != nil {
-		return wharfyml.Definition{}, fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
+func parseCurrentDir(dirArg string) (string, error) {
+	if dirArg == "" {
+		return os.Getwd()
 	}
-	currentDir := filepath.Dir(ymlAbsPath)
+	abs, err := filepath.Abs(dirArg)
+	if err != nil {
+		return "", err
+	}
+	stat, err := os.Stat(abs)
+	if err != nil {
+		return "", err
+	}
+	if !stat.IsDir() {
+		dir, file := filepath.Split(abs)
+		if file == ".wharf-ci.yml" {
+			return dir, nil
+		} else {
+			return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
+		}
+	}
+	stat, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("missing .wharf-ci.yml file in dir: %s", abs)
+		}
+		return "", err
+	}
+	return abs, nil
+}
 
+func parseBuildDefinition(currentDir string) (wharfyml.Definition, error) {
 	var varSources varsub.SourceSlice
 
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
@@ -124,7 +160,8 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 		varSources = append(varSources, gitStats)
 	}
 
-	def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
+	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
+	def, errs := wharfyml.ParseFile(ymlPath, wharfyml.Args{
 		Env:       runFlags.env,
 		VarSource: varSources,
 	})
@@ -210,7 +247,6 @@ Sample file content:
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	runCmd.Flags().StringVarP(&runFlags.path, "path", "p", ".wharf-ci.yml", "Path to .wharf-ci file")
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
