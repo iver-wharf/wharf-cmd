@@ -47,7 +47,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added aggregator command `wharf-cmd aggregator serve` that looks for
   wharf-cmd-worker pods and pipes build results over to the wharf-api. (#77)
 
-- Added new implementation for `wharf run`. (#33, #45, #66)
+- Added new implementation for `wharf run`. (#33, #45, #66, #84)
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
