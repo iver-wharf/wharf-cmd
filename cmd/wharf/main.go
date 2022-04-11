@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/iver-wharf/wharf-cmd"
+	wharfcmd "github.com/iver-wharf/wharf-cmd"
 )
 
 func main() {
