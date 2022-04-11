@@ -21,7 +21,7 @@ var loglevel string
 var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
-	Use:           "wharf-cmd",
+	Use:           "wharf",
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
 }
