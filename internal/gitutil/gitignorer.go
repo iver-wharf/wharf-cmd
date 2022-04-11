@@ -18,7 +18,7 @@ func NewIgnorer(repoRoot string) (Ignorer, error) {
 	if err != nil {
 		return nil, err
 	}
-	return repo, nil
+	return &ignorer{repo}, nil
 }
 
 type ignorer struct {
