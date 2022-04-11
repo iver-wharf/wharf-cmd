@@ -25,6 +25,7 @@ var runFlags = struct {
 	env          string
 	serve        bool
 	k8sOverrides clientcmd.ConfigOverrides
+	noGitIgnore  bool
 }{}
 
 var runCmd = &cobra.Command{
@@ -66,6 +67,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
+				SkipGitIgnore: runFlags.noGitIgnore,
 			})
 		if err != nil {
 			return err
@@ -130,6 +132,7 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 		varSources = append(varSources, gitStats)
 	}
 
+	log.Debug().WithString("path", ymlAbsPath).Message("Parsing .wharf-ci.yml file.")
 	def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
 		Env:       runFlags.env,
 		VarSource: varSources,
@@ -220,5 +223,6 @@ func init() {
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
+	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }
