@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 var provisionerListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Lists current workers inside Kubernetes",
-	Long: `Lists wharf-cmd worker pods inside Kubernetes
+	Long: `Lists wharf worker pods inside Kubernetes
 that are either scheduling, running, or completed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)

@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -11,7 +11,7 @@ var provisionerCreateCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Starts a build via a new worker inside a Kubernetes pod",
 	Long: `Creates a new Kubernetes pod that clones a Git repo and
-a container running "wharf-cmd run" to perform the build.
+a container running "wharf run" to perform the build.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)

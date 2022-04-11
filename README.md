@@ -2,6 +2,14 @@
 
 A command-line interface to run tasks specified in a `.wharf-ci.yml` file.
 
+## Installation
+
+Requires Go 1.18 (or later)
+
+```sh
+go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest
+```
+
 ## Commands
 
 ### Run

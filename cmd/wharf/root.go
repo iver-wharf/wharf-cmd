@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -49,8 +49,7 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 	return restConf, ns, nil
 }
 
-// Execute is the entrypoint for wharf-cmd's CLI.
-func Execute(version app.Version) {
+func execute(version app.Version) {
 	rootCmd.Version = versionString(version)
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()

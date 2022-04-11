@@ -12,7 +12,7 @@ wharf: swag
 endif
 
 install: swag
-	go install
+	go install ./cmd/wharf
 
 tidy:
 	go mod tidy

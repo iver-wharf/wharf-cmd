@@ -4,10 +4,10 @@ Logs are retrieved by wharf-cmd-worker and then saved to disk so that other
 components, such as wharf-cmd-aggregator, can download them safely when they
 feel ready.
 
-If you run wharf-cmd locally then you can access the build logs safely in your
+If you run `wharf` locally then you can access the build logs safely in your
 editor of choice after the build is completed. The location of these logs depend
 on your OS (Windows vs GNU/Linux), but is best sought after in wharf-cmd's help
-text by running `wharf-cmd run --help`.
+text by running `wharf run --help`.
 
 ## Streaming
 
