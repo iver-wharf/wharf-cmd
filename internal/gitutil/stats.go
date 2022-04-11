@@ -4,10 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -96,43 +93,6 @@ func (s Stats) String() string {
 type Remote struct {
 	FetchURL string
 	PushURL  string
-}
-
-// IsGitRepoFS checks recursively upwards if a directory is inside a Git
-// repository using a fs.StatFS.
-func IsGitRepoFS(dir string, statFS fs.StatFS) (bool, error) {
-	absDir, err := filepath.Abs(dir)
-	if err != nil {
-		return false, err
-	}
-	currentDir := absDir
-	for {
-		info, err := statFS.Stat(filepath.Join(currentDir, ".git"))
-		if err == nil && info.IsDir() {
-			return true, nil
-		}
-		oldDir := currentDir
-		currentDir = filepath.Dir(currentDir)
-		if oldDir == currentDir {
-			return false, nil
-		}
-	}
-}
-
-type osStatFS struct{}
-
-func (osStatFS) Open(name string) (fs.File, error) {
-	return os.Open(name)
-}
-
-func (osStatFS) Stat(name string) (fs.FileInfo, error) {
-	return os.Stat(name)
-}
-
-// IsGitRepo checks recursively upwards if a directory is inside a Git
-// repository using the file system from the OS.
-func IsGitRepo(dir string) (bool, error) {
-	return IsGitRepoFS(dir, osStatFS{})
 }
 
 // StatsFromExec obtains Git repo stats by executing different Git commands.

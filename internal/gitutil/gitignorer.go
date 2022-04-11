@@ -26,6 +26,10 @@ type ignorer struct {
 }
 
 func (i *ignorer) Ignore(path string) bool {
+	// NOTE: gitignore.GitIgnore has a .Ignore function, but that function
+	// isn't implemented on the repository level. Therefore we need to
+	// re-implement the gitignore.GitIgnore.Ignore() function here via the
+	// .Match function that is implemented on the repository level.
 	match := i.repo.Match(path)
 	if match == nil {
 		return false
