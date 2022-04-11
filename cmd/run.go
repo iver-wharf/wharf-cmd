@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
+	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -114,7 +114,7 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 		varSources = append(varSources, varFileSource)
 	}
 
-	gitStats, err := gitstat.FromExec(currentDir)
+	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
 		log.Warn().WithError(err).
 			Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")

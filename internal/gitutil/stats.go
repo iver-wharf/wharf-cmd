@@ -1,6 +1,6 @@
 // Package gitstat is tiny package to obtain repository information from a
 // local Git repository's .git directory.
-package gitstat
+package gitutil
 
 import (
 	"bytes"
@@ -137,8 +137,8 @@ func IsGitRepo(dir string) (bool, error) {
 	return IsGitRepoFS(dir, osStatFS{})
 }
 
-// FromExec obtains Git repo stats by executing different Git commands.
-func FromExec(dir string) (Stats, error) {
+// StatsFromExec obtains Git repo stats by executing different Git commands.
+func StatsFromExec(dir string) (Stats, error) {
 	currentBranch, err := execGitCmd(dir, "branch", "--show-current")
 	if err != nil {
 		return Stats{}, err

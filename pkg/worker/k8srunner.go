@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
-	"github.com/iver-wharf/wharf-cmd/pkg/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -104,6 +104,8 @@ type k8sStepRunner struct {
 	pods       corev1.PodInterface
 	store      resultstore.Store
 	stepID     uint64
+
+	useGitIgnore bool
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {

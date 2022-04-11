@@ -8,6 +8,7 @@ require (
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/golang/protobuf v1.5.2
+	github.com/iriri/minimal/gitignore v0.3.2
 	github.com/iver-wharf/wharf-api-client-go/v2 v2.0.1-0.20220303151222-6073acc9b23f
 	github.com/iver-wharf/wharf-core v1.3.0
 	github.com/soheilhy/cmux v0.1.4
@@ -31,7 +32,9 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
+	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/denormal/go-gitignore v0.0.0-20180930084346-ae8ad1d07817 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.2.0 // indirect
@@ -42,6 +45,7 @@ require (
 	github.com/go-playground/locales v0.13.0 // indirect
 	github.com/go-playground/universal-translator v0.17.0 // indirect
 	github.com/go-playground/validator/v10 v10.4.1 // indirect
+	github.com/gobwas/glob v0.2.3 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/go-cmp v0.5.6 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect

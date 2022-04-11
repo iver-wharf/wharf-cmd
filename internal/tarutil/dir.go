@@ -19,7 +19,7 @@ func Dir(w io.Writer, filesFromDir string) error {
 // when creating a tarball.
 type Ignorer interface {
 	// Ignore returns true to ignore a file, and false to include the file.
-	Ignore(info os.FileInfo) bool
+	Ignore(path string, info fs.FileInfo) bool
 }
 
 // DirIgnore will recursively tar the contents of an entire directory, and allow
@@ -41,7 +41,7 @@ func DirIgnore(w io.Writer, filesFromDir string, ignorer Ignorer) error {
 		if err != nil {
 			return err
 		}
-		if ignorer != nil && ignorer.Ignore(info) {
+		if ignorer != nil && ignorer.Ignore(path, info) {
 			if info.IsDir() {
 				return fs.SkipDir
 			}
