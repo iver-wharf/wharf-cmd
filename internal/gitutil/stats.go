@@ -1,5 +1,3 @@
-// Package gitstat is tiny package to obtain repository information from a
-// local Git repository's .git directory.
 package gitutil
 
 import (

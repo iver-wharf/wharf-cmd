@@ -4,7 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"io"
-	"io/fs"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -29,8 +29,8 @@ func TestDir(t *testing.T) {
 
 type antiBarIgnorer struct{}
 
-func (i antiBarIgnorer) Ignore(path string, info fs.FileInfo) bool {
-	return info.Name() == "bar"
+func (i antiBarIgnorer) Ignore(path string) bool {
+	return filepath.Base(path) == "bar"
 }
 
 func TestDirIgnore(t *testing.T) {
