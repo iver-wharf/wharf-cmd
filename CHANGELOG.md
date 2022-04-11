@@ -171,7 +171,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed to trim away everything before the last CR (carriage return)
   character in a log line from a Kubernetes pod. (#49)
 
-- Changed location of packages and code files: (#44)
+- Changed location of packages and code files: (#44, #87)
 
   - File `pkg/core/utils/variablesreplacer.go` to its own package in `pkg/varsub`
   - Package `pkg/core/wharfyml` to `pkg/wharfyml`
