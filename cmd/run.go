@@ -58,9 +58,15 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
-		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
-			StageFilter: runFlags.stage,
-		})
+		b, err := worker.NewK8s(context.Background(), def,
+			worker.K8sRunnerOptions{
+				Namespace:  ns,
+				RestConfig: kubeconfig,
+				Store:      store,
+				BuildOptions: worker.BuildOptions{
+					StageFilter: runFlags.stage,
+				},
+			})
 		if err != nil {
 			return err
 		}

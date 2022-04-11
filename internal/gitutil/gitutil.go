@@ -2,16 +2,19 @@ package gitutil
 
 import (
 	"errors"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 )
 
 var (
+	// ErrNotAGitDir is returned when the directory given to the function is
+	// not within a Git repository.
 	ErrNotAGitDir = errors.New("not a Git directory")
 )
 
-// GitRepoRoot looks recursively upwards for the Git repository root directory
+// GitRepoRootFS looks recursively upwards for the Git repository root directory
 // using a fs.StatFS.
 func GitRepoRootFS(dir string, statFS fs.StatFS) (string, error) {
 	absDir, err := filepath.Abs(dir)
@@ -27,7 +30,7 @@ func GitRepoRootFS(dir string, statFS fs.StatFS) (string, error) {
 		oldDir := currentDir
 		currentDir = filepath.Dir(currentDir)
 		if oldDir == currentDir {
-			return "", ErrNotAGitDir
+			return "", fmt.Errorf("%w: %s", ErrNotAGitDir, dir)
 		}
 	}
 }
@@ -36,7 +39,7 @@ func GitRepoRootFS(dir string, statFS fs.StatFS) (string, error) {
 // repository using a fs.StatFS.
 func IsGitRepoFS(dir string, statFS fs.StatFS) (bool, error) {
 	_, err := GitRepoRootFS(dir, statFS)
-	if err == ErrNotAGitDir {
+	if errors.Is(err, ErrNotAGitDir) {
 		return false, nil
 	}
 	if err != nil {
