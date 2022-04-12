@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ var loglevel string
 var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
-	Use:           "wharf-cmd",
+	Use:           "wharf",
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
 }
@@ -49,8 +49,7 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 	return restConf, ns, nil
 }
 
-// Execute is the entrypoint for wharf-cmd's CLI.
-func Execute(version app.Version) {
+func execute(version app.Version) {
 	rootCmd.Version = versionString(version)
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()

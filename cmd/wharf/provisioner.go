@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"github.com/spf13/cobra"
@@ -19,9 +19,9 @@ var provisionerCmd = &cobra.Command{
 	Long: `Provisions workers, which are Kubernetes pods running wharf-cmd
 that clones the repository and run the .wharf-ci.yml file inside the repo.
 
-The "wharf-cmd provisioner" act as a fire-and-forget, where the entire build
+The "wharf provisioner" act as a fire-and-forget, where the entire build
 orchestration is handled inside the Kubernetes cluster, in comparison to the
-"wharf-cmd run" command that uses your local machine to orchestrate the build.
+"wharf run" command that uses your local machine to orchestrate the build.
 `,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		restConfig, ns, err := loadKubeconfig(provisionerFlags.k8sOverrides)
