@@ -12,8 +12,21 @@ import (
 
 // Options contains options for when creating tarballs.
 type Options struct {
-	Path    string // empty string means current working directory
-	Ignorer ignorer.Ignorer
+	Path       string // empty string means current working directory
+	Ignorer    ignorer.Ignorer
+	FileOpener FileOpener
+}
+
+// FileOpener is an interface for opening files for reading, used in the Dir
+// function when reading files.
+type FileOpener interface {
+	OpenFile(path string) (io.ReadCloser, error)
+}
+
+type osFileOpener struct{}
+
+func (osFileOpener) OpenFile(path string) (io.ReadCloser, error) {
+	return os.Open(path)
 }
 
 // Dir will recursively tar the contents of an entire directory. Hidden files
@@ -23,6 +36,10 @@ func Dir(w io.Writer, opts Options) error {
 	rootDirPath, err := filepath.Abs(opts.Path)
 	if err != nil {
 		return err
+	}
+	opener := opts.FileOpener
+	if opener == nil {
+		opener = osFileOpener{}
 	}
 	tw := tar.NewWriter(w)
 	defer tw.Close()
@@ -61,7 +78,7 @@ func Dir(w io.Writer, opts Options) error {
 			ModTime: info.ModTime(),
 		})
 		if isFile {
-			file, err := os.Open(absPath)
+			file, err := opener.OpenFile(absPath)
 			if err != nil {
 				return err
 			}
