@@ -10,25 +10,23 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 )
 
+// Options contains options for when creating tarballs.
+type Options struct {
+	Path    string // empty string means current working directory
+	Ignorer ignorer.Ignorer
+}
+
 // Dir will recursively tar the contents of an entire directory. Hidden files
 // (files that start with a dot) are included. The name of the target directory
 // is not included in the tarball, but instead only the children.
-func Dir(w io.Writer, filesFromDir string) error {
-	return DirIgnore(w, filesFromDir, nil)
-}
-
-// DirIgnore will recursively tar the contents of an entire directory, and allow
-// ignoring directory trees using the Ignorer interface. Hidden files
-// (files that start with a dot) are included. The name of the target directory
-// is not included in the tarball, but instead only the children.
-func DirIgnore(w io.Writer, filesFromDir string, ignorer ignorer.Ignorer) error {
-	filesFromDir, err := filepath.Abs(filesFromDir)
+func Dir(w io.Writer, opts Options) error {
+	rootDirPath, err := filepath.Abs(opts.Path)
 	if err != nil {
 		return err
 	}
 	tw := tar.NewWriter(w)
 	defer tw.Close()
-	fileSys := os.DirFS(filesFromDir)
+	fileSys := os.DirFS(rootDirPath)
 	return fs.WalkDir(fileSys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -36,12 +34,12 @@ func DirIgnore(w io.Writer, filesFromDir string, ignorer ignorer.Ignorer) error 
 		if path == "." {
 			return nil
 		}
-		absPath := filepath.Join(filesFromDir, path)
+		absPath := filepath.Join(rootDirPath, path)
 		info, err := os.Stat(absPath)
 		if err != nil {
 			return err
 		}
-		if ignorer != nil && ignorer.Ignore(absPath, path) {
+		if opts.Ignorer != nil && opts.Ignorer.Ignore(absPath, path) {
 			if info.IsDir() {
 				return fs.SkipDir
 			}

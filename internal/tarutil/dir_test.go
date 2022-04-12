@@ -13,7 +13,7 @@ import (
 
 func TestDir(t *testing.T) {
 	var buf bytes.Buffer
-	err := Dir(&buf, "../../test/tarutil/dirtest")
+	err := Dir(&buf, Options{Path: "../../test/tarutil/dirtest"})
 	require.NoError(t, err)
 
 	gotFilenames := readFilenamesFromTar(t, &buf)
@@ -35,7 +35,10 @@ func (i antiBarIgnorer) Ignore(_, relPath string) bool {
 
 func TestDirIgnore(t *testing.T) {
 	var buf bytes.Buffer
-	err := DirIgnore(&buf, "../../test/tarutil/dirtest", antiBarIgnorer{})
+	err := Dir(&buf, Options{
+		Path:    "../../test/tarutil/dirtest",
+		Ignorer: antiBarIgnorer{},
+	})
 	require.NoError(t, err)
 
 	gotFilenames := readFilenamesFromTar(t, &buf)

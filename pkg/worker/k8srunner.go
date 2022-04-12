@@ -349,7 +349,10 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, name
 	}
 	tarErrCh := make(chan error, 1)
 	go func(writer io.WriteCloser, ch chan<- error) {
-		ch <- tarutil.DirIgnore(writer, srcPath, ignorer)
+		ch <- tarutil.Dir(writer, tarutil.Options{
+			Path:    srcPath,
+			Ignorer: ignorer,
+		})
 		writer.Close()
 	}(writer, tarErrCh)
 	err = exec.Stream(remotecommand.StreamOptions{
