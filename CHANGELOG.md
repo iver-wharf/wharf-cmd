@@ -135,6 +135,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   - `github.com/alta/protopatch` v0.5.0 (#51)
   - `github.com/cli/safeexec` v1.0.0 (#78)
+  - `github.com/denormal/go-gitignore` v0.0.0-20180930084346-ae8ad1d07817 (#85)
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
