@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"gopkg.in/typ.v3/pkg/slices"
 )
 
 var (
@@ -41,7 +43,7 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 		} else if escapedParamPattern.MatchString(match.Name) {
 			matchVal = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
 		} else {
-			if containsString(usedParams, match.Name) {
+			if slices.Contains(usedParams, match.Name) {
 				return nil, ErrRecursiveLoop
 			}
 			v, ok := source.Lookup(match.Name)
@@ -65,15 +67,6 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 		result = strings.Replace(result, match.FullMatch, matchValStr, 1)
 	}
 	return result, nil
-}
-
-func containsString(slice []string, element string) bool {
-	for _, v := range slice {
-		if v == element {
-			return true
-		}
-	}
-	return false
 }
 
 func stringify(val any) string {
