@@ -401,7 +401,7 @@ func newGitIgnorer(srcPath string) (ignorer.Ignorer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("get git repo root: %w", err)
 	}
-	return gitutil.NewIgnorer(repoRoot)
+	return gitutil.NewIgnorer(srcPath, repoRoot)
 }
 
 func execInPodPipedStdin(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {

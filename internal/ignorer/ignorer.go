@@ -11,7 +11,7 @@ import (
 // when creating a tarball.
 type Ignorer interface {
 	// Ignore returns true to ignore a file, and false to include the file.
-	Ignore(absPath, relPath string) bool
+	Ignore(relPath string) bool
 }
 
 // Merge returns an Ignorer implementation that returns true if any of the
@@ -22,9 +22,9 @@ func Merge(ignorers ...Ignorer) Ignorer {
 
 type merge []Ignorer
 
-func (m merge) Ignore(absPath, relPath string) bool {
+func (m merge) Ignore(relPath string) bool {
 	for _, i := range m {
-		if i.Ignore(absPath, relPath) {
+		if i.Ignore(relPath) {
 			return true
 		}
 	}
@@ -39,7 +39,7 @@ type fileIncluder []string
 
 var separatorStr = string(filepath.Separator)
 
-func (fi fileIncluder) Ignore(_, relPath string) bool {
+func (fi fileIncluder) Ignore(relPath string) bool {
 	relPath = filepath.Clean(relPath)
 	relPathDir := relPath + separatorStr
 	for _, want := range fi {

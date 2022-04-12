@@ -35,7 +35,7 @@ func TestFileIncluder(t *testing.T) {
 
 func assertIgnore(t *testing.T, i Ignorer, want bool, path string) {
 	path = filepath.Clean(path)
-	got := i.Ignore("", path)
+	got := i.Ignore(path)
 	if got != want {
 		t.Errorf("want Ignore(%q) = %t, got %t", path, want, got)
 	}

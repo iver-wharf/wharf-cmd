@@ -2,13 +2,18 @@ package tarutil
 
 import (
 	"archive/tar"
+	"bytes"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
+
+var log = logger.NewScoped("TAR")
 
 // Options contains options for when creating tarballs.
 type Options struct {
@@ -29,6 +34,8 @@ func (osFileOpener) OpenFile(path string) (io.ReadCloser, error) {
 	return os.Open(path)
 }
 
+var fileSeparatorString = string(filepath.Separator)
+
 // Dir will recursively tar the contents of an entire directory. Hidden files
 // (files that start with a dot) are included. The name of the target directory
 // is not included in the tarball, but instead only the children.
@@ -44,7 +51,8 @@ func Dir(w io.Writer, opts Options) error {
 	tw := tar.NewWriter(w)
 	defer tw.Close()
 	fileSys := os.DirFS(rootDirPath)
-	return fs.WalkDir(fileSys, ".", func(path string, d fs.DirEntry, err error) error {
+	var fileLogMsg bytes.Buffer
+	err = fs.WalkDir(fileSys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -56,16 +64,20 @@ func Dir(w io.Writer, opts Options) error {
 		if err != nil {
 			return err
 		}
-		if opts.Ignorer != nil && opts.Ignorer.Ignore(absPath, path) {
-			if info.IsDir() {
-				return fs.SkipDir
-			}
-			return nil
-		}
 		name := path
 		if d.IsDir() {
-			name += "/"
+			name += fileSeparatorString
 		}
+		if opts.Ignorer != nil {
+			if opts.Ignorer.Ignore(path) {
+				fmt.Fprintln(&fileLogMsg, "- ", name)
+				if info.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
+		}
+		fmt.Fprintln(&fileLogMsg, "+ ", name)
 		isFile := info.Mode().Type() == 0
 		var size int64
 		if isFile {
@@ -78,6 +90,7 @@ func Dir(w io.Writer, opts Options) error {
 			ModTime: info.ModTime(),
 		})
 		if isFile {
+			// TODO: The size must be accurate... Must buffer the files
 			file, err := opener.OpenFile(absPath)
 			if err != nil {
 				return err
@@ -90,4 +103,9 @@ func Dir(w io.Writer, opts Options) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	log.Debug().Messagef("Tardump includes:\n%s", fileLogMsg.String())
+	return nil
 }
