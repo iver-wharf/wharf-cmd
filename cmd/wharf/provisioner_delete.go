@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -11,7 +11,7 @@ var deleteWorkerID string
 var provisionerDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Terminates a worker in Kubernetes",
-	Long: `Terminates a wharf-cmd worker pod in Kubernetes, effectively
+	Long: `Terminates a wharf worker pod in Kubernetes, effectively
 cancelling the build.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)

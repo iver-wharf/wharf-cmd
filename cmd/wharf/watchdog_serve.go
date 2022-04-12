@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"github.com/iver-wharf/wharf-cmd/pkg/watchdog"

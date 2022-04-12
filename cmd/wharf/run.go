@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -37,7 +37,7 @@ based on a .wharf-ci.yml file.
 Use the optional "path" argument to specify a .wharf-ci.yml file or a
 directory containing a .wharf-ci.yml file. Defaults to current directory ("./")
 
-If no stage is specified via --stage then wharf-cmd will run all stages
+If no stage is specified via --stage then wharf will run all stages
 in sequence, based on their order of declaration in the .wharf-ci.yml file.
 
 All steps in each stage will be run in parallel for each stage.

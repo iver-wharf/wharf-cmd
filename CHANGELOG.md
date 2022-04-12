@@ -16,7 +16,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added provisioner commands: (#46, #59)
 
-  - `wharf-cmd provisioner serve` that launches an HTTP REST api server with
+  - `wharf provisioner serve` that launches an HTTP REST api server with
     endpoints:
 
     - `GET /api` to check health.
@@ -30,21 +30,21 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     - `DELETE /api/worker/:workerId` deletes a worker, as long as it has
       certain labels.
 
-  - `wharf-cmd provisioner create` that creates a new worker.
+  - `wharf provisioner create` that creates a new worker.
 
-  - `wharf-cmd provisioner list` that lists all running workers with certain
+  - `wharf provisioner list` that lists all running workers with certain
     labels.
 
-  - `wharf-cmd provisioner delete` with flag `--id` to specify the worker that
+  - `wharf provisioner delete` with flag `--id` to specify the worker that
     should be deleted, as long as it has certain labels as well.
 
 - Added watchdog commands: (#62)
 
-  - `wharf-cmd watchdog serve` checks stray builds from the wharf-api and
+  - `wharf watchdog serve` checks stray builds from the wharf-api and
     wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort
     to clean up forgotten builds/workers.
 
-- Added aggregator command `wharf-cmd aggregator serve` that looks for
+- Added aggregator command `wharf aggregator serve` that looks for
   wharf-cmd-worker pods and pipes build results over to the wharf-api. (#77)
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84)
@@ -54,7 +54,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   line & column of each parse error. (#48, #58)
 
 - Added support for a new file type: `.wharf-vars.yml`. It is used to define
-  built-in variables, and wharf-cmd looks for it in multiple files in the
+  built-in variables, and wharf looks for it in multiple files in the
   following order, where former files take precedence over latter files on a
   per-variable basis: (#73)
 
@@ -92,10 +92,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   your shell for more info: (#64)
 
   ```bash
-  wharf-cmd completion bash --help
-  wharf-cmd completion fish --help
-  wharf-cmd completion powershell --help
-  wharf-cmd completion zsh --help
+  wharf completion bash --help
+  wharf completion fish --help
+  wharf completion powershell --help
+  wharf completion zsh --help
   ```
 
 - Added Git integration by executing `git` locally to obtain current branch,
@@ -171,10 +171,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed to trim away everything before the last CR (carriage return)
   character in a log line from a Kubernetes pod. (#49)
 
-- Changed location of packages and code files: (#44)
+- Changed location of packages and code files: (#44, #87)
 
   - File `pkg/core/utils/variablesreplacer.go` to its own package in `pkg/varsub`
   - Package `pkg/core/wharfyml` to `pkg/wharfyml`
+  - Command `main.go` to `cmd/wharf/main.go`
 
 - Removed packages: (#44)
 
