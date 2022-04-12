@@ -56,7 +56,7 @@ func (fs osFS) openFileMkdirAll(name string, flags int, perm fs.FileMode) (io.Wr
 	file, err := os.OpenFile(path, flags, perm)
 	if os.IsNotExist(err) {
 		dir := filepath.Dir(path)
-		if err := os.MkdirAll(dir, perm); err != nil {
+		if err := os.MkdirAll(dir, 0775); err != nil {
 			return nil, err
 		}
 		return os.OpenFile(path, flags, perm)

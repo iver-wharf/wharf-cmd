@@ -1,4 +1,4 @@
-package cmd
+package main
 
 import (
 	"context"
@@ -34,7 +34,7 @@ var runCmd = &cobra.Command{
 	Long: `Runs a new build in a Kubernetes cluster using pods
 based on a .wharf-ci.yml file.
 
-If no stage is specified via --stage then wharf-cmd will run all stages
+If no stage is specified via --stage then wharf will run all stages
 in sequence, based on their order of declaration in the .wharf-ci.yml file.
 
 All steps in each stage will be run in parallel for each stage.

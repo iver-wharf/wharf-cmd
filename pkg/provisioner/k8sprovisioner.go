@@ -150,7 +150,7 @@ func createPodMeta() v1.Pod {
 						`
 make deps-go swag install && \
 cd test/wharf-ci-simple && \
-wharf-cmd run --serve --stage test --loglevel debug`,
+wharf run --serve --stage test --loglevel debug`,
 					},
 					WorkingDir:   repoVolumeMountPath,
 					VolumeMounts: volumeMounts,
