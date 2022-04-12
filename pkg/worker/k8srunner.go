@@ -13,6 +13,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -35,6 +36,7 @@ type K8sRunnerOptions struct {
 	Namespace     string
 	RestConfig    *rest.Config
 	Store         resultstore.Store
+	VarSource     varsub.Source
 	SkipGitIgnore bool
 }
 
@@ -66,15 +68,24 @@ func NewK8sStepRunnerFactory(opts K8sRunnerOptions) (StepRunnerFactory, error) {
 	if err != nil {
 		return nil, err
 	}
-	return k8sStepRunnerFactory{
+	factory := k8sStepRunnerFactory{
 		K8sRunnerOptions: opts,
 		clientset:        clientset,
-	}, nil
+	}
+	if !opts.SkipGitIgnore {
+		gitIgnorer, err := newGitIgnorer(".")
+		if err != nil {
+			return nil, err
+		}
+		factory.ignorer = gitIgnorer
+	}
+	return factory, nil
 }
 
 type k8sStepRunnerFactory struct {
 	K8sRunnerOptions
 	clientset *kubernetes.Clientset
+	ignorer   ignorer.Ignorer
 }
 
 func (f k8sStepRunnerFactory) NewStepRunner(
@@ -92,6 +103,7 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 		clientset:        f.clientset,
 		pods:             f.clientset.CoreV1().Pods(f.Namespace),
 		stepID:           stepID,
+		ignorer:          f.ignorer,
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
@@ -107,6 +119,7 @@ type k8sStepRunner struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 	stepID    uint64
+	ignorer   ignorer.Ignorer
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -173,8 +186,10 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
+
+	tarOpts := r.getTarOptions()
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, "/mnt/repo", r.Namespace, newPod.Name, "init", tarOpts); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
@@ -332,12 +347,24 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 	return nil
 }
 
-func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, namespace, podName, containerName string) error {
-	ignorer, err := r.newGitIgnorer(srcPath)
-	if err != nil {
-		return nil
+func (r k8sStepRunner) getTarOptions() tarutil.Options {
+	tarOpts := tarutil.Options{
+		Path:    ".",
+		Ignorer: r.ignorer,
 	}
+	if files, ok := getOnlyFilesToTransfer(r.step); ok {
+		ign := ignorer.NewFileIncluder(files)
+		if tarOpts.Ignorer == nil {
+			tarOpts.Ignorer = ign
+		} else {
+			tarOpts.Ignorer = ignorer.Merge(tarOpts.Ignorer, ign)
+		}
+		tarOpts.FileOpener = varsub.NewFileOpener(r.VarSource)
+	}
+	return tarOpts
+}
 
+func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, podName, containerName string, tarOpts tarutil.Options) error {
 	// Based on: https://stackoverflow.com/a/57952887
 	reader, writer := io.Pipe()
 	defer reader.Close()
@@ -349,10 +376,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, name
 	}
 	tarErrCh := make(chan error, 1)
 	go func(writer io.WriteCloser, ch chan<- error) {
-		ch <- tarutil.Dir(writer, tarutil.Options{
-			Path:    srcPath,
-			Ignorer: ignorer,
-		})
+		ch <- tarutil.Dir(writer, tarOpts)
 		writer.Close()
 	}(writer, tarErrCh)
 	err = exec.Stream(remotecommand.StreamOptions{
@@ -369,10 +393,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, name
 	}
 }
 
-func (r k8sStepRunner) newGitIgnorer(srcPath string) (ignorer.Ignorer, error) {
-	if r.SkipGitIgnore {
-		return nil, nil
-	}
+func newGitIgnorer(srcPath string) (ignorer.Ignorer, error) {
 	repoRoot, err := gitutil.GitRepoRoot(srcPath)
 	if errors.Is(err, gitutil.ErrNotAGitDir) {
 		return nil, nil

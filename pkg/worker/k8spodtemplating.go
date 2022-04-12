@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"gopkg.in/typ.v3/pkg/slices"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -109,6 +110,20 @@ func sanitizePodName(name string) string {
 	name = regexInvalidDNSSubdomainChars.ReplaceAllLiteralString(name, "-")
 	name = strings.Trim(name, "-")
 	return name
+}
+
+func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
+	switch s := step.Type.(type) {
+	case wharfyml.StepHelm:
+		return s.Files, true
+	case wharfyml.StepKubectl:
+		if s.File != "" {
+			return append(s.Files, s.File), true
+		}
+		return s.Files, true
+	default:
+		return nil, false
+	}
 }
 
 func applyStep(pod *v1.Pod, step wharfyml.Step) error {
@@ -477,8 +492,7 @@ func applyStepNuGetPackage(pod *v1.Pod, step wharfyml.StepNuGetPackage) error {
 }
 
 func quoteArgsForLogging(args []string) string {
-	argsQuoted := make([]string, len(args))
-	copy(argsQuoted, args)
+	argsQuoted := slices.Clone(args)
 	for i, arg := range args {
 		if strings.ContainsAny(arg, `"\' `) {
 			argsQuoted[i] = fmt.Sprintf("%q", arg)

@@ -47,7 +47,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if err != nil {
 			return err
 		}
-		def, err := parseBuildDefinition(runFlags.path)
+		def, varSource, err := parseBuildDefinition(runFlags.path)
 		if err != nil {
 			return err
 		}
@@ -67,6 +67,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
+				VarSource:     varSource,
 				SkipGitIgnore: runFlags.noGitIgnore,
 			})
 		if err != nil {
@@ -104,10 +105,10 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 	},
 }
 
-func parseBuildDefinition(path string) (wharfyml.Definition, error) {
+func parseBuildDefinition(path string) (wharfyml.Definition, varsub.Source, error) {
 	ymlAbsPath, err := filepath.Abs(path)
 	if err != nil {
-		return wharfyml.Definition{}, fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
+		return wharfyml.Definition{}, nil, fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
 	}
 	currentDir := filepath.Dir(ymlAbsPath)
 
@@ -116,7 +117,7 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, errors.New("failed to parse variable files")
+		return wharfyml.Definition{}, nil, errors.New("failed to parse variable files")
 	}
 	if varFileSource != nil {
 		varSources = append(varSources, varFileSource)
@@ -139,9 +140,9 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 	})
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, errors.New("failed to parse .wharf-ci.yml")
+		return wharfyml.Definition{}, nil, errors.New("failed to parse .wharf-ci.yml")
 	}
-	return def, nil
+	return def, varSources, nil
 }
 
 func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (context.Context, workerserver.Server) {

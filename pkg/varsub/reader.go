@@ -3,6 +3,7 @@ package varsub
 import (
 	"bufio"
 	"io"
+	"os"
 )
 
 // NewReader wraps an io.Reader that performs variable substitution.
@@ -41,4 +42,40 @@ func (r *reader) Read(p []byte) (int, error) {
 	n := copy(p, r.prevScan)
 	r.prevScan = r.prevScan[n:]
 	return n, nil
+}
+
+// FileOpener is an interface for opening files for reading, used in the Dir
+// function when reading files.
+type FileOpener interface {
+	OpenFile(path string) (io.ReadCloser, error)
+}
+
+func NewFileOpener(source Source) FileOpener {
+	return fileOpener{source}
+}
+
+type fileOpener struct {
+	source Source
+}
+
+func (fo fileOpener) OpenFile(path string) (io.ReadCloser, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	r := NewReader(fo.source, file)
+	return readCloser{r, file}, nil
+}
+
+type readCloser struct {
+	reader io.Reader
+	closer io.Closer
+}
+
+func (rc readCloser) Read(p []byte) (n int, err error) {
+	return rc.reader.Read(p)
+}
+
+func (rc readCloser) Close() error {
+	return rc.closer.Close()
 }
