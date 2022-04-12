@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
+	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -365,7 +366,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, name
 	}
 }
 
-func (r k8sStepRunner) newGitIgnorer(srcPath string) (tarutil.Ignorer, error) {
+func (r k8sStepRunner) newGitIgnorer(srcPath string) (ignorer.Ignorer, error) {
 	if r.SkipGitIgnore {
 		return nil, nil
 	}

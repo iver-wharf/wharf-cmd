@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+
+	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 )
 
 // Dir will recursively tar the contents of an entire directory. Hidden files
@@ -15,33 +17,31 @@ func Dir(w io.Writer, filesFromDir string) error {
 	return DirIgnore(w, filesFromDir, nil)
 }
 
-// Ignorer is an interface for conditionally ignoring files or directory trees
-// when creating a tarball.
-type Ignorer interface {
-	// Ignore returns true to ignore a file, and false to include the file.
-	Ignore(path string) bool
-}
-
 // DirIgnore will recursively tar the contents of an entire directory, and allow
 // ignoring directory trees using the Ignorer interface. Hidden files
 // (files that start with a dot) are included. The name of the target directory
 // is not included in the tarball, but instead only the children.
-func DirIgnore(w io.Writer, filesFromDir string, ignorer Ignorer) error {
+func DirIgnore(w io.Writer, filesFromDir string, ignorer ignorer.Ignorer) error {
+	filesFromDir, err := filepath.Abs(filesFromDir)
+	if err != nil {
+		return err
+	}
 	tw := tar.NewWriter(w)
+	defer tw.Close()
 	fileSys := os.DirFS(filesFromDir)
-	err := fs.WalkDir(fileSys, ".", func(path string, d fs.DirEntry, err error) error {
+	return fs.WalkDir(fileSys, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 		if path == "." {
 			return nil
 		}
-		realPath := filepath.Join(filesFromDir, path)
-		info, err := os.Stat(realPath)
+		absPath := filepath.Join(filesFromDir, path)
+		info, err := os.Stat(absPath)
 		if err != nil {
 			return err
 		}
-		if ignorer != nil && ignorer.Ignore(path) {
+		if ignorer != nil && ignorer.Ignore(absPath, path) {
 			if info.IsDir() {
 				return fs.SkipDir
 			}
@@ -63,7 +63,7 @@ func DirIgnore(w io.Writer, filesFromDir string, ignorer Ignorer) error {
 			ModTime: info.ModTime(),
 		})
 		if isFile {
-			file, err := os.Open(realPath)
+			file, err := os.Open(absPath)
 			if err != nil {
 				return err
 			}
@@ -75,8 +75,4 @@ func DirIgnore(w io.Writer, filesFromDir string, ignorer Ignorer) error {
 		}
 		return nil
 	})
-	if err != nil {
-		return err
-	}
-	return tw.Close()
 }

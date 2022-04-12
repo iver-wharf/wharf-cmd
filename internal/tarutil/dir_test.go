@@ -29,8 +29,8 @@ func TestDir(t *testing.T) {
 
 type antiBarIgnorer struct{}
 
-func (i antiBarIgnorer) Ignore(path string) bool {
-	return filepath.Base(path) == "bar"
+func (i antiBarIgnorer) Ignore(_, relPath string) bool {
+	return filepath.Base(relPath) == "bar"
 }
 
 func TestDirIgnore(t *testing.T) {
