@@ -100,7 +100,7 @@ func CopyDirIgnorer(dst, src string, copier Copier, ignorer ignorer.Ignorer) err
 	})
 }
 
-// CopyDirIgnorer will recursively copy all files from the source path over to
+// CopyDir will recursively copy all files from the source path over to
 // the destination path. Both dst and src are expected to be existing
 // directories, and then all content of one directory is copied into the other.
 //

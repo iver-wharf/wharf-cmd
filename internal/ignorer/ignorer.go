@@ -31,6 +31,8 @@ func (m merge) Ignore(relPath string) bool {
 	return false
 }
 
+// NewFileIncluder creates an Ignorer that will ignore all files except the
+// given files. Parent directories of the given files are also included.
 func NewFileIncluder(relPaths []string) Ignorer {
 	return fileIncluder(slices.Map(relPaths, filepath.Clean))
 }
