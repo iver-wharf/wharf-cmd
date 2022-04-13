@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
@@ -72,13 +71,6 @@ func NewK8sStepRunnerFactory(opts K8sRunnerOptions) (StepRunnerFactory, error) {
 		K8sRunnerOptions: opts,
 		clientset:        clientset,
 	}
-	if !opts.SkipGitIgnore {
-		gitIgnorer, err := newGitIgnorer(".")
-		if err != nil {
-			return nil, err
-		}
-		factory.ignorer = gitIgnorer
-	}
 	return factory, nil
 }
 
@@ -108,6 +100,7 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
 	}
+	// TODO: Tar repo
 	return r, nil
 }
 
@@ -186,10 +179,8 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
-
-	tarOpts := r.getTarOptions()
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, "/mnt/repo", r.Namespace, newPod.Name, "init", tarOpts); err != nil {
+	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
@@ -347,24 +338,7 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 	return nil
 }
 
-func (r k8sStepRunner) getTarOptions() tarutil.Options {
-	tarOpts := tarutil.Options{
-		Path:    ".",
-		Ignorer: r.ignorer,
-	}
-	if files, ok := getOnlyFilesToTransfer(r.step); ok {
-		ign := ignorer.NewFileIncluder(files)
-		if tarOpts.Ignorer == nil {
-			tarOpts.Ignorer = ign
-		} else {
-			tarOpts.Ignorer = ignorer.Merge(tarOpts.Ignorer, ign)
-		}
-		tarOpts.FileOpener = varsub.NewFileOpener(r.VarSource)
-	}
-	return tarOpts
-}
-
-func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, podName, containerName string, tarOpts tarutil.Options) error {
+func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, namespace, podName, containerName string) error {
 	// Based on: https://stackoverflow.com/a/57952887
 	reader, writer := io.Pipe()
 	defer reader.Close()
@@ -376,7 +350,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, po
 	}
 	tarErrCh := make(chan error, 1)
 	go func(writer io.WriteCloser, ch chan<- error) {
-		ch <- tarutil.Dir(writer, tarOpts)
+		ch <- tarutil.Dir(writer, srcPath)
 		writer.Close()
 	}(writer, tarErrCh)
 	err = exec.Stream(remotecommand.StreamOptions{
@@ -391,17 +365,6 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, po
 	case err := <-tarErrCh:
 		return err
 	}
-}
-
-func newGitIgnorer(srcPath string) (ignorer.Ignorer, error) {
-	repoRoot, err := gitutil.GitRepoRoot(srcPath)
-	if errors.Is(err, gitutil.ErrNotAGitDir) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("get git repo root: %w", err)
-	}
-	return gitutil.NewIgnorer(srcPath, repoRoot)
 }
 
 func execInPodPipedStdin(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {
