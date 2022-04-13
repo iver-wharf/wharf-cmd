@@ -59,6 +59,9 @@ func CopyFile(dst, src string, copier Copier) error {
 // Only files and directories are copied. Any sockets, devices, symlinks, or
 // other file types are silently ignored.
 func CopyDirIgnorer(dst, src string, copier Copier, ignorer ignorer.Ignorer) error {
+	// TODO: Could possibly multithread this for better performance.
+	// Would need some benchmarks to actually prove it's faster.
+
 	srcFS := os.DirFS(src)
 	return fs.WalkDir(srcFS, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
