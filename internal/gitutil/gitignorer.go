@@ -17,9 +17,13 @@ func NewIgnorer(currentDir, repoRoot string) (ignorer.Ignorer, error) {
 	return &gitIgnorer{currentDir, repo}, nil
 }
 
+type matcher interface {
+	Match(path string) gitignore.Match
+}
+
 type gitIgnorer struct {
 	currentDir string
-	repo       gitignore.GitIgnore
+	matcher    matcher
 }
 
 func (i *gitIgnorer) Ignore(relPath string) bool {
@@ -27,7 +31,7 @@ func (i *gitIgnorer) Ignore(relPath string) bool {
 	// isn't implemented on the repository level. Therefore we need to
 	// re-implement the gitignore.GitIgnore.Ignore() function here via the
 	// .Match function that is implemented on the repository level.
-	match := i.repo.Match(filepath.Join(i.currentDir, relPath))
+	match := i.matcher.Match(filepath.Join(i.currentDir, relPath))
 	if match == nil {
 		return false
 	}
