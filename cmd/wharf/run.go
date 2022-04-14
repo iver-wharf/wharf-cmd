@@ -47,7 +47,11 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		if err != nil {
 			return err
 		}
-		def, varSource, err := parseBuildDefinition(runFlags.path)
+		currentDir, ymlAbsPath, err := parsePath(runFlags.path)
+		if err != nil {
+			return err
+		}
+		def, varSource, err := parseBuildDefinition(currentDir, ymlAbsPath)
 		if err != nil {
 			return err
 		}
@@ -69,6 +73,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 				},
 				VarSource:     varSource,
 				SkipGitIgnore: runFlags.noGitIgnore,
+				Path:          currentDir,
 			})
 		if err != nil {
 			return err
@@ -105,13 +110,16 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 	},
 }
 
-func parseBuildDefinition(path string) (wharfyml.Definition, varsub.Source, error) {
+func parsePath(path string) (dir, file string, err error) {
 	ymlAbsPath, err := filepath.Abs(path)
 	if err != nil {
-		return wharfyml.Definition{}, nil, fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
+		return "", "", fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
 	}
 	currentDir := filepath.Dir(ymlAbsPath)
+	return ymlAbsPath, currentDir, nil
+}
 
+func parseBuildDefinition(currentDir, ymlAbsPath string) (wharfyml.Definition, varsub.Source, error) {
 	var varSources varsub.SourceSlice
 
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)

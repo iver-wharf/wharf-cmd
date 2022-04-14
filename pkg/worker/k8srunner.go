@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/repostore"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -37,6 +37,7 @@ type K8sRunnerOptions struct {
 	Store         resultstore.Store
 	VarSource     varsub.Source
 	SkipGitIgnore bool
+	Path          string
 }
 
 // NewK8s is a helper function that creates a new builder using the
@@ -67,9 +68,14 @@ func NewK8sStepRunnerFactory(opts K8sRunnerOptions) (StepRunnerFactory, error) {
 	if err != nil {
 		return nil, err
 	}
+	repoStore, err := repostore.New(opts.Path)
+	if err != nil {
+		return nil, err
+	}
 	factory := k8sStepRunnerFactory{
 		K8sRunnerOptions: opts,
 		clientset:        clientset,
+		repoStore:        repoStore,
 	}
 	return factory, nil
 }
@@ -77,7 +83,7 @@ func NewK8sStepRunnerFactory(opts K8sRunnerOptions) (StepRunnerFactory, error) {
 type k8sStepRunnerFactory struct {
 	K8sRunnerOptions
 	clientset *kubernetes.Clientset
-	ignorer   ignorer.Ignorer
+	repoStore repostore.Store
 }
 
 func (f k8sStepRunnerFactory) NewStepRunner(
@@ -95,11 +101,15 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 		clientset:        f.clientset,
 		pods:             f.clientset.CoreV1().Pods(f.Namespace),
 		stepID:           stepID,
-		ignorer:          f.ignorer,
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
 	}
+
+	log.Debug().
+		WithUint64("step", stepID).
+		Message("Creating tarball of repository.")
+
 	// TODO: Tar repo
 	return r, nil
 }
@@ -112,7 +122,7 @@ type k8sStepRunner struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 	stepID    uint64
-	ignorer   ignorer.Ignorer
+	repoTar   repostore.Tarball
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
