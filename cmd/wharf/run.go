@@ -157,6 +157,9 @@ func parseBuildDefinition(currentDir, ymlAbsPath string) (wharfyml.Definition, v
 		logParseErrors(errs, currentDir)
 		return wharfyml.Definition{}, nil, errors.New("failed to parse .wharf-ci.yml")
 	}
+	if def.Env != nil {
+		varSources = append(varSources, varsub.SourceMap(def.Env.Vars))
+	}
 	return def, varSources, nil
 }
 
