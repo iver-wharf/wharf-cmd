@@ -81,6 +81,12 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     CHART_REPO: http://harbor.example.com
   ```
 
+- Added variable substitution support for referenced files in `kubectl` and
+  `helm` step types. (#89)
+
+- Added file transfer cache, stored in `/tmp/wharf-cmd-repo-xxxxx/full.tar`,
+  that is reused by all steps in a single build. (#89)
+
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
 
