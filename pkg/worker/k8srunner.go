@@ -12,7 +12,6 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/filecopy"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
-	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
@@ -403,6 +402,12 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 
 func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, namespace, podName, containerName string) error {
 	// Based on: https://stackoverflow.com/a/57952887
+	tarReader, err := r.repoTar.Open()
+	if err != nil {
+		return err
+	}
+	defer tarReader.Close()
+
 	reader, writer := io.Pipe()
 	defer reader.Close()
 	defer writer.Close()
@@ -411,11 +416,12 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, name
 	if err != nil {
 		return err
 	}
-	tarErrCh := make(chan error, 1)
-	go func(writer io.WriteCloser, ch chan<- error) {
-		ch <- tarutil.Dir(writer, srcPath)
-		writer.Close()
-	}(writer, tarErrCh)
+	writeErrCh := make(chan error, 1)
+	go func() {
+		defer writer.Close()
+		_, err := io.Copy(writer, tarReader)
+		writeErrCh <- err
+	}()
 	err = exec.Stream(remotecommand.StreamOptions{
 		Stdin: reader,
 	})
@@ -425,7 +431,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, name
 	select {
 	case <-ctx.Done():
 		return errors.New("aborted")
-	case err := <-tarErrCh:
+	case err := <-writeErrCh:
 		return err
 	}
 }
