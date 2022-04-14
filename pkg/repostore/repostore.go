@@ -1,6 +1,7 @@
 package repostore
 
 import (
+	"errors"
 	"io"
 	"io/fs"
 	"os"
@@ -13,6 +14,14 @@ import (
 )
 
 const dirFileMode fs.FileMode = 0775
+
+// Tarball is an identifier for a tarball file containing a repository.
+type Tarball string
+
+// Open creates a file handle to the tarball.
+func (t Tarball) Open() (io.ReadCloser, error) {
+	return os.Open(string(t))
+}
 
 // Store is an interface for copying and tar'ing repositories.
 type Store interface {
@@ -45,6 +54,9 @@ func (s *store) Close() error {
 }
 
 func (s *store) GetPreparedTarball(copier filecopy.Copier, ignorer ignorer.Ignorer, id string) (Tarball, error) {
+	if id == "" {
+		return "", errors.New("tarball name cannot be empty")
+	}
 	once, _ := s.onceMap.LoadOrStore(id, new(sync2.Once2[Tarball, error]))
 	return once.Do(func() (Tarball, error) {
 		return s.prepare(copier, ignorer, id)
