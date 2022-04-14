@@ -9,9 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/internal/filecopy"
+	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
+	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/repostore"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
@@ -34,10 +37,11 @@ type K8sRunnerOptions struct {
 	BuildOptions
 	Namespace     string
 	RestConfig    *rest.Config
-	Store         resultstore.Store
+	ResultStore   resultstore.Store
+	TarStore      tarstore.Store
 	VarSource     varsub.Source
 	SkipGitIgnore bool
-	Path          string
+	CurrentDir    string
 }
 
 // NewK8s is a helper function that creates a new builder using the
@@ -68,14 +72,9 @@ func NewK8sStepRunnerFactory(opts K8sRunnerOptions) (StepRunnerFactory, error) {
 	if err != nil {
 		return nil, err
 	}
-	repoStore, err := repostore.New(opts.Path)
-	if err != nil {
-		return nil, err
-	}
 	factory := k8sStepRunnerFactory{
 		K8sRunnerOptions: opts,
 		clientset:        clientset,
-		repoStore:        repoStore,
 	}
 	return factory, nil
 }
@@ -83,7 +82,6 @@ func NewK8sStepRunnerFactory(opts K8sRunnerOptions) (StepRunnerFactory, error) {
 type k8sStepRunnerFactory struct {
 	K8sRunnerOptions
 	clientset *kubernetes.Clientset
-	repoStore repostore.Store
 }
 
 func (f k8sStepRunnerFactory) NewStepRunner(
@@ -93,6 +91,12 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 	if err != nil {
 		return nil, err
 	}
+
+	tarball, err := f.prepareStepRepo(step, stepID)
+	if err != nil {
+		return nil, err
+	}
+
 	r := k8sStepRunner{
 		K8sRunnerOptions: f.K8sRunnerOptions,
 		log:              logger.NewScoped(contextStageStepName(ctx)),
@@ -101,17 +105,66 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 		clientset:        f.clientset,
 		pods:             f.clientset.CoreV1().Pods(f.Namespace),
 		stepID:           stepID,
+		repoTar:          tarball,
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
 	}
-
-	log.Debug().
-		WithUint64("step", stepID).
-		Message("Creating tarball of repository.")
-
-	// TODO: Tar repo
 	return r, nil
+}
+
+func (f k8sStepRunnerFactory) prepareStepRepo(step wharfyml.Step, stepID uint64) (tarstore.Tarball, error) {
+	onlyFiles, hasFileFilter := getOnlyFilesToTransfer(step)
+	copier := f.getStepRepoCopier(hasFileFilter)
+	ignorer, err := f.getStepRepoIgnorer(onlyFiles, hasFileFilter)
+	if err != nil {
+		return "", err
+	}
+	tarID := f.getStepTarID(stepID, hasFileFilter)
+
+	tarball, err := f.TarStore.GetPreparedTarball(copier, ignorer, tarID)
+	if err != nil {
+		return "", err
+	}
+	return tarball, nil
+}
+
+func (f k8sStepRunnerFactory) getStepTarID(stepID uint64, hasFileFilter bool) string {
+	if hasFileFilter {
+		return fmt.Sprintf("step-%d", stepID)
+	}
+	return "full"
+}
+
+func (f k8sStepRunnerFactory) getStepRepoCopier(hasFileFilter bool) filecopy.Copier {
+	if hasFileFilter {
+		return varsub.NewCopier(f.VarSource)
+	}
+	return filecopy.IOCopier
+}
+
+func (f k8sStepRunnerFactory) getStepRepoIgnorer(onlyFiles []string, hasFileFilter bool) (ignorer.Ignorer, error) {
+	var igns []ignorer.Ignorer
+	if hasFileFilter {
+		igns = append(igns, ignorer.NewFileIncluder(onlyFiles))
+	}
+
+	if !f.SkipGitIgnore {
+		repoRoot, err := gitutil.GitRepoRoot(f.CurrentDir)
+		if err != nil {
+			return nil, err
+		}
+		gitIgn, err := gitutil.NewIgnorer(f.CurrentDir, repoRoot)
+		if err != nil {
+			return nil, err
+		}
+		igns = append(igns, gitIgn)
+	}
+
+	if len(igns) == 0 {
+		return nil, nil
+	}
+	return ignorer.Merge(igns...), nil
 }
 
 type k8sStepRunner struct {
@@ -122,7 +175,7 @@ type k8sStepRunner struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 	stepID    uint64
-	repoTar   repostore.Tarball
+	repoTar   tarstore.Tarball
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -292,7 +345,7 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	}
 	defer readCloser.Close()
 	scanner := bufio.NewScanner(readCloser)
-	writer, err := r.Store.OpenLogWriter(uint64(r.stepID))
+	writer, err := r.ResultStore.OpenLogWriter(uint64(r.stepID))
 	if err != nil {
 		r.log.Error().WithError(err).Message("Failed to open log writer. No logs will be written.")
 	} else {
@@ -409,5 +462,5 @@ func execInPod(c *rest.Config, namespace, podName string, execOpts *v1.PodExecOp
 }
 
 func (r *k8sStepRunner) addStatusUpdate(status workermodel.Status) {
-	r.Store.AddStatusUpdate(r.stepID, time.Now(), status)
+	r.ResultStore.AddStatusUpdate(r.stepID, time.Now(), status)
 }

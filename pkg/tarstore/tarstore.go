@@ -1,4 +1,4 @@
-package repostore
+package tarstore
 
 import (
 	"errors"
@@ -10,8 +10,11 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/filecopy"
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/sync2"
 )
+
+var log = logger.NewScoped("TARSTORE")
 
 const dirFileMode fs.FileMode = 0775
 
@@ -64,21 +67,35 @@ func (s *store) GetPreparedTarball(copier filecopy.Copier, ignorer ignorer.Ignor
 }
 
 func (s *store) prepare(copier filecopy.Copier, ignorer ignorer.Ignorer, id string) (Tarball, error) {
-	dstDir := filepath.Join(s.tmpPath, id)
-	if err := os.MkdirAll(dstDir, dirFileMode); err != nil {
+	dstPath := filepath.Join(s.tmpPath, id)
+	if err := os.MkdirAll(dstPath, dirFileMode); err != nil {
 		return "", err
 	}
-	if err := filecopy.CopyDirIgnorer(dstDir, s.srcPath, copier, ignorer); err != nil {
+	log.Info().
+		WithString("src", s.srcPath).
+		WithString("dst", dstPath).
+		Message("Copying files.")
+	if err := filecopy.CopyDirIgnorer(dstPath, s.srcPath, copier, ignorer); err != nil {
 		return "", err
 	}
+	log.Debug().
+		WithString("src", s.srcPath).
+		WithString("dst", dstPath).
+		Message("Done copying files.")
 	tarPath := filepath.Join(s.tmpPath, id+".tar")
 	tarFile, err := os.Create(tarPath)
 	if err != nil {
 		return "", err
 	}
 	defer tarFile.Close()
-	if err := tarutil.Dir(tarFile, dstDir); err != nil {
+	log.Info().
+		WithString("path", tarPath).
+		Message("Creating tarball.")
+	if err := tarutil.Dir(tarFile, dstPath); err != nil {
 		return "", err
 	}
+	log.Debug().
+		WithString("path", tarPath).
+		Message("Done creating tarball.")
 	return Tarball(tarPath), nil
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
@@ -63,17 +64,23 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
+		tarStore, err := tarstore.New(currentDir)
+		if err != nil {
+			return err
+		}
+		defer tarStore.Close()
 		b, err := worker.NewK8s(context.Background(), def,
 			worker.K8sRunnerOptions{
-				Namespace:  ns,
-				RestConfig: kubeconfig,
-				Store:      store,
+				Namespace:   ns,
+				RestConfig:  kubeconfig,
+				ResultStore: store,
+				TarStore:    tarStore,
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
 				VarSource:     varSource,
 				SkipGitIgnore: runFlags.noGitIgnore,
-				Path:          currentDir,
+				CurrentDir:    currentDir,
 			})
 		if err != nil {
 			return err
@@ -116,7 +123,7 @@ func parsePath(path string) (dir, file string, err error) {
 		return "", "", fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
 	}
 	currentDir := filepath.Dir(ymlAbsPath)
-	return ymlAbsPath, currentDir, nil
+	return currentDir, ymlAbsPath, nil
 }
 
 func parseBuildDefinition(currentDir, ymlAbsPath string) (wharfyml.Definition, varsub.Source, error) {
