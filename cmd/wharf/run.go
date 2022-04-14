@@ -71,16 +71,16 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		defer tarStore.Close()
 		b, err := worker.NewK8s(context.Background(), def,
 			worker.K8sRunnerOptions{
-				Namespace:   ns,
-				RestConfig:  kubeconfig,
-				ResultStore: store,
-				TarStore:    tarStore,
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
-				VarSource:     varSource,
-				SkipGitIgnore: runFlags.noGitIgnore,
 				CurrentDir:    currentDir,
+				Namespace:     ns,
+				RestConfig:    kubeconfig,
+				ResultStore:   store,
+				SkipGitIgnore: runFlags.noGitIgnore,
+				TarStore:      tarStore,
+				VarSource:     varSource,
 			})
 		if err != nil {
 			return err
