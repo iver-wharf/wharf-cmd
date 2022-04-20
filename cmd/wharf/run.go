@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
+	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -26,6 +26,7 @@ var runFlags = struct {
 	env          string
 	serve        bool
 	k8sOverrides clientcmd.ConfigOverrides
+	noGitIgnore  bool
 }{}
 
 var runCmd = &cobra.Command{
@@ -69,10 +70,17 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
-		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
-			StageFilter: runFlags.stage,
-			RepoDir:     currentDir,
-		})
+		b, err := worker.NewK8s(context.Background(), def,
+			worker.K8sRunnerOptions{
+				Namespace:  ns,
+				RestConfig: kubeconfig,
+				Store:      store,
+				BuildOptions: worker.BuildOptions{
+					StageFilter: runFlags.stage,
+					RepoDir:     currentDir,
+				},
+				SkipGitIgnore: runFlags.noGitIgnore,
+			})
 		if err != nil {
 			return err
 		}
@@ -124,9 +132,8 @@ func parseCurrentDir(dirArg string) (string, error) {
 		dir, file := filepath.Split(abs)
 		if file == ".wharf-ci.yml" {
 			return dir, nil
-		} else {
-			return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
 		}
+		return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
 	}
 	stat, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
 	if err != nil {
@@ -150,7 +157,7 @@ func parseBuildDefinition(currentDir string) (wharfyml.Definition, error) {
 		varSources = append(varSources, varFileSource)
 	}
 
-	gitStats, err := gitstat.FromExec(currentDir)
+	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
 		log.Warn().WithError(err).
 			Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")
@@ -161,6 +168,7 @@ func parseBuildDefinition(currentDir string) (wharfyml.Definition, error) {
 	}
 
 	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
+	log.Debug().WithString("path", ymlPath).Message("Parsing .wharf-ci.yml file.")
 	def, errs := wharfyml.ParseFile(ymlPath, wharfyml.Args{
 		Env:       runFlags.env,
 		VarSource: varSources,
@@ -250,5 +258,6 @@ func init() {
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
+	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }

@@ -1,4 +1,4 @@
-package gitstat
+package gitutil
 
 import (
 	"testing"
