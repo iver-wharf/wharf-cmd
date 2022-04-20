@@ -322,7 +322,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      "wharfse/helm:v3.5.4",
+		Image:      "wharfse/helm:v3.8.1",
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
@@ -395,7 +395,7 @@ func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
 func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      "wharfse/kubectl:v1.21.1",
+		Image:      "wharfse/kubectl:v1.23.5",
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
