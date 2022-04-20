@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -123,16 +124,33 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 	},
 }
 
-func parseCurrentDir(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
+func parseCurrentDir(dirArg string) (string, error) {
+	if dirArg == "" {
+		return os.Getwd()
+	}
+	abs, err := filepath.Abs(dirArg)
 	if err != nil {
-		return "", fmt.Errorf("get absolute path of .wharf-ci.yml file: %w", err)
+		return "", err
 	}
-	absDir, file := filepath.Split(absPath)
-	if file != ".wharf-ci.yml" {
-		return absPath, nil
+	stat, err := os.Stat(abs)
+	if err != nil {
+		return "", err
 	}
-	return absDir, nil
+	if !stat.IsDir() {
+		dir, file := filepath.Split(abs)
+		if file == ".wharf-ci.yml" {
+			return dir, nil
+		}
+		return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
+	}
+	stat, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("missing .wharf-ci.yml file in dir: %s", abs)
+		}
+		return "", err
+	}
+	return abs, nil
 }
 
 func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source, error) {
