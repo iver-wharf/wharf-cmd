@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/gitstat"
+	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -25,6 +25,7 @@ var runFlags = struct {
 	env          string
 	serve        bool
 	k8sOverrides clientcmd.ConfigOverrides
+	noGitIgnore  bool
 }{}
 
 var runCmd = &cobra.Command{
@@ -58,9 +59,16 @@ https://iver-wharf.github.io/#/usage-wharfyml/
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
-		b, err := worker.NewK8s(context.Background(), def, ns, kubeconfig, store, worker.BuildOptions{
-			StageFilter: runFlags.stage,
-		})
+		b, err := worker.NewK8s(context.Background(), def,
+			worker.K8sRunnerOptions{
+				Namespace:  ns,
+				RestConfig: kubeconfig,
+				Store:      store,
+				BuildOptions: worker.BuildOptions{
+					StageFilter: runFlags.stage,
+				},
+				SkipGitIgnore: runFlags.noGitIgnore,
+			})
 		if err != nil {
 			return err
 		}
@@ -114,7 +122,7 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 		varSources = append(varSources, varFileSource)
 	}
 
-	gitStats, err := gitstat.FromExec(currentDir)
+	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
 		log.Warn().WithError(err).
 			Message("Failed to get REPO_ and GIT_ variables from Git. Skipping those.")
@@ -124,6 +132,7 @@ func parseBuildDefinition(path string) (wharfyml.Definition, error) {
 		varSources = append(varSources, gitStats)
 	}
 
+	log.Debug().WithString("path", ymlAbsPath).Message("Parsing .wharf-ci.yml file.")
 	def, errs := wharfyml.ParseFile(ymlAbsPath, wharfyml.Args{
 		Env:       runFlags.env,
 		VarSource: varSources,
@@ -214,5 +223,6 @@ func init() {
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
+	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }

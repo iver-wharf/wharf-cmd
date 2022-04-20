@@ -49,6 +49,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `wharf run`. (#33, #45, #66)
 
+- Added support for `.gitignore` ignored files and directories when transferring
+  repo in `wharf run`. Can be disabled via new `--no-gitignore` flag. (#85)
+
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
   line & column of each parse error. (#48, #58)
@@ -132,6 +135,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   - `github.com/alta/protopatch` v0.5.0 (#51)
   - `github.com/cli/safeexec` v1.0.0 (#78)
+  - `github.com/denormal/go-gitignore` v0.0.0-20180930084346-ae8ad1d07817 (#85)
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
