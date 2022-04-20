@@ -15,6 +15,7 @@ var log = logger.New()
 // actually be executed.
 type BuildOptions struct {
 	StageFilter string
+	RepoDir     string
 }
 
 // Builder is the interface for running a Wharf build. A single Wharf build may

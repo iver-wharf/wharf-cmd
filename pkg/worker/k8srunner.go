@@ -15,6 +15,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"gopkg.in/typ.v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
@@ -173,7 +174,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, typ.Coal(r.RepoDir, "."), "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
