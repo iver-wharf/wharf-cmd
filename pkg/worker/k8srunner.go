@@ -242,7 +242,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, ".", "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
@@ -400,7 +400,7 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 	return nil
 }
 
-func (r k8sStepRunner) copyDirToPod(ctx context.Context, srcPath, destPath, namespace, podName, containerName string) error {
+func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, podName, containerName string) error {
 	// Based on: https://stackoverflow.com/a/57952887
 	tarReader, err := r.repoTar.Open()
 	if err != nil {
