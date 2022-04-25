@@ -252,17 +252,27 @@ func (r k8sStepRunner) waitForPodModifiedFunc(ctx context.Context, podMeta metav
 	}
 	defer w.Stop()
 	for ev := range w.ResultChan() {
-		pod := ev.Object.(*v1.Pod)
-		switch ev.Type {
-		case watch.Modified:
-			ok, err := f(pod)
-			if err != nil {
-				return err
-			} else if ok {
-				return nil
+		switch ev.Object.(type) {
+		case *v1.Pod:
+			pod := ev.Object.(*v1.Pod)
+			switch ev.Type {
+			case watch.Modified:
+				ok, err := f(pod)
+				if err != nil {
+					return err
+				} else if ok {
+					return nil
+				}
+			case watch.Deleted:
+				return fmt.Errorf("pod was removed: %v", pod.Name)
 			}
-		case watch.Deleted:
-			return fmt.Errorf("pod was removed: %v", pod.Name)
+		case *metav1.Status:
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return fmt.Errorf("context was cancelled for pod: %v", podMeta.Name)
+			}
+
+			status := ev.Object.(*metav1.Status)
+			return fmt.Errorf("error for pod: %v: %v", podMeta.Name, errors.New(status.Message))
 		}
 	}
 	return fmt.Errorf("got no more events when watching pod: %v", podMeta.Name)

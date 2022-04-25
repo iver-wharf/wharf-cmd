@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
@@ -19,6 +21,10 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/typ.v3/pkg/slices"
 	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	cancelGracePeriod = 10 * time.Second
 )
 
 var runFlags = struct {
@@ -85,12 +91,22 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 
-		ctx := context.Background()
+		ctx, cancel := context.WithCancel(context.Background())
 		if runFlags.serve {
 			var server workerserver.Server
 			ctx, server = startWorkerServerWithCancel(ctx, store)
 			defer server.Close()
 		}
+
+		go handleCancelSignals(func() {
+			go func() {
+				time.AfterFunc(cancelGracePeriod, func() {
+					log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
+					os.Exit(3)
+				})
+			}()
+			cancel()
+		})
 
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
@@ -202,6 +218,23 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 	}()
 
 	return ctx, server
+}
+
+func handleCancelSignals(f func()) {
+	waitForCancelSignal()
+	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
+	go func() {
+		waitForCancelSignal()
+		log.Warn().Message("Received second interrupt. Force quitting now.")
+		os.Exit(2)
+	}()
+	f()
+}
+
+func waitForCancelSignal() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+	_ = <-ch
 }
 
 func logParseErrors(errs wharfyml.Errors, currentDir string) {
