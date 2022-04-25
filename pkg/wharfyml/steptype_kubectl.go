@@ -1,6 +1,8 @@
 package wharfyml
 
-import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+import (
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
 
 // StepKubectl represents a step type for running kubectl commands on some
 // Kubernetes manifest files.
