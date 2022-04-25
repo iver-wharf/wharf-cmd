@@ -268,7 +268,7 @@ func (r k8sStepRunner) waitForPodModifiedFunc(ctx context.Context, podMeta metav
 			}
 		case *metav1.Status:
 			if errors.Is(ctx.Err(), context.Canceled) {
-				return fmt.Errorf("context was cancelled for pod: %v", podMeta.Name)
+				return fmt.Errorf("watching pod: %s: %w", podMeta.Name, ctx.Err())
 			}
 
 			status := ev.Object.(*metav1.Status)
