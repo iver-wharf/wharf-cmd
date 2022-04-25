@@ -89,7 +89,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 
-		var ctx context.Context
+		ctx := rootContext
 		if runFlags.serve {
 			var server workerserver.Server
 			ctx, server = startWorkerServerWithCancel(rootContext, store)
