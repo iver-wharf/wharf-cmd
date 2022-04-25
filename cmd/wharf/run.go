@@ -73,7 +73,18 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		// May require setting of owner and SUID on wharf-cmd binary to access /tmp or similar.
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
-		store := resultstore.NewStoreWithContext(rootContext, resultstore.NewFS("./build_logs"))
+		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
+		go func() {
+			select {
+			case <-rootContext.Done():
+				if err := store.Close(); err != nil {
+					log.Warn().WithError(err).Message("Error closing store.")
+				} else {
+					log.Debug().Message("Successfully closed store.")
+				}
+			}
+		}()
+
 		b, err := worker.NewK8s(rootContext, def,
 			worker.K8sRunnerOptions{
 				Namespace:  ns,
