@@ -267,8 +267,56 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
+	runCmd.RegisterFlagCompletionFunc("stage", completeWharfYmlStage)
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
+	runCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
+}
+
+func completeWharfYmlStage(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	def, err := parseWharfYmlForCompletions(cmd, args)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var stages []string
+	for _, stage := range def.Stages {
+		stages = append(stages, stage.Name)
+	}
+	return stages, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completeWharfYmlEnv(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	def, err := parseWharfYmlForCompletions(cmd, args)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var envs []string
+	for env := range def.Envs {
+		envs = append(envs, env)
+	}
+	return envs, cobra.ShellCompDirectiveNoFileComp
+}
+
+func parseWharfYmlForCompletions(cmd *cobra.Command, args []string) (wharfyml.Definition, error) {
+	currentDir, err := parseCurrentDir(slices.SafeGet(args, 0))
+	if err != nil {
+		return wharfyml.Definition{}, err
+	}
+
+	var ymlArgs wharfyml.Args
+	envFlag := cmd.Flag("environment")
+	if envFlag.Changed {
+		ymlArgs.Env = envFlag.Value.String()
+	} else {
+		ymlArgs.SkipStageFiltering = true
+	}
+
+	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
+
+	// Intentionally ignore any parse errors, as syntax errors or missing fields
+	// for a step type are irrelevant for the completions.
+	def, _ := wharfyml.ParseFile(ymlPath, ymlArgs)
+	return def, nil
 }
