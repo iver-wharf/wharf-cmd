@@ -107,6 +107,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   wharf completion zsh --help
   ```
 
+- Added `--stage` and `--environment` completions to `wharf run` based on the
+  parsed `.wharf-ci.yml` file. (#91)
+
 - Added Git integration by executing `git` locally to obtain current branch,
   commit SHA, tags, etc. (#67, #78)
 
