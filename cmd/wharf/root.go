@@ -22,6 +22,8 @@ const (
 	exitCodeError           = 1
 	exitCodeCancelForceQuit = 2
 	exitCodeCancelTimeout   = 3
+
+	cancelGracePeriod = 10 * time.Second
 )
 
 var isLoggingInitialized bool

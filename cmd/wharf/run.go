@@ -21,10 +21,6 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-const (
-	cancelGracePeriod = 10 * time.Second
-)
-
 var runFlags = struct {
 	stage        string
 	env          string
