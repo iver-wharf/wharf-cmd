@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/iver-wharf/wharf-core/pkg/app"
@@ -13,6 +16,12 @@ import (
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	exitCodeError           = 1
+	exitCodeCancelForceQuit = 2
+	exitCodeCancelTimeout   = 3
 )
 
 var isLoggingInitialized bool
@@ -25,6 +34,8 @@ var rootCmd = &cobra.Command{
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
 }
+
+var rootContext, rootCancel = context.WithCancel(context.Background())
 
 func addKubernetesFlags(flagSet *pflag.FlagSet, overrides *clientcmd.ConfigOverrides) {
 	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
@@ -54,7 +65,7 @@ func execute(version app.Version) {
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()
 		log.Error().Message(err.Error())
-		os.Exit(1)
+		os.Exit(exitCodeError)
 	}
 }
 
@@ -79,6 +90,8 @@ func versionString(v app.Version) string {
 }
 
 func init() {
+	go handleCancelSignals(rootCancel)
+
 	cobra.OnInitialize(initLogging)
 	rootCmd.InitDefaultVersionFlag()
 	rootCmd.PersistentFlags().StringVar(&loglevel, "loglevel", "info", "Show debug information")
@@ -128,4 +141,27 @@ func parseLevel(lvl string) (logger.Level, error) {
 	default:
 		return logger.LevelDebug, fmt.Errorf("invalid logging level: %q", lvl)
 	}
+}
+
+func handleCancelSignals(cancel context.CancelFunc) {
+	waitForCancelSignal()
+	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
+	go func() {
+		waitForCancelSignal()
+		log.Warn().Message("Received second interrupt. Force quitting now.")
+		os.Exit(exitCodeCancelForceQuit)
+	}()
+	go func() {
+		time.AfterFunc(cancelGracePeriod, func() {
+			log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
+			os.Exit(exitCodeCancelTimeout)
+		})
+	}()
+	cancel()
+}
+
+func waitForCancelSignal() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+	<-ch
 }

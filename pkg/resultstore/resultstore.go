@@ -1,6 +1,7 @@
 package resultstore
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -173,6 +174,20 @@ func NewStore(fs FS) Store {
 	return &store{
 		fs: fs,
 	}
+}
+
+// NewStoreWithContext creates a new store using a given filesystem.
+//
+// The store will call Close if the context is cancelled.
+func NewStoreWithContext(ctx context.Context, fs FS) Store {
+	store := NewStore(fs)
+	go func() {
+		select {
+		case <-ctx.Done():
+			store.Close()
+		}
+	}()
+	return store
 }
 
 type store struct {

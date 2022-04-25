@@ -5,10 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
@@ -75,8 +73,8 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		// May require setting of owner and SUID on wharf-cmd binary to access /tmp or similar.
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
-		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
-		b, err := worker.NewK8s(context.Background(), def,
+		store := resultstore.NewStoreWithContext(rootContext, resultstore.NewFS("./build_logs"))
+		b, err := worker.NewK8s(rootContext, def,
 			worker.K8sRunnerOptions{
 				Namespace:  ns,
 				RestConfig: kubeconfig,
@@ -91,27 +89,12 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 
-		ctx, cancel := context.WithCancel(context.Background())
+		var ctx context.Context
 		if runFlags.serve {
 			var server workerserver.Server
-			ctx, server = startWorkerServerWithCancel(ctx, store)
+			ctx, server = startWorkerServerWithCancel(rootContext, store)
 			defer server.Close()
 		}
-
-		go handleCancelSignals(func() {
-			go func() {
-				time.AfterFunc(cancelGracePeriod, func() {
-					log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
-					os.Exit(3)
-				})
-			}()
-			if err := store.Close(); err != nil {
-				log.Error().WithError(err).Message("Error closing resultstore.")
-			} else {
-				log.Info().Message("Closed resultstore successfully.")
-			}
-			cancel()
-		})
 
 		log.Debug().Message("Successfully created builder.")
 		log.Info().Message("Starting build.")
@@ -223,23 +206,6 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 	}()
 
 	return ctx, server
-}
-
-func handleCancelSignals(f func()) {
-	waitForCancelSignal()
-	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
-	go func() {
-		waitForCancelSignal()
-		log.Warn().Message("Received second interrupt. Force quitting now.")
-		os.Exit(2)
-	}()
-	f()
-}
-
-func waitForCancelSignal() {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
-	_ = <-ch
 }
 
 func logParseErrors(errs wharfyml.Errors, currentDir string) {
