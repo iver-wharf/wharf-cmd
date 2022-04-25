@@ -105,6 +105,11 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 					os.Exit(3)
 				})
 			}()
+			if err := store.Close(); err != nil {
+				log.Error().WithError(err).Message("Error closing resultstore.")
+			} else {
+				log.Info().Message("Closed resultstore successfully.")
+			}
 			cancel()
 		})
 

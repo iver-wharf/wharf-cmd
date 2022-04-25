@@ -76,3 +76,17 @@ func TestStore_ListAllStepIDs(t *testing.T) {
 		})
 	}
 }
+
+func TestStore_Close(t *testing.T) {
+	store := NewStore(mockFS{
+		listDirEntries: func(name string) ([]fs.DirEntry, error) {
+			return nil, nil
+		},
+	})
+
+	err := store.Close()
+	assert.NoError(t, err, "close store")
+
+	err = store.Close()
+	assert.NoError(t, err, "close store again")
+}
