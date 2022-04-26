@@ -251,7 +251,7 @@ Wharf look for values in the following files:`)
 Wharf also looks for:
   - All ".wharf-vars.yml" in this directory or any parent directory.
   - Local Git repository and extracts GIT_ and REPO_ variables from it.
-  - Environment variables.
+  - Environment variables, with prefix WHARF_VAR_ removed from them.
 
 Sample file content:
   # .wharf-vars.yml
