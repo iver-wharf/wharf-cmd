@@ -142,8 +142,6 @@ func useShorthandHomePrefix(path, home string) string {
 func ListPossibleVarsFiles(currentDir string) []VarFile {
 	varFiles := listParentDirsPossibleVarsFiles(currentDir)
 
-	varFiles = append(varFiles, listOSPossibleVarsFiles()...)
-
 	confDir, err := os.UserConfigDir()
 	if err == nil {
 		varFiles = append(varFiles, VarFile{
@@ -151,6 +149,8 @@ func ListPossibleVarsFiles(currentDir string) []VarFile {
 			IsRel: false,
 		})
 	}
+
+	varFiles = append(varFiles, listOSPossibleVarsFiles()...)
 
 	return varFiles
 }
