@@ -147,12 +147,13 @@ func parseLevel(lvl string) (logger.Level, error) {
 }
 
 func handleCancelSignals(cancel context.CancelFunc) {
-	<-waitForCancelSignal()
+	ch := newCancelSignalChan()
+	<-ch
 	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
 	cancel()
 
 	select {
-	case <-waitForCancelSignal():
+	case <-ch:
 		log.Warn().Message("Received second interrupt. Force quitting now.")
 		os.Exit(exitCodeCancelForceQuit)
 	case <-time.After(cancelGracePeriod):
@@ -161,7 +162,7 @@ func handleCancelSignals(cancel context.CancelFunc) {
 	}
 }
 
-func waitForCancelSignal() <-chan os.Signal {
+func newCancelSignalChan() <-chan os.Signal {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
 	return ch
