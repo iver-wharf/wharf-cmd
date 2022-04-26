@@ -147,21 +147,17 @@ func parseLevel(lvl string) (logger.Level, error) {
 }
 
 func callParentPersistentPreRuns(cmd *cobra.Command, args []string) error {
-	cmd = cmd.Parent()
-	if cmd == nil {
-		return nil
+	for {
+		cmd = cmd.Parent()
+		if cmd == nil {
+			return nil
+		}
+		// Call first one we find.
+		// It'll be responsible for calling its parent PersistentPreRunE
+		if cmd.PersistentPreRunE != nil {
+			return cmd.PersistentPreRunE(cmd, args)
+		}
 	}
-	// Call the root-most one first
-	if err := callParentPersistentPreRuns(cmd, args); err != nil {
-		return err
-	}
-	if cmd.PersistentPreRun != nil {
-		cmd.PersistentPreRun(cmd, args)
-	}
-	if cmd.PersistentPreRunE != nil {
-		return cmd.PersistentPreRunE(cmd, args)
-	}
-	return nil
 }
 
 func handleCancelSignals(cancel context.CancelFunc) {
