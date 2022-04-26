@@ -2,6 +2,7 @@ package aggregator
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -105,6 +106,9 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 
 		pods, err := a.fetchPods(ctx)
 		if err != nil {
+			if errors.Is(ctx.Err(), context.Canceled) {
+				return ctx.Err()
+			}
 			log.Warn().WithError(err).
 				WithDuration("pollDelay", pollDelay).
 				Message("Failed to list pods. Retrying after delay.")

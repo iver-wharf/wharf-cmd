@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +17,7 @@ a container running "wharf run" to perform the build.
 			return err
 		}
 
-		worker, err := p.CreateWorker(context.Background())
+		worker, err := p.CreateWorker(rootContext)
 		if err != nil {
 			return err
 		}

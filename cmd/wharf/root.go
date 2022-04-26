@@ -1,9 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
@@ -16,6 +19,14 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+const (
+	exitCodeError           = 1
+	exitCodeCancelForceQuit = 2
+	exitCodeCancelTimeout   = 3
+
+	cancelGracePeriod = 10 * time.Second
+)
+
 var isLoggingInitialized bool
 var loglevel flagtypes.LogLevel = flagtypes.LogLevel(logger.LevelInfo)
 
@@ -25,7 +36,12 @@ var rootCmd = &cobra.Command{
 	Use:           "wharf",
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
+		go handleCancelSignals(rootCancel)
+	},
 }
+
+var rootContext, rootCancel = context.WithCancel(context.Background())
 
 func addKubernetesFlags(flagSet *pflag.FlagSet, overrides *clientcmd.ConfigOverrides) {
 	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
@@ -55,7 +71,7 @@ func execute(version app.Version) {
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()
 		log.Error().Message(err.Error())
-		os.Exit(1)
+		os.Exit(exitCodeError)
 	}
 }
 
@@ -101,4 +117,40 @@ func initLogging() {
 	}
 	logger.AddOutput(loglevel.Level(), consolepretty.New(logConfig))
 	isLoggingInitialized = true
+}
+
+func callParentPersistentPreRuns(cmd *cobra.Command, args []string) error {
+	for {
+		cmd = cmd.Parent()
+		if cmd == nil {
+			return nil
+		}
+		// Call first one we find.
+		// It'll be responsible for calling its parent PersistentPreRunE
+		if cmd.PersistentPreRunE != nil {
+			return cmd.PersistentPreRunE(cmd, args)
+		}
+	}
+}
+
+func handleCancelSignals(cancel context.CancelFunc) {
+	ch := newCancelSignalChan()
+	<-ch
+	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
+	cancel()
+
+	select {
+	case <-ch:
+		log.Warn().Message("Received second interrupt. Force quitting now.")
+		os.Exit(exitCodeCancelForceQuit)
+	case <-time.After(cancelGracePeriod):
+		log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
+		os.Exit(exitCodeCancelTimeout)
+	}
+}
+
+func newCancelSignalChan() <-chan os.Signal {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+	return ch
 }

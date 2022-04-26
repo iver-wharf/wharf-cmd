@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
 )
@@ -18,7 +16,7 @@ that are either scheduling, running, or completed.`,
 			return err
 		}
 
-		workers, err := p.ListWorkers(context.Background())
+		workers, err := p.ListWorkers(rootContext)
 		if err != nil {
 			return err
 		}

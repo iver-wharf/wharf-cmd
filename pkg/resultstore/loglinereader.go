@@ -6,16 +6,22 @@ import (
 )
 
 func (s *store) OpenLogReader(stepID uint64) (LogLineReadCloser, error) {
+	if s.closed {
+		return nil, ErrClosed
+	}
+
 	file, err := s.fs.OpenRead(s.resolveLogPath(stepID))
 	if err != nil {
 		return nil, err
 	}
-	return &logLineReadCloser{
+	reader := &logLineReadCloser{
 		stepID:  stepID,
 		store:   s,
 		closer:  file,
 		scanner: bufio.NewScanner(file),
-	}, nil
+	}
+	s.logReadersOpened.Add(reader)
+	return reader, nil
 }
 
 type logLineReadCloser struct {
@@ -48,6 +54,7 @@ func (r *logLineReadCloser) parseLogLine(text string) LogLine {
 }
 
 func (r *logLineReadCloser) Close() error {
+	r.store.logReadersOpened.Remove(r)
 	return r.closer.Close()
 }
 

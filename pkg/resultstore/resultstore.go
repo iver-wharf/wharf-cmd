@@ -16,6 +16,8 @@ import (
 var (
 	// ErrFrozen is returned when doing a write operation on a frozen store.
 	ErrFrozen = errors.New("store frozen")
+	// ErrClosed is returned when doing a read operation on a closed store.
+	ErrClosed = errors.New("store closed")
 )
 
 var (
@@ -132,6 +134,11 @@ type Store interface {
 	//
 	// All new subscriptions will be closed after catching up.
 	Freeze() error
+
+	// Close, in addition to freezing the store by calling Freeze, closes any
+	// open readers and causes future read operations to error. This cannot be
+	// undone.
+	Close() error
 }
 
 // LogLineWriteCloser is the interface for writing log lines and ability to
@@ -164,7 +171,8 @@ type LogLineReadCloser interface {
 // NewStore creates a new store using a given filesystem.
 func NewStore(fs FS) Store {
 	return &store{
-		fs: fs,
+		fs:               fs,
+		logReadersOpened: newSyncSet[*logLineReadCloser](),
 	}
 }
 
@@ -178,19 +186,25 @@ type store struct {
 	logSubMutex      sync.RWMutex
 	logPubSub        chans.PubSub[LogLine]
 	logWritersOpened sync2.Map[uint64, *logLineWriteCloser]
+	logReadersOpened syncSet[*logLineReadCloser]
 
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
 	artifactMutex    sync2.KeyedMutex[uint64]
 
 	frozen bool
+	closed bool
 }
 
 func (s *store) Freeze() error {
+	if s.frozen {
+		return nil
+	}
+
 	s.frozen = true
 	var closeWriterErr error
 	s.logWritersOpened.Range(func(_ uint64, writer *logLineWriteCloser) bool {
-		if err := writer.Close(); err != nil {
+		if err := writer.Close(); err != nil && closeWriterErr == nil {
 			closeWriterErr = err
 			return false
 		}
@@ -219,6 +233,28 @@ func (s *store) Freeze() error {
 		s.statusMutex.UnlockKey(stepID)
 	}
 	return nil
+}
+
+func (s *store) Close() error {
+	if s.closed {
+		return nil
+	}
+
+	err := s.Freeze()
+	if err != nil {
+		return err
+	}
+	s.closed = true
+
+	var closeReaderErr error
+
+	readers := s.logReadersOpened.Slice()
+	for _, reader := range readers {
+		if err := reader.Close(); err != nil && closeReaderErr == nil {
+			closeReaderErr = err
+		}
+	}
+	return err
 }
 
 func (s *store) listAllStepIDs() ([]uint64, error) {

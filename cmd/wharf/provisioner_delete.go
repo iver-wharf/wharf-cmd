@@ -1,8 +1,6 @@
 package main
 
 import (
-	"context"
-
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
 )
@@ -19,7 +17,7 @@ cancelling the build.`,
 			return err
 		}
 
-		if err = p.DeleteWorker(context.Background(), deleteWorkerID); err == nil {
+		if err = p.DeleteWorker(rootContext, deleteWorkerID); err == nil {
 			log.Info().Message("Successfully deleted worker.")
 		}
 

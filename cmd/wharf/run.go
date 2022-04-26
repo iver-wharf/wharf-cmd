@@ -72,12 +72,24 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
+
+		go func() {
+			select {
+			case <-rootContext.Done():
+				if err := store.Close(); err != nil {
+					log.Warn().WithError(err).Message("Error closing store.")
+				} else {
+					log.Debug().Message("Successfully closed store.")
+				}
+			}
+		}()
+
 		tarStore, err := tarstore.New(currentDir)
 		if err != nil {
 			return err
 		}
 		defer tarStore.Close()
-		b, err := worker.NewK8s(context.Background(), def,
+		b, err := worker.NewK8s(rootContext, def,
 			worker.K8sRunnerOptions{
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
@@ -94,10 +106,10 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 
-		ctx := context.Background()
+		ctx := rootContext
 		if runFlags.serve {
 			var server workerserver.Server
-			ctx, server = startWorkerServerWithCancel(ctx, store)
+			ctx, server = startWorkerServerWithCancel(rootContext, store)
 			defer server.Close()
 		}
 
