@@ -72,9 +72,10 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	def.Stages = stages
 	errSlice.add(errs...)
 	errSlice.add(validateDefEnvironmentUsage(def)...)
-	// filtering intentionally performed after validation
-	def.Stages = filterStagesOnEnv(def.Stages, args.Env)
-
+	if !args.SkipStageFiltering {
+		// filtering intentionally performed after validation
+		def.Stages = filterStagesOnEnv(def.Stages, args.Env)
+	}
 	def.VarSource = sources
 	return
 }
