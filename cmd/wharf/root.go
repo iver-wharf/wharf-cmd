@@ -35,7 +35,7 @@ var rootCmd = &cobra.Command{
 	Use:           "wharf",
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
-	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+	PersistentPreRun: func(_ *cobra.Command, _ []string) {
 		go handleCancelSignals(rootCancel)
 	},
 }
@@ -147,24 +147,22 @@ func parseLevel(lvl string) (logger.Level, error) {
 }
 
 func handleCancelSignals(cancel context.CancelFunc) {
-	waitForCancelSignal()
+	<-waitForCancelSignal()
 	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
-	go func() {
-		waitForCancelSignal()
+	cancel()
+
+	select {
+	case <-waitForCancelSignal():
 		log.Warn().Message("Received second interrupt. Force quitting now.")
 		os.Exit(exitCodeCancelForceQuit)
-	}()
-	go func() {
-		time.AfterFunc(cancelGracePeriod, func() {
-			log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
-			os.Exit(exitCodeCancelTimeout)
-		})
-	}()
-	cancel()
+	case <-time.After(cancelGracePeriod):
+		log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
+		os.Exit(exitCodeCancelTimeout)
+	}
 }
 
-func waitForCancelSignal() {
+func waitForCancelSignal() <-chan os.Signal {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
-	<-ch
+	return ch
 }
