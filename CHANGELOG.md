@@ -201,6 +201,14 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added collecting of build logs and status updates for build steps using
   `resultstore`. (#71)
 
+- Added functionality to cancel builds via the signals (one signal for graceful
+  shutdown with a grace period, two to forcefully shutdown immediately):
+
+  - `os.Interrupt`
+  - `os.Kill`
+  - `syscall.SIGTERM`
+  - `syscall.SIGHUP`
+
 ## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)
