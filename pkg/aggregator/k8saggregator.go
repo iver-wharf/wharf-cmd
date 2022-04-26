@@ -107,7 +107,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		pods, err := a.fetchPods(ctx)
 		if err != nil {
 			if errors.Is(ctx.Err(), context.Canceled) {
-				break
+				return ctx.Err()
 			}
 			log.Warn().WithError(err).
 				WithDuration("pollDelay", pollDelay).
@@ -140,8 +140,6 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		mutex.Unlock()
 		time.Sleep(pollDelay)
 	}
-
-	return ctx.Err()
 }
 
 func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
