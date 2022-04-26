@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
-	"gopkg.in/typ.v3/pkg/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -40,20 +39,25 @@ const (
 func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	varFiles := ListPossibleVarsFiles(currentDir)
 	var errSlice Errors
-	nodeVarSource := make(varsub.SourceMap)
+	var filesSources varsub.SourceSlice
 	for _, varFile := range varFiles {
 		items, errs := tryReadVarsFileNodes(varFile.Path)
 		prettyPath := varFile.PrettyPath(currentDir)
 		errSlice = append(errSlice,
 			wrapPathErrorSlice(errs, prettyPath)...)
+		if len(items) == 0 {
+			continue
+		}
+		source := make(varsub.SourceMap)
 		for _, item := range items {
-			nodeVarSource[item.key.value] = varsub.Val{
+			source[item.key.value] = varsub.Val{
 				Value:  VarSubNode{item.value},
 				Source: prettyPath,
 			}
 		}
+		filesSources = append(filesSources, source)
 	}
-	return nodeVarSource, errSlice
+	return filesSources, errSlice
 }
 
 func tryReadVarsFileNodes(path string) ([]mapItem, Errors) {
@@ -131,8 +135,14 @@ func useShorthandHomePrefix(path, home string) string {
 // .wharf-vars.yml files.
 //
 // Returned paths include the filename.
+//
+// The ordering of the returned filenames are in the order of which file should
+// have priority over the other, with the highest priority, and file that should
+// override all the others, first.
 func ListPossibleVarsFiles(currentDir string) []VarFile {
-	varFiles := listOSPossibleVarsFiles()
+	varFiles := listParentDirsPossibleVarsFiles(currentDir)
+
+	varFiles = append(varFiles, listOSPossibleVarsFiles()...)
 
 	confDir, err := os.UserConfigDir()
 	if err == nil {
@@ -142,7 +152,6 @@ func ListPossibleVarsFiles(currentDir string) []VarFile {
 		})
 	}
 
-	varFiles = append(varFiles, listParentDirsPossibleVarsFiles(currentDir)...)
 	return varFiles
 }
 
@@ -159,8 +168,5 @@ func listParentDirsPossibleVarsFiles(currentDir string) []VarFile {
 			break
 		}
 	}
-	// We reverse it because we want the path closest to the current dir
-	// to be merged in last into the varsub.Source.
-	slices.Reverse(varFiles)
 	return varFiles
 }
