@@ -84,6 +84,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     CHART_REPO: http://harbor.example.com
   ```
 
+- Added support for using OS environment variables prefixed with `WHARF_VAR_`
+  in variable substitution, where `WHARF_VAR_REG_URL` would set the `REG_URL`
+  Wharf variable. (#96)
+
 - Added variable substitution support for referenced files in `kubectl` and
   `helm` step types. (#89)
 
