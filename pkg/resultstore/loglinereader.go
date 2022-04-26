@@ -20,7 +20,7 @@ func (s *store) OpenLogReader(stepID uint64) (LogLineReadCloser, error) {
 		closer:  file,
 		scanner: bufio.NewScanner(file),
 	}
-	s.logReadersOpened.Append(reader)
+	s.logReadersOpened.Add(reader)
 	return reader, nil
 }
 

@@ -171,7 +171,8 @@ type LogLineReadCloser interface {
 // NewStore creates a new store using a given filesystem.
 func NewStore(fs FS) Store {
 	return &store{
-		fs: fs,
+		fs:               fs,
+		logReadersOpened: NewSyncSet[*logLineReadCloser](),
 	}
 }
 
@@ -185,7 +186,7 @@ type store struct {
 	logSubMutex      sync.RWMutex
 	logPubSub        chans.PubSub[LogLine]
 	logWritersOpened sync2.Map[uint64, *logLineWriteCloser]
-	logReadersOpened syncSlice[[]*logLineReadCloser, *logLineReadCloser]
+	logReadersOpened SyncSet[*logLineReadCloser]
 
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
@@ -203,7 +204,7 @@ func (s *store) Freeze() error {
 	s.frozen = true
 	var closeWriterErr error
 	s.logWritersOpened.Range(func(_ uint64, writer *logLineWriteCloser) bool {
-		if err := writer.Close(); err != nil {
+		if err := writer.Close(); err != nil && closeWriterErr == nil {
 			closeWriterErr = err
 			return false
 		}
@@ -243,15 +244,16 @@ func (s *store) Close() error {
 	if err != nil {
 		return err
 	}
-
 	s.closed = true
-	s.logReadersOpened.Range(func(_ int, value *logLineReadCloser) bool {
-		if e := value.Close(); e != nil {
-			err = e
-			return false
+
+	var closeReaderErr error
+
+	readers := s.logReadersOpened.Slice()
+	for _, reader := range readers {
+		if err := reader.Close(); err != nil && closeReaderErr == nil {
+			closeReaderErr = err
 		}
-		return true
-	})
+	}
 	return err
 }
 
