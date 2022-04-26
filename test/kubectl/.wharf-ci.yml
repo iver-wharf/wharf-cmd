@@ -1,0 +1,11 @@
+environments:
+  myEnv:
+    namespace: wharf-cmd
+    replicas: 1
+
+test:
+  environments: [myEnv]
+  step1:
+    kubectl:
+      file: ./deployment.yaml
+      cluster: hybrid-config

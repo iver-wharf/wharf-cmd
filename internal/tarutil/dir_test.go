@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"io"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,28 +19,6 @@ func TestDir(t *testing.T) {
 	wantFilenames := []string{
 		"bar/",
 		"bar/moo",
-		"somedir/",
-		"somedir/.hidden",
-		"somefile.txt",
-	}
-	assert.ElementsMatch(t, wantFilenames, gotFilenames)
-}
-
-type antiBarIgnorer struct{}
-
-func (i antiBarIgnorer) Ignore(path string) bool {
-	return filepath.Base(path) == "bar"
-}
-
-func TestDirIgnore(t *testing.T) {
-	var buf bytes.Buffer
-	err := DirIgnore(&buf, "../../test/tarutil/dirtest", antiBarIgnorer{})
-	require.NoError(t, err)
-
-	gotFilenames := readFilenamesFromTar(t, &buf)
-	wantFilenames := []string{
-		// "bar/",
-		// "bar/moo",
 		"somedir/",
 		"somedir/.hidden",
 		"somefile.txt",

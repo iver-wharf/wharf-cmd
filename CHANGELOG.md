@@ -81,6 +81,12 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     CHART_REPO: http://harbor.example.com
   ```
 
+- Added variable substitution support for referenced files in `kubectl` and
+  `helm` step types. (#89)
+
+- Added file transfer cache, stored in `/tmp/wharf-cmd-repo-xxxxx/full.tar`,
+  that is reused by all steps in a single build. (#89)
+
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
 
@@ -148,7 +154,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
   - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
-  - `gopkg.in/typ.v3` v3.0.0 (#75)
+  - `gopkg.in/typ.v3` v3.1.0 (#75, #89)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:

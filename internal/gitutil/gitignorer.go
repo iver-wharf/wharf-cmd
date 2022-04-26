@@ -1,36 +1,37 @@
 package gitutil
 
 import (
-	"github.com/denormal/go-gitignore"
-)
+	"path/filepath"
 
-// Ignorer is an interface for conditionally ignoring files or directory trees
-// based on gitignore files.
-type Ignorer interface {
-	// Ignore returns true to ignore a file, and false to include the file.
-	Ignore(path string) bool
-}
+	"github.com/denormal/go-gitignore"
+	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
+)
 
 // NewIgnorer creates a new ignorer that checks if a file should be ignored or
 // not depending on the .gitignore files found inside the repository.
-func NewIgnorer(repoRoot string) (Ignorer, error) {
+func NewIgnorer(currentDir, repoRoot string) (ignorer.Ignorer, error) {
 	repo, err := gitignore.NewRepository(repoRoot)
 	if err != nil {
 		return nil, err
 	}
-	return &ignorer{repo}, nil
+	return &gitIgnorer{currentDir, repo}, nil
 }
 
-type ignorer struct {
-	repo gitignore.GitIgnore
+type matcher interface {
+	Match(path string) gitignore.Match
 }
 
-func (i *ignorer) Ignore(path string) bool {
+type gitIgnorer struct {
+	currentDir string
+	matcher    matcher
+}
+
+func (i *gitIgnorer) Ignore(relPath string) bool {
 	// NOTE: gitignore.GitIgnore has a .Ignore function, but that function
 	// isn't implemented on the repository level. Therefore we need to
 	// re-implement the gitignore.GitIgnore.Ignore() function here via the
 	// .Match function that is implemented on the repository level.
-	match := i.repo.Match(path)
+	match := i.matcher.Match(filepath.Join(i.currentDir, relPath))
 	if match == nil {
 		return false
 	}

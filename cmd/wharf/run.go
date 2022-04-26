@@ -11,6 +11,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
@@ -58,7 +59,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		if err != nil {
 			return err
 		}
-		def, err := parseBuildDefinition(currentDir)
+		def, varSource, err := parseBuildDefinition(currentDir)
 		if err != nil {
 			return err
 		}
@@ -70,6 +71,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		// e.g.: (root should not be used in prod)
 		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
+
 		go func() {
 			select {
 			case <-rootContext.Done():
@@ -81,16 +83,23 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			}
 		}()
 
+		tarStore, err := tarstore.New(currentDir)
+		if err != nil {
+			return err
+		}
+		defer tarStore.Close()
 		b, err := worker.NewK8s(rootContext, def,
 			worker.K8sRunnerOptions{
-				Namespace:  ns,
-				RestConfig: kubeconfig,
-				Store:      store,
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
-					RepoDir:     currentDir,
 				},
+				CurrentDir:    currentDir,
+				Namespace:     ns,
+				RestConfig:    kubeconfig,
+				ResultStore:   store,
 				SkipGitIgnore: runFlags.noGitIgnore,
+				TarStore:      tarStore,
+				VarSource:     varSource,
 			})
 		if err != nil {
 			return err
@@ -156,13 +165,13 @@ func parseCurrentDir(dirArg string) (string, error) {
 	return abs, nil
 }
 
-func parseBuildDefinition(currentDir string) (wharfyml.Definition, error) {
+func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source, error) {
 	var varSources varsub.SourceSlice
 
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, errors.New("failed to parse variable files")
+		return wharfyml.Definition{}, nil, errors.New("failed to parse variable files")
 	}
 	if varFileSource != nil {
 		varSources = append(varSources, varFileSource)
@@ -186,9 +195,12 @@ func parseBuildDefinition(currentDir string) (wharfyml.Definition, error) {
 	})
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, errors.New("failed to parse .wharf-ci.yml")
+		return wharfyml.Definition{}, nil, errors.New("failed to parse .wharf-ci.yml")
 	}
-	return def, nil
+	if def.Env != nil {
+		varSources = append(varSources, varsub.SourceMap(def.Env.Vars))
+	}
+	return def, varSources, nil
 }
 
 func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (context.Context, workerserver.Server) {
