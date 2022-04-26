@@ -106,4 +106,5 @@ func init() {
 	rootCmd.AddCommand(varsCmd)
 
 	varsCmd.Flags().StringVarP(&varsFlags.env, "environment", "e", "", "Environment selection")
+	varsCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 }
