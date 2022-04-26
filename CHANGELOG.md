@@ -202,7 +202,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   `resultstore`. (#71)
 
 - Added functionality to cancel builds via the signals (one signal for graceful
-  shutdown with a grace period, two to forcefully shutdown immediately):
+  shutdown with a grace period, two to forcefully shutdown immediately): (#90)
 
   - `os.Interrupt`
   - `os.Kill`
