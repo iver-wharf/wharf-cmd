@@ -92,8 +92,6 @@ func versionString(v app.Version) string {
 }
 
 func init() {
-	go handleCancelSignals(rootCancel)
-
 	cobra.OnInitialize(initLogging)
 	rootCmd.InitDefaultVersionFlag()
 	rootCmd.PersistentFlags().StringVar(&loglevel, "loglevel", "info", "Show debug information")
