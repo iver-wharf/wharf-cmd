@@ -1,6 +1,7 @@
 package wharfyml
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -56,7 +57,7 @@ myStage2:
   myKubectlStep:
     kubectl:
       file: deploy/pod.yaml
-`), Args{Env: "myEnvA", VarSource: testVarSource{}})
+`), Args{Env: "myEnvA", VarSource: testVarSource})
 	requireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
@@ -80,19 +81,19 @@ myStage2:
 
 	assert.Len(t, got.Envs, 2)
 	if myEnvA, ok := got.Envs["myEnvA"]; assert.True(t, ok, "myEnvA") {
-		assert.Equal(t, "foo bar", myEnvA.Vars["myString"], `myEnvA.Vars["myString"]`)
-		assert.Equal(t, 123, myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
-		assert.Equal(t, -123, myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
-		assert.Equal(t, 123.45, myEnvA.Vars["myFloat"], `myEnvA.Vars["myFloat"]`)
-		assert.Equal(t, true, myEnvA.Vars["myBool"], `myEnvA.Vars["myBool"]`)
+		assertVarSubNode(t, "foo bar", myEnvA.Vars["myString"], `myEnvA.Vars["myString"]`)
+		assertVarSubNode(t, 123, myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
+		assertVarSubNode(t, -123, myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
+		assertVarSubNode(t, 123.45, myEnvA.Vars["myFloat"], `myEnvA.Vars["myFloat"]`)
+		assertVarSubNode(t, true, myEnvA.Vars["myBool"], `myEnvA.Vars["myBool"]`)
 	}
 
 	if myEnvB, ok := got.Envs["myEnvB"]; assert.True(t, ok, "myEnvB") {
-		assert.Equal(t, "foo bar", myEnvB.Vars["myString"], `myEnvB.Vars["myString"]`)
-		assert.Equal(t, 123, myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
-		assert.Equal(t, -123, myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
-		assert.Equal(t, 123.45, myEnvB.Vars["myFloat"], `myEnvB.Vars["myFloat"]`)
-		assert.Equal(t, true, myEnvB.Vars["myBool"], `myEnvB.Vars["myBool"]`)
+		assertVarSubNode(t, "foo bar", myEnvB.Vars["myString"], `myEnvB.Vars["myString"]`)
+		assertVarSubNode(t, 123, myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
+		assertVarSubNode(t, -123, myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
+		assertVarSubNode(t, 123.45, myEnvB.Vars["myFloat"], `myEnvB.Vars["myFloat"]`)
+		assertVarSubNode(t, true, myEnvB.Vars["myBool"], `myEnvB.Vars["myBool"]`)
 	}
 
 	if assert.Len(t, got.Stages, 2) {
@@ -140,13 +141,13 @@ environments:
   myEnv:
     myStr: !!str 123
     myInt: !!int 123
-`), Args{VarSource: testVarSource{}})
+`), Args{VarSource: testVarSource})
 	requireNoErr(t, errs)
 	myEnv, ok := def.Envs["myEnv"]
 	require.True(t, ok, "myEnv environment exists")
 
-	assert.Equal(t, "123", myEnv.Vars["myStr"], "myStr env var")
-	assert.Equal(t, 123, myEnv.Vars["myInt"], "myInt env var")
+	assertVarSubNode(t, "123", myEnv.Vars["myStr"], "myStr env var")
+	assertVarSubNode(t, 123, myEnv.Vars["myInt"], "myInt env var")
 }
 
 func TestParse_SupportsAnchoringStages(t *testing.T) {
@@ -156,7 +157,7 @@ myStage1: &reused
     helm-package: {}
 
 myStage2: *reused
-`), Args{VarSource: testVarSource{}})
+`), Args{VarSource: testVarSource})
 	requireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -178,7 +179,7 @@ myStage2:
   <<: *reused
   myOtherStep:
     helm-package: {}
-`), Args{VarSource: testVarSource{}})
+`), Args{VarSource: testVarSource})
 	requireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -230,7 +231,7 @@ C:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse(strings.NewReader(tc.input), Args{VarSource: testVarSource{}})
+			got, errs := Parse(strings.NewReader(tc.input), Args{VarSource: testVarSource})
 			require.Empty(t, errs)
 			var gotOrder []string
 			for _, s := range got.Stages {
@@ -276,7 +277,7 @@ myStage:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := Parse(strings.NewReader(tc.input), Args{VarSource: testVarSource{}})
+			got, errs := Parse(strings.NewReader(tc.input), Args{VarSource: testVarSource})
 			requireNoErr(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
@@ -416,4 +417,28 @@ func getNode(t *testing.T, content string) *yaml.Node {
 	require.Equal(t, yaml.DocumentNode, doc.Kind, "document node")
 	require.Len(t, doc.Content, 1, "document node count")
 	return doc.Content[0]
+}
+
+func assertVarSubNode(t *testing.T, want any, actual VarSubNode, messageAndArgs ...any) {
+	var value any
+	var err error
+	switch actual.Node.ShortTag() {
+	case shortTagBool:
+		value, err = visitBool(actual.Node)
+	case shortTagInt:
+		value, err = visitInt(actual.Node)
+	case shortTagFloat:
+		value, err = visitFloat64(actual.Node)
+	case shortTagString:
+		value, err = visitString(actual.Node)
+	default:
+		assert.Fail(t, fmt.Sprintf("expected string, boolean, or number, but found %s",
+			prettyNodeTypeName(actual.Node)), messageAndArgs...)
+		return
+	}
+	if err != nil {
+		assert.Fail(t, err.Error(), messageAndArgs...)
+		return
+	}
+	assert.Equal(t, want, value, messageAndArgs...)
 }

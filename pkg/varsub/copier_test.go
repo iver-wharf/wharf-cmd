@@ -10,8 +10,8 @@ import (
 )
 
 var testSource = SourceMap{
-	"var1": "value1",
-	"var2": "value2",
+	"var1": Val{Value: "value1"},
+	"var2": Val{Value: "value2"},
 }
 
 func TestCopier(t *testing.T) {

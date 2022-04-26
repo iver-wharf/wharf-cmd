@@ -3,24 +3,15 @@ package wharfyml
 import (
 	"testing"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/stretchr/testify/assert"
 )
 
-type testVarSource struct{}
-
-func (testVarSource) Lookup(name string) (interface{}, bool) {
-	switch name {
-	case "REPO_GROUP":
-		return "iver-wharf", true
-	case "REPO_NAME":
-		return "wharf-cmd", true
-	case "REG_URL":
-		return "http://harbor.example.com", true
-	case "CHART_REPO":
-		return "http://charts.example.com", true
-	default:
-		return nil, false
-	}
+var testVarSource = varsub.SourceMap{
+	"REPO_GROUP": varsub.Val{Value: "iver-wharf"},
+	"REPO_NAME":  varsub.Val{Value: "wharf-cmd"},
+	"REG_URL":    varsub.Val{Value: "http://harbor.example.com"},
+	"CHART_REPO": varsub.Val{Value: "http://charts.example.com"},
 }
 
 func TestListParentDirsPossibleBuiltinVarsFiles(t *testing.T) {

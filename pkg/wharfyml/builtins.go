@@ -43,10 +43,14 @@ func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	nodeVarSource := make(varsub.SourceMap)
 	for _, varFile := range varFiles {
 		items, errs := tryReadVarsFileNodes(varFile.Path)
+		prettyPath := varFile.PrettyPath(currentDir)
 		errSlice = append(errSlice,
-			wrapPathErrorSlice(errs, varFile.PrettyPath(currentDir))...)
+			wrapPathErrorSlice(errs, prettyPath)...)
 		for _, item := range items {
-			nodeVarSource[item.key.value] = item.value
+			nodeVarSource[item.key.value] = varsub.Val{
+				Value:  VarSubNode{item.value},
+				Source: prettyPath,
+			}
 		}
 	}
 	return nodeVarSource, errSlice
