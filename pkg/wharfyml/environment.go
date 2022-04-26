@@ -20,6 +20,8 @@ type Env struct {
 	Vars   map[string]VarSubNode
 }
 
+// VarSource returns a varsub.Source compliant value of the environment
+// variables.
 func (e Env) VarSource() varsub.Source {
 	source := make(varsub.SourceMap)
 	name := fmt.Sprintf(".wharf-ci.yml, environment %q", e.Name)

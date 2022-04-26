@@ -94,6 +94,8 @@ var statsFields = []string{
 	"REPO_GROUP",
 }
 
+// ListVars will return a slice of all variables that this varsub Source
+// provides.
 func (s Stats) ListVars() []varsub.Var {
 	var vars []varsub.Var
 	for _, key := range statsFields {

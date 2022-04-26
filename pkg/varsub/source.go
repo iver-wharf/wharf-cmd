@@ -8,19 +8,25 @@ type Source interface {
 	// well as true on success, or false if the variable was not found.
 	Lookup(name string) (Var, bool)
 
+	// ListVars will return a slice of all variables that this varsub Source
+	// provides.
 	ListVars() []Var
 }
 
+// Var is a single varsub variable, with it's Key (name), Value, and optionally
+// also a Source that declares where this variable comes from.
 type Var struct {
 	Key    string
 	Value  any
 	Source string
 }
 
+// String implements the fmt.Stringer interface.
 func (v Var) String() string {
 	return stringify(v.Value)
 }
 
+// GoString implements the fmt.GoStringer interface.
 func (v Var) GoString() string {
 	return fmt.Sprintf("{%q:%[2]T(%#[2]v)}", v.Key, v.Value)
 }
@@ -41,6 +47,8 @@ func (s SourceSlice) Lookup(name string) (Var, bool) {
 	return Var{}, false
 }
 
+// ListVars will return a slice of all variables that this varsub Source
+// provides.
 func (s SourceSlice) ListVars() []Var {
 	var vars []Var
 	for _, inner := range s {
@@ -52,11 +60,14 @@ func (s SourceSlice) ListVars() []Var {
 // ensure it conforms to interface
 var _ Source = SourceSlice{}
 
+// Val is a slimmed down varsub.Var, without the Key, as the SourceMap will
+// populate the Key field automatically based on the map keys.
 type Val struct {
 	Value  any
 	Source string
 }
 
+// String implements the fmt.Stringer interface.
 func (v Val) String() string {
 	return stringify(v.Value)
 }
@@ -79,6 +90,8 @@ func (s SourceMap) Lookup(name string) (Var, bool) {
 // ensure it conforms to interface
 var _ Source = SourceMap{}
 
+// ListVars will return a slice of all variables that this varsub Source
+// provides.
 func (s SourceMap) ListVars() []Var {
 	var vars []Var
 	for k, v := range s {
