@@ -18,8 +18,14 @@ var varsFlags = struct {
 var varsCmd = &cobra.Command{
 	Use:   "vars [path]",
 	Short: "Print all variables that would be used for a .wharf-ci.yml file",
-	Long:  ``,
-	Args:  cobra.MaximumNArgs(1),
+	Long: `Parses a .wharf-ci.yml and all .wharf-vars.yml files as if it was
+running "wharf run", but prints out all the variables that would be used
+instead of performing the build.
+
+The variables sources are printed in the order of priority, where the latter
+sources override the former sources, if a variable would have the same name
+in multiple sources.`,
+	Args: cobra.MaximumNArgs(1),
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
