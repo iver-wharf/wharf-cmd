@@ -8,12 +8,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// LogLevel is a pflag.Value-compatible logging level flag for wharf-core's
+// logger.Level type.
 type LogLevel logger.Level
 
+// Level is a utility function to return the wharf-core logger.Level value.
 func (l LogLevel) Level() logger.Level {
 	return logger.Level(l)
 }
 
+// Set implements the pflag.Value and fmt.Stringer interfaces.
+// This returns a human-readable representation of the loglevel.
 func (l *LogLevel) String() string {
 	switch l.Level() {
 	case logger.LevelDebug:
@@ -31,6 +36,8 @@ func (l *LogLevel) String() string {
 	}
 }
 
+// Set implements the pflag.Value interface.
+// This parses the loglevel string and updates the loglevel variable.
 func (l *LogLevel) Set(val string) error {
 	newLevel, err := parseLevel(val)
 	if err != nil {
@@ -65,10 +72,13 @@ func parseLevel(lvl string) (logger.Level, error) {
 	}
 }
 
+// Type implements the pflag.Value interface.
+// The value is only used in help text.
 func (l *LogLevel) Type() string {
 	return "loglevel"
 }
 
+// CompleteLogLevel returns completions for the LogLevel type.
 func CompleteLogLevel(*cobra.Command, []string, string) ([]string, cobra.ShellCompDirective) {
 	// Contains less than actually possible, to not bloat the completions
 	return []string{
