@@ -50,7 +50,7 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 			if !ok {
 				continue
 			}
-			matchVal = v
+			matchVal = v.Value
 			if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
 				var err error
 				matchVal, err = substituteRec(str, source, append(usedParams, match.Name))

@@ -59,11 +59,12 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		if err != nil {
 			return err
 		}
-		def, varSource, err := parseBuildDefinition(currentDir)
+		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
+			Env: runFlags.env,
+		})
 		if err != nil {
 			return err
 		}
-		log.Debug().Message("Successfully parsed .wharf-ci.yml")
 
 		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
 		//
@@ -99,7 +100,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				ResultStore:   store,
 				SkipGitIgnore: runFlags.noGitIgnore,
 				TarStore:      tarStore,
-				VarSource:     varSource,
+				VarSource:     def.VarSource,
 			})
 		if err != nil {
 			return err
@@ -155,7 +156,7 @@ func parseCurrentDir(dirArg string) (string, error) {
 		}
 		return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
 	}
-	stat, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
+	_, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("missing .wharf-ci.yml file in dir: %s", abs)
@@ -165,17 +166,18 @@ func parseCurrentDir(dirArg string) (string, error) {
 	return abs, nil
 }
 
-func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source, error) {
+func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
 	var varSources varsub.SourceSlice
+	if ymlArgs.VarSource != nil {
+		varSources = append(varSources, ymlArgs.VarSource)
+	}
 
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, nil, errors.New("failed to parse variable files")
+		return wharfyml.Definition{}, errors.New("failed to parse variable files")
 	}
-	if varFileSource != nil {
-		varSources = append(varSources, varFileSource)
-	}
+	varSources = append(varSources, varFileSource)
 
 	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
@@ -187,20 +189,17 @@ func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source
 		varSources = append(varSources, gitStats)
 	}
 
+	ymlArgs.VarSource = varSources
+
 	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
 	log.Debug().WithString("path", ymlPath).Message("Parsing .wharf-ci.yml file.")
-	def, errs := wharfyml.ParseFile(ymlPath, wharfyml.Args{
-		Env:       runFlags.env,
-		VarSource: varSources,
-	})
+	def, errs := wharfyml.ParseFile(ymlPath, ymlArgs)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, nil, errors.New("failed to parse .wharf-ci.yml")
+		return wharfyml.Definition{}, errors.New("failed to parse .wharf-ci.yml")
 	}
-	if def.Env != nil {
-		varSources = append(varSources, varsub.SourceMap(def.Env.Vars))
-	}
-	return def, varSources, nil
+	log.Debug().Message("Successfully parsed .wharf-ci.yml")
+	return def, nil
 }
 
 func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (context.Context, workerserver.Server) {
@@ -208,10 +207,8 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 	server := workerserver.New(store, nil)
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			server.Close()
-		}
+		<-ctx.Done()
+		server.Close()
 	}()
 
 	go func() {
@@ -279,8 +276,56 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 
 	runCmd.Flags().StringVarP(&runFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
+	runCmd.RegisterFlagCompletionFunc("stage", completeWharfYmlStage)
 	runCmd.Flags().StringVarP(&runFlags.env, "environment", "e", "", "Environment selection")
+	runCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
+}
+
+func completeWharfYmlStage(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	def, err := parseWharfYmlForCompletions(cmd, args)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var stages []string
+	for _, stage := range def.Stages {
+		stages = append(stages, stage.Name)
+	}
+	return stages, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completeWharfYmlEnv(cmd *cobra.Command, args []string, _ string) ([]string, cobra.ShellCompDirective) {
+	def, err := parseWharfYmlForCompletions(cmd, args)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var envs []string
+	for env := range def.Envs {
+		envs = append(envs, env)
+	}
+	return envs, cobra.ShellCompDirectiveNoFileComp
+}
+
+func parseWharfYmlForCompletions(cmd *cobra.Command, args []string) (wharfyml.Definition, error) {
+	currentDir, err := parseCurrentDir(slices.SafeGet(args, 0))
+	if err != nil {
+		return wharfyml.Definition{}, err
+	}
+
+	var ymlArgs wharfyml.Args
+	envFlag := cmd.Flag("environment")
+	if envFlag.Changed {
+		ymlArgs.Env = envFlag.Value.String()
+	} else {
+		ymlArgs.SkipStageFiltering = true
+	}
+
+	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
+
+	// Intentionally ignore any parse errors, as syntax errors or missing fields
+	// for a step type are irrelevant for the completions.
+	def, _ := wharfyml.ParseFile(ymlPath, ymlArgs)
+	return def, nil
 }

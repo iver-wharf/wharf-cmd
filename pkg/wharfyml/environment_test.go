@@ -72,7 +72,9 @@ myEnv:
 		"myString": "foo bar",
 		"myBool":   true,
 	}
-	assert.Equal(t, want, env.Vars)
+	for k, wantValue := range want {
+		assertVarSubNode(t, wantValue, env.Vars[k], "env.Vars[%q]", k)
+	}
 }
 
 func TestVisitStageEnvironments_ErrIfNotArray(t *testing.T) {

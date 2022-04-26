@@ -169,7 +169,7 @@ func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
 	}
 	defer portConn.Close()
 
-	worker, err := a.newWorkerClient(a.namespace, podName, portConn)
+	worker, err := a.newWorkerClient(portConn)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
 	return nil
 }
 
-func (a k8sAggr) newWorkerClient(namespace, podName string, portConn portConnection) (workerclient.Client, error) {
+func (a k8sAggr) newWorkerClient(portConn portConnection) (workerclient.Client, error) {
 	// Intentionally "localhost" because we're port-forwarding
 	return workerclient.New(fmt.Sprintf("http://localhost:%d", portConn.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes

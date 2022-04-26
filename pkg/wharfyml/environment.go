@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,7 +17,21 @@ var (
 type Env struct {
 	Source Pos
 	Name   string
-	Vars   map[string]any
+	Vars   map[string]VarSubNode
+}
+
+// VarSource returns a varsub.Source compliant value of the environment
+// variables.
+func (e Env) VarSource() varsub.Source {
+	source := make(varsub.SourceMap)
+	name := fmt.Sprintf(".wharf-ci.yml, environment %q", e.Name)
+	for k, v := range e.Vars {
+		source[k] = varsub.Val{
+			Value:  v,
+			Source: name,
+		}
+	}
+	return source
 }
 
 // EnvRef is a reference to an environments definition. Used in stages.
@@ -41,39 +56,22 @@ func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, Errors) {
 func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice Errors) {
 	env = Env{
 		Name:   nameNode.value,
-		Vars:   make(map[string]any),
+		Vars:   make(map[string]VarSubNode),
 		Source: newPosNode(node),
 	}
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)
 	for _, n := range nodes {
-		val, err := visitEnvironmentVariableNode(n.value)
-		if err != nil {
+		if err := verifyEnvironmentVariableNode(n.value); err != nil {
 			errSlice.add(wrapPathError(err, n.key.value))
 		}
-		env.Vars[n.key.value] = val
+		env.Vars[n.key.value] = VarSubNode{n.value}
 	}
 	return
 }
 
-func visitEnvironmentVariableNode(node *yaml.Node) (any, error) {
-	if err := verifyKind(node, "string, boolean, or number", yaml.ScalarNode); err != nil {
-		return nil, err
-	}
-	switch node.ShortTag() {
-	case shortTagBool:
-		return visitBool(node)
-	case shortTagInt:
-		return visitInt(node)
-	case shortTagFloat:
-		return visitFloat64(node)
-	case shortTagString:
-		return visitString(node)
-	default:
-		return nil, wrapPosErrorNode(fmt.Errorf(
-			"%w: expected string, boolean, or number, but found %s",
-			ErrInvalidFieldType, prettyNodeTypeName(node)), node)
-	}
+func verifyEnvironmentVariableNode(node *yaml.Node) error {
+	return verifyKind(node, "string, boolean, or number", yaml.ScalarNode)
 }
 
 func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice Errors) {

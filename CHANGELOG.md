@@ -49,6 +49,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84)
 
+- Added "vars" command `wharf vars` that prints out all the variables that
+  would be used in a `wharf run` invocation. (#93)
+
 - Added support for `.gitignore` ignored files and directories when transferring
   repo in `wharf run`. Can be disabled via new `--no-gitignore` flag. (#85)
 
@@ -106,6 +109,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   wharf completion powershell --help
   wharf completion zsh --help
   ```
+
+- Added `--stage` and `--environment` completions to `wharf run` based on the
+  parsed `.wharf-ci.yml` file. (#91)
+
+- Added `--loglevel` completions. (#95)
 
 - Added Git integration by executing `git` locally to obtain current branch,
   commit SHA, tags, etc. (#67, #78)

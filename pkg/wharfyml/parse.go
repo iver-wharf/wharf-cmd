@@ -15,8 +15,9 @@ import (
 // Args specify arguments used when parsing the .wharf-ci.yml file, such as what
 // environment to use for variable substitution.
 type Args struct {
-	Env       string
-	VarSource varsub.Source
+	Env                string
+	VarSource          varsub.Source
+	SkipStageFiltering bool
 }
 
 // ParseFile will parse the file at the given path.

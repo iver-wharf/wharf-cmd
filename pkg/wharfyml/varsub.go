@@ -14,6 +14,17 @@ var (
 	ErrUnsupportedVarSubType = errors.New("unsupported variable substitution value")
 )
 
+// VarSubNode is a custom varsub variable type that envelops a YAML node.
+// Mostly only used internally inside the wharfyml package.
+type VarSubNode struct {
+	Node *yaml.Node
+}
+
+// String implements the fmt.Stringer interface.
+func (v VarSubNode) String() string {
+	return v.Node.Value
+}
+
 func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	if source == nil {
 		return node, nil
@@ -54,8 +65,6 @@ func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 	case nil:
 		clone.Tag = shortTagNull
 		clone.Value = ""
-	case string:
-		clone.SetString(val)
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
 		clone.Tag = shortTagInt
@@ -75,6 +84,12 @@ func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 		}
 	case *yaml.Node:
 		return val, nil
+	case VarSubNode:
+		return val.Node, nil
+	case string:
+		clone.SetString(val)
+	case fmt.Stringer:
+		clone.SetString(val.String())
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedVarSubType, val)
 		return nil, wrapPosErrorNode(err, node)
