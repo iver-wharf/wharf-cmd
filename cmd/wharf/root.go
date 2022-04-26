@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-core/pkg/app"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
@@ -16,7 +17,7 @@ import (
 )
 
 var isLoggingInitialized bool
-var loglevel string
+var loglevel flagtypes.LogLevel = flagtypes.LogLevel(logger.LevelInfo)
 
 var rootCmd = &cobra.Command{
 	SilenceErrors: true,
@@ -81,7 +82,8 @@ func versionString(v app.Version) string {
 func init() {
 	cobra.OnInitialize(initLogging)
 	rootCmd.InitDefaultVersionFlag()
-	rootCmd.PersistentFlags().StringVar(&loglevel, "loglevel", "info", "Show debug information")
+	rootCmd.PersistentFlags().VarP(&loglevel, "loglevel", "l", "Show debug information")
+	rootCmd.RegisterFlagCompletionFunc("loglevel", flagtypes.CompleteLogLevel)
 }
 
 func initLoggingIfNeeded() {
@@ -91,41 +93,12 @@ func initLoggingIfNeeded() {
 }
 
 func initLogging() {
-	parsedLogLevel, err := parseLevel(loglevel)
-	if err != nil {
-		parsedLogLevel = logger.LevelInfo
-	}
 	logConfig := consolepretty.DefaultConfig
-	if parsedLogLevel != logger.LevelDebug {
+	if loglevel.Level() != logger.LevelDebug {
 		logConfig.DisableCaller = true
 		logConfig.DisableDate = true
 		logConfig.ScopeMinLengthAuto = false
 	}
-	logger.AddOutput(parsedLogLevel, consolepretty.New(logConfig))
-	if err != nil {
-		log.Warn().WithStringer("loglevel", parsedLogLevel).Message("Unable to parse loglevel. Defaulting to 'INFO'.")
-		parsedLogLevel = logger.LevelInfo
-	} else {
-		log.Debug().WithStringer("loglevel", parsedLogLevel).Message("Setting log-level.")
-	}
+	logger.AddOutput(loglevel.Level(), consolepretty.New(logConfig))
 	isLoggingInitialized = true
-}
-
-// parseLevel is added in https://github.com/iver-wharf/wharf-core/pull/14 but
-// that PR has not yet merged at the time or writing.
-func parseLevel(lvl string) (logger.Level, error) {
-	switch strings.ToLower(lvl) {
-	case "debug":
-		return logger.LevelDebug, nil
-	case "info":
-		return logger.LevelInfo, nil
-	case "warn":
-		return logger.LevelWarn, nil
-	case "error":
-		return logger.LevelError, nil
-	case "panic":
-		return logger.LevelPanic, nil
-	default:
-		return logger.LevelDebug, fmt.Errorf("invalid logging level: %q", lvl)
-	}
 }
