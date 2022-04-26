@@ -24,8 +24,6 @@ orchestration is handled inside the Kubernetes cluster, in comparison to the
 "wharf run" command that uses your local machine to orchestrate the build.
 `,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		go handleCancelSignals(rootCancel)
-
 		restConfig, ns, err := loadKubeconfig(provisionerFlags.k8sOverrides)
 		if err != nil {
 			return err

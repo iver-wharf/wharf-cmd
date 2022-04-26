@@ -49,10 +49,6 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 	ValidArgsFunction: func(cmd *cobra.Command, args []string, toComplete string) ([]string, cobra.ShellCompDirective) {
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		go handleCancelSignals(rootCancel)
-		return nil
-	},
 	RunE: func(cmd *cobra.Command, args []string) error {
 		kubeconfig, ns, err := loadKubeconfig(runFlags.k8sOverrides)
 		if err != nil {

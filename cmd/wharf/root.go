@@ -35,6 +35,9 @@ var rootCmd = &cobra.Command{
 	Use:           "wharf",
 	Short:         "Ci application to generate .wharf-ci.yml files and execute them against a kubernetes cluster",
 	Long:          ``,
+	PersistentPreRun: func(cmd *cobra.Command, args []string) {
+		go handleCancelSignals(rootCancel)
+	},
 }
 
 var rootContext, rootCancel = context.WithCancel(context.Background())
