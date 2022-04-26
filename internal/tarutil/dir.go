@@ -6,11 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-
-	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
-
-var log = logger.NewScoped("TAR")
 
 var fileSeparatorString = string(filepath.Separator)
 
