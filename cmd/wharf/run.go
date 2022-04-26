@@ -177,6 +177,8 @@ func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.De
 		varSources = append(varSources, gitStats)
 	}
 
+	varSources = append(varSources, varsub.NewOSEnvSource("WHARF_VAR_"))
+
 	ymlArgs.VarSource = varSources
 
 	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
