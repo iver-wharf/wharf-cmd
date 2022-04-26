@@ -137,7 +137,7 @@ func useShorthandHomePrefix(path, home string) string {
 // Returned paths include the filename.
 //
 // The ordering of the returned filenames are in the order of which file should
-// have priority over the other, with the highest priority, and file that should
+// have priority over the other; with the file of highest priority that should
 // override all the others, first.
 func ListPossibleVarsFiles(currentDir string) []VarFile {
 	varFiles := listParentDirsPossibleVarsFiles(currentDir)
