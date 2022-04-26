@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/cli/safeexec"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 )
 
 var (
@@ -43,29 +44,66 @@ type Stats struct {
 //
 // The string name -> field mapping is based on the documentation:
 // https://iver-wharf.github.io/#/usage-wharfyml/variables/built-in-variables
-func (s Stats) Lookup(name string) (interface{}, bool) {
+func (s Stats) Lookup(name string) (varsub.Var, bool) {
+	var value any
 	switch name {
 	case "GIT_BRANCH", "REPO_BRANCH":
-		return s.CurrentBranch, true
+		value = s.CurrentBranch
 	case "GIT_COMMIT":
-		return s.CommitHash, true
+		value = s.CommitHash
 	case "GIT_COMMIT_AUTHOR_DATE":
-		return s.CommitAuthorDate, true
+		value = s.CommitAuthorDate
 	case "GIT_COMMIT_COMMITTER_DATE":
-		return s.CommitAuthorDate, true
+		value = s.CommitAuthorDate
 	case "GIT_COMMIT_SUBJECT":
-		return s.CommitSubject, true
+		value = s.CommitSubject
 	case "GIT_SAFEBRANCH":
-		return s.CurrentBranchSafe, true
+		value = s.CurrentBranchSafe
 	case "GIT_TAG":
-		return s.LatestTag, true
+		value = s.LatestTag
 	case "REPO_NAME":
-		return s.EstimatedRepoName, s.EstimatedRepoName != ""
+		if s.EstimatedRepoName == "" {
+			return varsub.Var{}, false
+		}
+		value = s.EstimatedRepoName
 	case "REPO_GROUP":
-		return s.EstimatedRepoGroup, s.EstimatedRepoGroup != ""
+		if s.EstimatedRepoGroup == "" {
+			return varsub.Var{}, false
+		}
+		value = s.EstimatedRepoGroup
 	default:
-		return nil, false
+		return varsub.Var{}, false
 	}
+	return varsub.Var{
+		Key:    name,
+		Value:  value,
+		Source: "git",
+	}, true
+}
+
+var statsFields = []string{
+	"GIT_BRANCH",
+	"REPO_BRANCH",
+	"GIT_COMMIT",
+	"GIT_COMMIT_AUTHOR_DATE",
+	"GIT_COMMIT_COMMITTER_DATE",
+	"GIT_COMMIT_SUBJECT",
+	"GIT_SAFEBRANCH",
+	"GIT_TAG",
+	"REPO_NAME",
+	"REPO_GROUP",
+}
+
+func (s Stats) ListVars() []varsub.Var {
+	var vars []varsub.Var
+	for _, key := range statsFields {
+		value, ok := s.Lookup(key)
+		if !ok {
+			continue
+		}
+		vars = append(vars, value)
+	}
+	return vars
 }
 
 func (s Stats) String() string {

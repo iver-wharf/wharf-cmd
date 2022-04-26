@@ -15,10 +15,11 @@ var (
 
 // Definition is the .wharf-ci.yml build definition structure.
 type Definition struct {
-	Inputs map[string]Input
-	Envs   map[string]Env
-	Env    *Env
-	Stages []Stage
+	Inputs    map[string]Input
+	Envs      map[string]Env
+	Env       *Env
+	Stages    []Stage
+	VarSource varsub.Source
 }
 
 // ListAllSteps aggregates steps from all stages into a single slice.
@@ -51,10 +52,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	}
 
 	var sources varsub.SourceSlice
-	if args.VarSource != nil {
-		sources = append(sources, args.VarSource)
-	}
 
+	// Add environment varsub.Source first, as it should have priority
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)
 	if err != nil {
 		err = wrapPosErrorNode(err, envSourceNode)
@@ -62,7 +61,11 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 		errSlice.add(err) // Non fatal error
 	} else if targetEnv != nil {
 		def.Env = targetEnv
-		sources = append(sources, varsub.SourceMap(targetEnv.Vars))
+		sources = append(sources, targetEnv.VarSource())
+	}
+
+	if args.VarSource != nil {
+		sources = append(sources, args.VarSource)
 	}
 
 	stages, errs := visitDefStageNodes(nodes, sources)
@@ -71,6 +74,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	errSlice.add(validateDefEnvironmentUsage(def)...)
 	// filtering intentionally performed after validation
 	def.Stages = filterStagesOnEnv(def.Stages, args.Env)
+
+	def.VarSource = sources
 	return
 }
 
