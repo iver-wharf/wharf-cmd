@@ -143,7 +143,7 @@ func parseCurrentDir(dirArg string) (string, error) {
 		}
 		return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
 	}
-	stat, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
+	_, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("missing .wharf-ci.yml file in dir: %s", abs)
@@ -161,9 +161,7 @@ func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source
 		logParseErrors(errs, currentDir)
 		return wharfyml.Definition{}, nil, errors.New("failed to parse variable files")
 	}
-	if varFileSource != nil {
-		varSources = append(varSources, varFileSource)
-	}
+	varSources = append(varSources, varFileSource)
 
 	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
@@ -196,10 +194,8 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 	server := workerserver.New(store, nil)
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			server.Close()
-		}
+		<-ctx.Done()
+		server.Close()
 	}()
 
 	go func() {
