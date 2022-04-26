@@ -201,8 +201,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added collecting of build logs and status updates for build steps using
   `resultstore`. (#71)
 
-- Added functionality to cancel builds via the signals (one signal for graceful
-  shutdown with a grace period, two to forcefully shutdown immediately): (#90)
+- Added cancelling of builds via signals (once to shutdown with a grace period,
+  twice for a forceful shutdown): (#90)
 
   - `os.Interrupt`
   - `os.Kill`
