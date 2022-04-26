@@ -20,7 +20,10 @@ var aggregatorCmd = &cobra.Command{
 After streaming from a worker is done, the aggregator will kill it using the
 kill endpoint.`,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		go handleCancelSignals(rootCancel)
+		if err := callParentPersistentPreRuns(cmd, args); err != nil {
+			return err
+		}
+
 		restConfig, ns, err := loadKubeconfig(aggregatorFlags.k8sOverrides)
 		if err != nil {
 			return err
