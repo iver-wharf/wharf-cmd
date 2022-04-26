@@ -59,11 +59,12 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		if err != nil {
 			return err
 		}
-		def, varSource, err := parseBuildDefinition(currentDir)
+		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
+			Env: runFlags.env,
+		})
 		if err != nil {
 			return err
 		}
-		log.Debug().Message("Successfully parsed .wharf-ci.yml")
 
 		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
 		//
@@ -87,7 +88,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				ResultStore:   store,
 				SkipGitIgnore: runFlags.noGitIgnore,
 				TarStore:      tarStore,
-				VarSource:     varSource,
+				VarSource:     def.VarSource,
 			})
 		if err != nil {
 			return err
@@ -143,7 +144,7 @@ func parseCurrentDir(dirArg string) (string, error) {
 		}
 		return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
 	}
-	stat, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
+	_, err = os.Stat(filepath.Join(abs, ".wharf-ci.yml"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("missing .wharf-ci.yml file in dir: %s", abs)
@@ -153,17 +154,18 @@ func parseCurrentDir(dirArg string) (string, error) {
 	return abs, nil
 }
 
-func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source, error) {
+func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
 	var varSources varsub.SourceSlice
+	if ymlArgs.VarSource != nil {
+		varSources = append(varSources, ymlArgs.VarSource)
+	}
 
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, nil, errors.New("failed to parse variable files")
+		return wharfyml.Definition{}, errors.New("failed to parse variable files")
 	}
-	if varFileSource != nil {
-		varSources = append(varSources, varFileSource)
-	}
+	varSources = append(varSources, varFileSource)
 
 	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
@@ -175,20 +177,17 @@ func parseBuildDefinition(currentDir string) (wharfyml.Definition, varsub.Source
 		varSources = append(varSources, gitStats)
 	}
 
+	ymlArgs.VarSource = varSources
+
 	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
 	log.Debug().WithString("path", ymlPath).Message("Parsing .wharf-ci.yml file.")
-	def, errs := wharfyml.ParseFile(ymlPath, wharfyml.Args{
-		Env:       runFlags.env,
-		VarSource: varSources,
-	})
+	def, errs := wharfyml.ParseFile(ymlPath, ymlArgs)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, nil, errors.New("failed to parse .wharf-ci.yml")
+		return wharfyml.Definition{}, errors.New("failed to parse .wharf-ci.yml")
 	}
-	if def.Env != nil {
-		varSources = append(varSources, varsub.SourceMap(def.Env.Vars))
-	}
-	return def, varSources, nil
+	log.Debug().Message("Successfully parsed .wharf-ci.yml")
+	return def, nil
 }
 
 func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (context.Context, workerserver.Server) {
@@ -196,10 +195,8 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 	server := workerserver.New(store, nil)
 
 	go func() {
-		select {
-		case <-ctx.Done():
-			server.Close()
-		}
+		<-ctx.Done()
+		server.Close()
 	}()
 
 	go func() {

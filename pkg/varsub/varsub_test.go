@@ -98,7 +98,7 @@ func TestMatches(t *testing.T) {
 
 func TestSubstitute(t *testing.T) {
 	source := SourceMap{
-		"lorem": "ipsum",
+		"lorem": Val{Value: "ipsum"},
 	}
 	tests := []struct {
 		name  string
@@ -180,49 +180,49 @@ func TestSubstitute_nonStrings(t *testing.T) {
 	}{
 		{
 			name:   "full/bool",
-			source: SourceMap{"lorem": true},
+			source: SourceMap{"lorem": Val{Value: true}},
 			value:  "${lorem}",
 			want:   true,
 		},
 		{
 			name:   "full/int",
-			source: SourceMap{"lorem": 123},
+			source: SourceMap{"lorem": Val{Value: 123}},
 			value:  "${lorem}",
 			want:   123,
 		},
 		{
 			name:   "full/float",
-			source: SourceMap{"lorem": 123.0},
+			source: SourceMap{"lorem": Val{Value: 123.0}},
 			value:  "${lorem}",
 			want:   123.0,
 		},
 		{
 			name:   "full/nil",
-			source: SourceMap{"lorem": nil},
+			source: SourceMap{"lorem": Val{Value: nil}},
 			value:  "${lorem}",
 			want:   nil,
 		},
 		{
 			name:   "embed/bool",
-			source: SourceMap{"lorem": true},
+			source: SourceMap{"lorem": Val{Value: true}},
 			value:  "foo ${lorem} bar",
 			want:   "foo true bar",
 		},
 		{
 			name:   "embed/int",
-			source: SourceMap{"lorem": 123},
+			source: SourceMap{"lorem": Val{Value: 123}},
 			value:  "foo ${lorem} bar",
 			want:   "foo 123 bar",
 		},
 		{
 			name:   "embed/float",
-			source: SourceMap{"lorem": 123.0},
+			source: SourceMap{"lorem": Val{Value: 123.0}},
 			value:  "foo ${lorem} bar",
 			want:   "foo 123 bar",
 		},
 		{
 			name:   "embed/nil",
-			source: SourceMap{"lorem": nil},
+			source: SourceMap{"lorem": Val{Value: nil}},
 			value:  "foo ${lorem} bar",
 			want:   "foo  bar",
 		},
@@ -247,8 +247,8 @@ func TestSubstitute_recursive(t *testing.T) {
 		{
 			name: "string",
 			source: SourceMap{
-				"one": "11${two}11",
-				"two": 2222,
+				"one": Val{Value: "11${two}11"},
+				"two": Val{Value: 2222},
 			},
 			value: "00${one}00",
 			want:  "001122221100",
@@ -256,11 +256,11 @@ func TestSubstitute_recursive(t *testing.T) {
 		{
 			name: "typed",
 			source: SourceMap{
-				"one": "${two}",
-				"two": 2222,
+				"one": Val{Value: "${two}"},
+				"two": Val{Value: 222},
 			},
 			value: "${one}",
-			want:  2222,
+			want:  222,
 		},
 	}
 
@@ -275,7 +275,7 @@ func TestSubstitute_recursive(t *testing.T) {
 
 func TestSubstitute_errIfRecursiveLoop(t *testing.T) {
 	source := SourceMap{
-		"lorem": "ipsum: ${lorem}",
+		"lorem": Val{Value: "ipsum: ${lorem}"},
 	}
 	result, err := Substitute("root: ${lorem}", source)
 	assert.ErrorIsf(t, err, ErrRecursiveLoop, "unexpected result: %q", result)
