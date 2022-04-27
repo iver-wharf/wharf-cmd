@@ -47,7 +47,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added aggregator command `wharf aggregator serve` that looks for
   wharf-cmd-worker pods and pipes build results over to the wharf-api. (#77)
 
-- Added new implementation for `wharf run`. (#33, #45, #66, #84)
+- Added new implementation for `wharf run`. (#33, #45, #66, #84, #107)
 
 - Added "vars" command `wharf vars` that prints out all the variables that
   would be used in a `wharf run` invocation. (#93, #98)

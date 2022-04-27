@@ -32,9 +32,9 @@ var (
 func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456",
-		"wharf.iver.com/stage-id": "789",
-		"wharf.iver.com/step-id": "789",
-		"wharf.iver.com/step-name": step.Name,
+		"wharf.iver.com/stage-id":   "789",
+		"wharf.iver.com/step-id":    "789",
+		"wharf.iver.com/step-name":  step.Name,
 	}
 	if stage, ok := contextStageName(ctx); ok {
 		annotations["wharf.iver.com/stage-name"] = stage
@@ -130,7 +130,7 @@ func sanitizePodName(name string) string {
 
 func getOwnerReferences() []metav1.OwnerReference {
 	var (
-		enabled bool
+		enabled   bool
 		name, uid string
 	)
 	if err := env.BindMultiple(map[any]string{
