@@ -186,7 +186,7 @@ func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	start := time.Now()
 	status := workermodel.StatusSuccess
 	err := r.runStepError(ctx)
-	if errors.Is(err, context.Canceled) {
+	if errors.Is(ctx.Err(), context.Canceled) {
 		status = workermodel.StatusCancelled
 	} else if err != nil {
 		status = workermodel.StatusFailed

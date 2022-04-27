@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -93,6 +94,9 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
 			Message("Done with stage.")
 		result.Status = workermodel.StatusSuccess
+	}
+	if errors.Is(ctx.Err(), context.Canceled) {
+		result.Status = workermodel.StatusCancelled
 	}
 	result.Duration = time.Since(start)
 	return result, nil

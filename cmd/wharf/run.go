@@ -119,7 +119,8 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		if err != nil {
 			return err
 		}
-		if res.Status != workermodel.StatusSuccess {
+
+		if res.Status != workermodel.StatusSuccess && res.Status != workermodel.StatusCancelled {
 			return errors.New("build failed")
 		}
 		log.Info().
