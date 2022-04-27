@@ -70,6 +70,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   # On collisions, the last value is used:
   wharf run --input myVar=foo --input myVar=bar
   # => [ "myVar": "bar" ]
+  ```
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
