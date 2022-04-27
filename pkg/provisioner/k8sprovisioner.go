@@ -151,7 +151,9 @@ func createPodMeta() v1.Pod {
 						"/bin/sh", "-c",
 						`
 make deps-go swag install && \
-cd test/wharf-ci-simple && \
+cd test && \
+export WHARF_VAR_CHART_REPO="chart_repo" && \
+export WHARF_VAR_REG_URL="reg_url" && \
 wharf run --serve --stage test --loglevel debug`,
 					},
 					WorkingDir:   repoVolumeMountPath,
