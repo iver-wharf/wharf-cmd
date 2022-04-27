@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/yaml.v3"
 )
 
@@ -16,8 +15,6 @@ const (
 	builtInVarsFile    = "wharf-vars.yml"
 	builtInVarsDotfile = ".wharf-vars.yml"
 )
-
-var log = logger.NewScoped("WHARFYML")
 
 // ParseVarFiles produces a varsub.Source of *yaml.Node values. The files it
 // checks depends on your OS.
