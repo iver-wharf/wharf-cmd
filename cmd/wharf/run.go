@@ -172,6 +172,8 @@ func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.De
 		varSources = append(varSources, ymlArgs.VarSource)
 	}
 
+	varSources = append(varSources, varsub.NewOSEnvSource("WHARF_VAR_"))
+
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
@@ -188,8 +190,6 @@ func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.De
 			gitStats.String())
 		varSources = append(varSources, gitStats)
 	}
-
-	varSources = append(varSources, varsub.NewOSEnvSource("WHARF_VAR_"))
 
 	ymlArgs.VarSource = varSources
 
