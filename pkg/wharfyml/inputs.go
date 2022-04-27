@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,19 +16,36 @@ var (
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
 
+// Inputs is a map of Input field definitions, keyed on their names.
+type Inputs map[string]Input
+
+// DefaultsVarSource returns a varsub.Source of the default values from this
+// .wharf-ci.yml's input definitions.
+func (i Inputs) DefaultsVarSource() varsub.Source {
+	source := make(varsub.SourceMap, len(i))
+	for k, input := range i {
+		source[k] = varsub.Val{
+			Value:  input.DefaultValue(),
+			Source: ".wharf-ci.yml, input defaults",
+		}
+	}
+	return source
+}
+
 // Input is an interface that is implemented by all input types.
 type Input interface {
 	InputTypeName() string
 	InputVarName() string
+	DefaultValue() any
 }
 
-func visitInputsNode(node *yaml.Node) (inputs map[string]Input, errSlice Errors) {
+func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice Errors) {
 	nodes, err := visitSequence(node)
 	if err != nil {
 		errSlice.add(err)
 		return
 	}
-	inputs = make(map[string]Input, len(nodes))
+	inputs = make(Inputs, len(nodes))
 	for i, inputNode := range nodes {
 		input, errs := visitInputTypeNode(inputNode)
 		if len(errs) > 0 {

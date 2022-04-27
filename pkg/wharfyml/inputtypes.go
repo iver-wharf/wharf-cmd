@@ -17,6 +17,11 @@ func (i InputString) InputVarName() string {
 	return i.Name
 }
 
+// DefaultValue returns the default value for this input variable.
+func (i InputString) DefaultValue() any {
+	return i.Default
+}
+
 // InputPassword represents a string (text) input value, but where the value
 // should be concealed in user interfaces.
 type InputPassword struct {
@@ -33,6 +38,11 @@ func (InputPassword) InputTypeName() string {
 // InputVarName returns the name of this input variable.
 func (i InputPassword) InputVarName() string {
 	return i.Name
+}
+
+// DefaultValue returns the default value for this input variable.
+func (i InputPassword) DefaultValue() any {
+	return i.Default
 }
 
 // InputNumber represents a number (integer or float) input value.
@@ -52,6 +62,11 @@ func (i InputNumber) InputVarName() string {
 	return i.Name
 }
 
+// DefaultValue returns the default value for this input variable.
+func (i InputNumber) DefaultValue() any {
+	return i.Default
+}
+
 // InputChoice represents a choice of multiple string inputs.
 type InputChoice struct {
 	Source  Pos
@@ -68,6 +83,11 @@ func (InputChoice) InputTypeName() string {
 // InputVarName returns the name of this input variable.
 func (i InputChoice) InputVarName() string {
 	return i.Name
+}
+
+// DefaultValue returns the default value for this input variable.
+func (i InputChoice) DefaultValue() any {
+	return i.Default
 }
 
 func (i InputChoice) validate() error {

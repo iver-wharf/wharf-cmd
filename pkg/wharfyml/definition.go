@@ -15,7 +15,7 @@ var (
 
 // Definition is the .wharf-ci.yml build definition structure.
 type Definition struct {
-	Inputs    map[string]Input
+	Inputs    Inputs
 	Envs      map[string]Env
 	Env       *Env
 	Stages    []Stage
@@ -67,6 +67,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	if args.VarSource != nil {
 		sources = append(sources, args.VarSource)
 	}
+
+	sources = append(sources, def.Inputs.DefaultsVarSource())
 
 	stages, errs := visitDefStageNodes(nodes, sources)
 	def.Stages = stages
