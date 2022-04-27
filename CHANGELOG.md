@@ -55,6 +55,13 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added support for `.gitignore` ignored files and directories when transferring
   repo in `wharf run`. Can be disabled via new `--no-gitignore` flag. (#85)
 
+- Added input variables support, and with `--input, -i` flag to `wharf run` and
+  `wharf vars` commands that allows setting values, ex: (#97)
+
+  ```sh
+  wharf run --input myInputVar=myValue
+  ```
+
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
   line & column of each parse error. (#48, #58)
