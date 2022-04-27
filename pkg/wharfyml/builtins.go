@@ -40,7 +40,7 @@ func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Warn().WithError(err).
-			Message("Failed getting working directory. Printing paths relative to the .wharf-ci.yml file.")
+			Message("Failed getting working directory. Printing paths relative to the .wharf-ci.yml file instead.")
 		workingDir = currentDir
 	}
 
