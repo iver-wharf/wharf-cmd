@@ -37,12 +37,19 @@ const (
 // 	../../.wharf-vars.yml
 // 	../../..(etc)/.wharf-vars.yml
 func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		log.Warn().WithError(err).
+			Message("Failed getting working directory. Printing paths relative to the .wharf-ci.yml file instead.")
+		workingDir = currentDir
+	}
+
 	varFiles := ListPossibleVarsFiles(currentDir)
 	var errSlice Errors
 	var filesSources varsub.SourceSlice
 	for _, varFile := range varFiles {
 		items, errs := tryReadVarsFileNodes(varFile.Path)
-		prettyPath := varFile.PrettyPath(currentDir)
+		prettyPath := varFile.PrettyPath(workingDir)
 		errSlice = append(errSlice,
 			wrapPathErrorSlice(errs, prettyPath)...)
 		if len(items) == 0 {
