@@ -7,18 +7,11 @@ import (
 	"unicode/utf8"
 
 	"github.com/fatih/color"
-	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/spf13/cobra"
 	"gopkg.in/typ.v3/pkg/slices"
 )
-
-var varsFlags = struct {
-	env     string
-	showAll bool
-	inputs  flagtypes.KeyValueArray
-}{}
 
 var (
 	colorVarSourceName     = color.New(color.FgYellow)
@@ -28,9 +21,10 @@ var (
 	colorVarOverriddenNote = color.New(color.FgHiBlack, color.Italic)
 )
 
-var varsCmd = &cobra.Command{
-	Use:   "vars [path]",
-	Short: "Print all variables that would be used for a .wharf-ci.yml file",
+var varsubListCmd = &cobra.Command{
+	Use:     "list [path]",
+	Aliases: []string{"ls"},
+	Short:   "Print all variables that would be used for a .wharf-ci.yml file",
 	Long: `Parses a .wharf-ci.yml and all .wharf-vars.yml files as if it was
 running "wharf run", but prints out all the variables that would be used
 instead of performing the build.
@@ -49,8 +43,8 @@ in multiple sources.`,
 		}
 
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    varsFlags.env,
-			Inputs: parseInputArgs(varsFlags.inputs),
+			Env:    varsubFlags.env,
+			Inputs: parseInputArgs(varsubFlags.inputs),
 		})
 		if err != nil {
 			return err
@@ -107,7 +101,7 @@ environment variables, such as:
 			var longestKeyLength int
 			var notUsedCount int
 			for _, v := range vars {
-				if !varsFlags.showAll && !v.isUsed {
+				if !varsubFlags.showAll && !v.isUsed {
 					notUsedCount++
 					continue
 				}
@@ -124,7 +118,7 @@ environment variables, such as:
 
 			longestSpaces := strings.Repeat(" ", longestKeyLength+2)
 			for _, v := range vars {
-				if !varsFlags.showAll && !v.isUsed {
+				if !varsubFlags.showAll && !v.isUsed {
 					continue
 				}
 				spacesCount := longestKeyLength - utf8.RuneCountInString(v.Key) + 2
@@ -140,7 +134,7 @@ environment variables, such as:
 				}
 			}
 
-			if !varsFlags.showAll && notUsedCount > 0 {
+			if !varsubFlags.showAll && notUsedCount > 0 {
 				sb.WriteString("  ")
 				colorVarOverriddenNote.Fprintf(&sb, "(hiding %d overridden variables)\n", notUsedCount)
 			}
@@ -153,10 +147,5 @@ environment variables, such as:
 }
 
 func init() {
-	rootCmd.AddCommand(varsCmd)
-
-	varsCmd.Flags().StringVarP(&varsFlags.env, "environment", "e", "", "Environment selection")
-	varsCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
-	varsCmd.Flags().BoolVarP(&varsFlags.showAll, "all", "a", false, "Show overridden variables")
-	varsCmd.Flags().VarP(&varsFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
+	varsubCmd.AddCommand(varsubListCmd)
 }
