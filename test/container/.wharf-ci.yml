@@ -1,11 +1,16 @@
+inputs:
+  - name: file
+    type: string
+    default: somefile.txt
+
 test:
   step1:
     container:
       image: alpine:latest
       cmds:
       - echo 'Hello world!'
-      - echo 'output from somefile.txt:'
-      - cat somefile.txt
+      - echo 'output from ${file}:'
+      - cat ${file}
   step2:
     container:
       image: busybox:latest

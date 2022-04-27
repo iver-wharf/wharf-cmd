@@ -7,6 +7,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/fatih/color"
+	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/spf13/cobra"
@@ -16,6 +17,7 @@ import (
 var varsFlags = struct {
 	env     string
 	showAll bool
+	inputs  flagtypes.KeyValueArray
 }{}
 
 var (
@@ -47,7 +49,8 @@ in multiple sources.`,
 		}
 
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env: varsFlags.env,
+			Env:    varsFlags.env,
+			Inputs: parseInputArgs(varsFlags.inputs),
 		})
 		if err != nil {
 			return err
@@ -155,4 +158,5 @@ func init() {
 	varsCmd.Flags().StringVarP(&varsFlags.env, "environment", "e", "", "Environment selection")
 	varsCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 	varsCmd.Flags().BoolVarP(&varsFlags.showAll, "all", "a", false, "Show overridden variables")
+	varsCmd.Flags().VarP(&varsFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
 }

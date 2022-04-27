@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
@@ -12,22 +13,42 @@ import (
 var (
 	ErrInputNameCollision      = errors.New("input variable name is already used")
 	ErrInputUnknownType        = errors.New("unknown input type")
+	ErrUseOfUndefinedInput     = errors.New("use of undefined input variable")
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
+
+// Inputs is a map of Input field definitions, keyed on their names.
+type Inputs map[string]Input
+
+// DefaultsVarSource returns a varsub.Source of the default values from this
+// .wharf-ci.yml's input definitions.
+func (i Inputs) DefaultsVarSource() varsub.Source {
+	source := make(varsub.SourceMap, len(i))
+	for k, input := range i {
+		source[k] = varsub.Val{
+			Value:  input.DefaultValue(),
+			Source: ".wharf-ci.yml, input defaults",
+		}
+	}
+	return source
+}
 
 // Input is an interface that is implemented by all input types.
 type Input interface {
 	InputTypeName() string
 	InputVarName() string
+	DefaultValue() any
+	ParseValue(value any) (any, error)
+	Pos() Pos
 }
 
-func visitInputsNode(node *yaml.Node) (inputs map[string]Input, errSlice Errors) {
+func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice Errors) {
 	nodes, err := visitSequence(node)
 	if err != nil {
 		errSlice.add(err)
 		return
 	}
-	inputs = make(map[string]Input, len(nodes))
+	inputs = make(Inputs, len(nodes))
 	for i, inputNode := range nodes {
 		input, errs := visitInputTypeNode(inputNode)
 		if len(errs) > 0 {
@@ -83,10 +104,34 @@ func visitInputTypeNode(node *yaml.Node) (input Input, errSlice Errors) {
 		errSlice.addNonNils(
 			p.validateRequiredString("default"),
 			p.validateRequiredSlice("values"),
-			inputChoice.validate(),
+			inputChoice.validateDefault(),
 		)
 	default:
 		errSlice.add(ErrInputUnknownType)
 	}
 	return
+}
+
+func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source, Errors) {
+	var errSlice Errors
+	source := make(varsub.SourceMap, len(inputArgs))
+	for k, argValue := range inputArgs {
+		input, ok := inputDefs[k]
+		if !ok {
+			err := fmt.Errorf("%w: %q", ErrUseOfUndefinedInput, k)
+			errSlice.add(wrapPathError(err, "inputs"))
+			continue
+		}
+		value, err := input.ParseValue(argValue)
+		if err != nil {
+			err := wrapPosError(err, input.Pos())
+			errSlice.add(wrapPathError(err, "inputs", k))
+			continue
+		}
+		source[k] = varsub.Val{
+			Value:  value,
+			Source: ".wharf-ci.yml, overridden input values",
+		}
+	}
+	return source, errSlice
 }
