@@ -31,10 +31,10 @@ var (
 
 func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
-		"wharf.iver.com/step": step.Name,
+		"wharf.iver.com/step-name": step.Name,
 	}
 	if stage, ok := contextStageName(ctx); ok {
-		annotations["wharf.iver.com/stage"] = stage
+		annotations["wharf.iver.com/stage-name"] = stage
 	}
 	pod := v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -42,6 +42,7 @@ func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 			Annotations:  annotations,
 			Labels: map[string]string{
 				"app": "wharf-cmd-worker-step",
+				"app.kubernetes.io/name": "wharf-cmd-worker-step",
 				"app.kubernetes.io/part-of": "wharf",
 				"app.kubernetes.io/managed-by": "wharf-cmd-worker",
 				"app.kubernetes.io/created-by": "wharf-cmd-worker",
