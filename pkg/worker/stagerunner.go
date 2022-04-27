@@ -69,7 +69,7 @@ type stageRun struct {
 	stepCount   int
 	stepsDone   int32
 
-	failed      bool
+	status      workermodel.Status
 	stepResults []StepResult
 	start       time.Time
 
@@ -87,7 +87,9 @@ func (r *stageRun) startRunStepGoroutine(ctx context.Context, stepRunner StepRun
 func (r *stageRun) waitForResult() StageResult {
 	r.wg.Wait()
 	status := workermodel.StatusSuccess
-	if r.failed {
+	if r.status == workermodel.StatusCancelled {
+		status = workermodel.StatusFailed
+	} else if r.status != workermodel.StatusSuccess {
 		status = workermodel.StatusFailed
 	}
 	return StageResult{
@@ -117,13 +119,13 @@ func (r *stageRun) runStep(ctx context.Context, stepRunner StepRunner) {
 	res := stepRunner.RunStep(ctx)
 	r.addStepResult(res)
 	dur := res.Duration.Truncate(time.Second)
+	r.status = res.Status
 	if res.Status == workermodel.StatusCancelled {
 		log.Info().
 			WithFunc(logFunc).
 			WithDuration("dur", dur).
 			Message("Cancelled pod.")
 	} else if res.Status != workermodel.StatusSuccess {
-		r.failed = true
 		log.Warn().
 			WithError(res.Error).
 			WithFunc(logFunc).
