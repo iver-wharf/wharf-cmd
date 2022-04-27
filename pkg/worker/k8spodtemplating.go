@@ -31,6 +31,9 @@ var (
 
 func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
+		"wharf.iver.com/project-id": "456",
+		"wharf.iver.com/stage-id": "789",
+		"wharf.iver.com/step-id": "789",
 		"wharf.iver.com/step-name": step.Name,
 	}
 	if stage, ok := contextStageName(ctx); ok {
@@ -52,7 +55,6 @@ func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 				"wharf.iver.com/project-id": "456",
 				"wharf.iver.com/stage-id":   "789",
 				"wharf.iver.com/step-id":    "789",
-				"wharf.iver.com/build":      "true",
 			},
 			OwnerReferences: getOwnerReferences(),
 		},
