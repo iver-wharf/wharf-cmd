@@ -61,7 +61,15 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   ```sh
   wharf run --input myInputVar=myValue
-  ```
+  # => [ "myInputVar": "myValue" ]
+
+  # Supports multiple:
+  wharf run --input var1=value1 --input var2=value2
+  # => [ "var1": "value1", "var2": "value2" ]
+
+  # On collisions, the last value is used:
+  wharf run --input myVar=foo --input myVar=bar
+  # => [ "myVar": "bar" ]
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
