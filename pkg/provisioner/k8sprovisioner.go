@@ -158,7 +158,7 @@ wharf run --serve --stage test --loglevel debug`,
 					VolumeMounts: volumeMounts,
 					Env: []v1.EnvVar{
 						{
-							Name: "WHARF_KUBERNETES_OWNER_ENABLE",
+							Name:  "WHARF_KUBERNETES_OWNER_ENABLE",
 							Value: "true",
 						},
 						{
@@ -166,7 +166,7 @@ wharf run --serve --stage test --loglevel debug`,
 							ValueFrom: &v1.EnvVarSource{
 								FieldRef: &v1.ObjectFieldSelector{
 									APIVersion: "v1",
-									FieldPath: "metadata.name",
+									FieldPath:  "metadata.name",
 								},
 							},
 						},
@@ -175,7 +175,7 @@ wharf run --serve --stage test --loglevel debug`,
 							ValueFrom: &v1.EnvVarSource{
 								FieldRef: &v1.ObjectFieldSelector{
 									APIVersion: "v1",
-									FieldPath: "metadata.uid",
+									FieldPath:  "metadata.uid",
 								},
 							},
 						},

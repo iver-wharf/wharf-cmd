@@ -41,18 +41,18 @@ func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 			GenerateName: getPodGenerateName(step),
 			Annotations:  annotations,
 			Labels: map[string]string{
-				"app": "wharf-cmd-worker-step",
-				"app.kubernetes.io/name": "wharf-cmd-worker-step",
-				"app.kubernetes.io/part-of": "wharf",
+				"app":                          "wharf-cmd-worker-step",
+				"app.kubernetes.io/name":       "wharf-cmd-worker-step",
+				"app.kubernetes.io/part-of":    "wharf",
 				"app.kubernetes.io/managed-by": "wharf-cmd-worker",
 				"app.kubernetes.io/created-by": "wharf-cmd-worker",
 
-				"wharf.iver.com/instance": "prod",
-				"wharf.iver.com/build-ref": "123",
+				"wharf.iver.com/instance":   "prod",
+				"wharf.iver.com/build-ref":  "123",
 				"wharf.iver.com/project-id": "456",
-				"wharf.iver.com/stage-id": "789",
-				"wharf.iver.com/step-id": "789",
-				"wharf.iver.com/build": "true",
+				"wharf.iver.com/stage-id":   "789",
+				"wharf.iver.com/step-id":    "789",
+				"wharf.iver.com/build":      "true",
 			},
 			OwnerReferences: getOwnerReferences(),
 		},
@@ -132,8 +132,8 @@ func getOwnerReferences() []metav1.OwnerReference {
 	var ownerUID string
 	if err := env.BindMultiple(map[any]string{
 		&ownerEnabled: "WHARF_KUBERNETES_OWNER_ENABLE",
-		&ownerName: "WHARF_KUBERNETES_OWNER_NAME",
-		&ownerUID: "WHARF_KUBERNETES_OWNER_UID",
+		&ownerName:    "WHARF_KUBERNETES_OWNER_NAME",
+		&ownerUID:     "WHARF_KUBERNETES_OWNER_UID",
 	}); err != nil {
 		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_XXX environment variables.")
 		ownerEnabled = false
@@ -149,12 +149,12 @@ func getOwnerReferences() []metav1.OwnerReference {
 	if ownerEnabled {
 		True := true
 		ownerReferences = append(ownerReferences, metav1.OwnerReference{
-			APIVersion: "v1",
-			Kind: "Pod",
-			Name: ownerName,
-			UID: types.UID(ownerUID),
+			APIVersion:         "v1",
+			Kind:               "Pod",
+			Name:               ownerName,
+			UID:                types.UID(ownerUID),
 			BlockOwnerDeletion: &True,
-			Controller: &True,
+			Controller:         &True,
 		})
 	}
 	return ownerReferences
