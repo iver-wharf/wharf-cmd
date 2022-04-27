@@ -18,11 +18,11 @@ func TestListParentDirsPossibleBuiltinVarsFiles(t *testing.T) {
 	currentDir := "/home/root/repos/my-repo"
 	varFiles := listParentDirsPossibleVarsFiles(currentDir)
 	want := []string{
-		"/.wharf-vars.yml",
-		"/home/.wharf-vars.yml",
-		"/home/root/.wharf-vars.yml",
-		"/home/root/repos/.wharf-vars.yml",
 		"/home/root/repos/my-repo/.wharf-vars.yml",
+		"/home/root/repos/.wharf-vars.yml",
+		"/home/root/.wharf-vars.yml",
+		"/home/.wharf-vars.yml",
+		"/.wharf-vars.yml",
 	}
 	got := make([]string, len(varFiles))
 	for i, f := range varFiles {

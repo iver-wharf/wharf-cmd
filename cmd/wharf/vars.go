@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"unicode/utf8"
 
+	"github.com/fatih/color"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/spf13/cobra"
@@ -12,8 +14,17 @@ import (
 )
 
 var varsFlags = struct {
-	env string
+	env     string
+	showAll bool
 }{}
+
+var (
+	colorVarSourceName     = color.New(color.FgYellow)
+	colorVarKey            = color.New(color.FgHiMagenta)
+	colorVarValue          = color.New()
+	colorVarOverridden     = color.New(color.FgHiBlack, color.CrossedOut)
+	colorVarOverriddenNote = color.New(color.FgHiBlack, color.Italic)
+)
 
 var varsCmd = &cobra.Command{
 	Use:   "vars [path]",
@@ -72,27 +83,61 @@ environment variables, such as:
 		var sb strings.Builder
 		fmt.Fprintf(&sb, "Found %d variables from %d different sources:\n", len(vars), len(groups))
 
+		type variable struct {
+			varsub.Var
+			isUsed bool
+		}
+
 		for _, g := range groups {
 			slices.SortFunc(g.Values, func(a, b varsub.Var) bool {
 				return a.Key < b.Key
 			})
+			var vars []variable
+			for _, value := range g.Values {
+				v, _ := def.VarSource.Lookup(value.Key)
+				vars = append(vars, variable{
+					Var:    v,
+					isUsed: v.Source == value.Source,
+				})
+			}
 
 			var longestKeyLength int
-			for _, v := range g.Values {
+			var notUsedCount int
+			for _, v := range vars {
+				if !varsFlags.showAll && !v.isUsed {
+					notUsedCount++
+					continue
+				}
 				if len(v.Key) > longestKeyLength {
 					longestKeyLength = len(v.Key)
 				}
 			}
 
 			if g.Key == "" {
-				sb.WriteString("\n(undefined source):\n")
+				colorVarSourceName.Fprint(&sb, "\n(undefined source):\n")
 			} else {
-				fmt.Fprintf(&sb, "\n%s:\n", g.Key)
+				colorVarSourceName.Fprintf(&sb, "\n%s:\n", g.Key)
 			}
 
-			format := fmt.Sprintf("  %%%ds %%v\n", -longestKeyLength-1)
-			for _, v := range g.Values {
-				fmt.Fprintf(&sb, format, v.Key, v.Value)
+			longestSpaces := strings.Repeat(" ", longestKeyLength+2)
+			for _, v := range vars {
+				spacesCount := longestKeyLength - utf8.RuneCountInString(v.Key) + 2
+				spaces := longestSpaces[:spacesCount]
+				if varsFlags.showAll && !v.isUsed {
+					sb.WriteString("  ")
+					colorVarOverridden.Fprintf(&sb, "%s%s%s\n", v.Key, spaces, v.Value)
+				} else if v.isUsed {
+					sb.WriteString("  ")
+					fmt.Fprintf(&sb, "%s%s%s\n",
+						colorVarKey.Sprint(v.Key),
+						spaces,
+						colorVarValue.Sprint(v.Value))
+				}
+			}
+
+			if !varsFlags.showAll && notUsedCount > 0 {
+				sb.WriteString("  ")
+				colorVarOverriddenNote.Fprintf(&sb, "(hiding %d overridden variables)\n", notUsedCount)
 			}
 		}
 
@@ -107,4 +152,5 @@ func init() {
 
 	varsCmd.Flags().StringVarP(&varsFlags.env, "environment", "e", "", "Environment selection")
 	varsCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
+	varsCmd.Flags().BoolVarP(&varsFlags.showAll, "all", "a", false, "Show overridden variables")
 }
