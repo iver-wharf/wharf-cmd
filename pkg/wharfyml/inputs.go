@@ -13,6 +13,7 @@ import (
 var (
 	ErrInputNameCollision      = errors.New("input variable name is already used")
 	ErrInputUnknownType        = errors.New("unknown input type")
+	ErrUseOfUndefinedInput     = errors.New("use of undefined input variable")
 	ErrInputChoiceUnknownValue = errors.New("default value is missing from values array")
 )
 
@@ -37,6 +38,8 @@ type Input interface {
 	InputTypeName() string
 	InputVarName() string
 	DefaultValue() any
+	ParseValue(value any) (any, error)
+	Pos() Pos
 }
 
 func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice Errors) {
@@ -101,10 +104,34 @@ func visitInputTypeNode(node *yaml.Node) (input Input, errSlice Errors) {
 		errSlice.addNonNils(
 			p.validateRequiredString("default"),
 			p.validateRequiredSlice("values"),
-			inputChoice.validate(),
+			inputChoice.validateDefault(),
 		)
 	default:
 		errSlice.add(ErrInputUnknownType)
 	}
 	return
+}
+
+func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source, Errors) {
+	var errSlice Errors
+	source := make(varsub.SourceMap, len(inputArgs))
+	for k, argValue := range inputArgs {
+		input, ok := inputDefs[k]
+		if !ok {
+			err := fmt.Errorf("%w: %q", ErrUseOfUndefinedInput, k)
+			errSlice.add(wrapPathError(err, "inputs"))
+			continue
+		}
+		value, err := input.ParseValue(argValue)
+		if err != nil {
+			err := wrapPosError(err, input.Pos())
+			errSlice.add(wrapPathError(err, "inputs", k))
+			continue
+		}
+		source[k] = varsub.Val{
+			Value:  value,
+			Source: "overridden .wharf-ci.yml input values",
+		}
+	}
+	return source, errSlice
 }

@@ -37,6 +37,7 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	nodes, errs := visitMapSlice(node)
 	errSlice.add(errs...)
 	envSourceNode := node
+
 	for _, n := range nodes {
 		switch n.key.value {
 		case propEnvironments:
@@ -48,10 +49,15 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 			var errs Errors
 			def.Inputs, errs = visitInputsNode(n.value)
 			errSlice.add(wrapPathErrorSlice(errs, propInputs)...)
+
 		}
 	}
 
 	var sources varsub.SourceSlice
+
+	inputsSource, errs := visitInputsArgs(def.Inputs, args.Inputs)
+	sources = append(sources, inputsSource)
+	errSlice.add(errs...)
 
 	// Add environment varsub.Source first, as it should have priority
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)

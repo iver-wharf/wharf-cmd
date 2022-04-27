@@ -48,6 +48,9 @@ in multiple sources.`,
 
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
 			Env: varsFlags.env,
+			Inputs: map[string]any{
+				"foo": "bar",
+			},
 		})
 		if err != nil {
 			return err
