@@ -129,32 +129,33 @@ func sanitizePodName(name string) string {
 }
 
 func getOwnerReferences() []metav1.OwnerReference {
-	var ownerEnabled bool
-	var ownerName string
-	var ownerUID string
+	var (
+		enabled bool
+		name, uid string
+	)
 	if err := env.BindMultiple(map[any]string{
-		&ownerEnabled: "WHARF_KUBERNETES_OWNER_ENABLE",
-		&ownerName:    "WHARF_KUBERNETES_OWNER_NAME",
-		&ownerUID:     "WHARF_KUBERNETES_OWNER_UID",
+		&enabled: "WHARF_KUBERNETES_OWNER_ENABLE",
+		&name:    "WHARF_KUBERNETES_OWNER_NAME",
+		&uid:     "WHARF_KUBERNETES_OWNER_UID",
 	}); err != nil {
 		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_XXX environment variables.")
-		ownerEnabled = false
+		enabled = false
 	}
 
 	log.Debug().
-		WithBool("ownerEnabled", ownerEnabled).
-		WithString("ownerName", ownerName).
-		WithString("ownerUID", ownerUID).
+		WithBool("enabled", enabled).
+		WithString("name", name).
+		WithString("uid", uid).
 		Message("Environment variables from owner.")
 
 	var ownerReferences []metav1.OwnerReference
-	if ownerEnabled {
+	if enabled {
 		True := true
 		ownerReferences = append(ownerReferences, metav1.OwnerReference{
 			APIVersion:         "v1",
 			Kind:               "Pod",
-			Name:               ownerName,
-			UID:                types.UID(ownerUID),
+			Name:               name,
+			UID:                types.UID(uid),
 			BlockOwnerDeletion: &True,
 			Controller:         &True,
 		})
