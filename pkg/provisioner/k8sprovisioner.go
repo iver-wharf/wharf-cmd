@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"gopkg.in/typ.v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -109,7 +108,6 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			AutomountServiceAccountToken: typ.Ref(false),
 			ServiceAccountName: "wharf-cmd",
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
