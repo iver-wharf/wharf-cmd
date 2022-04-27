@@ -49,8 +49,13 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84, #107)
 
-- Added "vars" command `wharf vars` that prints out all the variables that
-  would be used in a `wharf run` invocation. (#93, #98, #102)
+- Added "vars" command `wharf vars` with:
+
+  - `wharf vars list` that prints out all the variables that
+    would be used in a `wharf run` invocation. (#93, #98, #102, #110)
+
+  - `wharf vars sub` that reads from STDIN or a file and performs variable
+    substitution, and then writes to STDOUT. (#110)
 
 - Added support for `.gitignore` ignored files and directories when transferring
   repo in `wharf run`. Can be disabled via new `--no-gitignore` flag. (#85)
