@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
@@ -28,6 +29,7 @@ var runFlags = struct {
 	serve        bool
 	k8sOverrides clientcmd.ConfigOverrides
 	noGitIgnore  bool
+	inputs       flagtypes.KeyValueArray
 }{}
 
 var runCmd = &cobra.Command{
@@ -60,7 +62,8 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env: runFlags.env,
+			Env:    runFlags.env,
+			Inputs: parseInputArgs(runFlags.inputs),
 		})
 		if err != nil {
 			return err
@@ -204,6 +207,14 @@ func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.De
 	return def, nil
 }
 
+func parseInputArgs(inputs flagtypes.KeyValueArray) map[string]any {
+	m := make(map[string]any, len(inputs.Pairs))
+	for _, kv := range inputs.Pairs {
+		m[kv.Key] = kv.Value
+	}
+	return m
+}
+
 func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (context.Context, workerserver.Server) {
 	ctx, cancel := context.WithCancel(ctx)
 	server := workerserver.New(store, nil)
@@ -283,6 +294,8 @@ func init() {
 	runCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
+	runCmd.Flags().VarP(&runFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
+
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }
 

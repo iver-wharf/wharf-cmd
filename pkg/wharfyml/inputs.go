@@ -130,7 +130,7 @@ func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source,
 		}
 		source[k] = varsub.Val{
 			Value:  value,
-			Source: "overridden .wharf-ci.yml input values",
+			Source: ".wharf-ci.yml, overridden input values",
 		}
 	}
 	return source, errSlice
