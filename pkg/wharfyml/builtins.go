@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,6 +16,8 @@ const (
 	builtInVarsFile    = "wharf-vars.yml"
 	builtInVarsDotfile = ".wharf-vars.yml"
 )
+
+var log = logger.NewScoped("WHARFYML")
 
 // ParseVarFiles produces a varsub.Source of *yaml.Node values. The files it
 // checks depends on your OS.
@@ -37,12 +40,19 @@ const (
 // 	../../.wharf-vars.yml
 // 	../../..(etc)/.wharf-vars.yml
 func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
+	workingDir, err := os.Getwd()
+	if err != nil {
+		log.Warn().WithError(err).
+			Message("Failed getting working directory. Printing paths relative to the .wharf-ci.yml file.")
+		workingDir = currentDir
+	}
+
 	varFiles := ListPossibleVarsFiles(currentDir)
 	var errSlice Errors
 	var filesSources varsub.SourceSlice
 	for _, varFile := range varFiles {
 		items, errs := tryReadVarsFileNodes(varFile.Path)
-		prettyPath := varFile.PrettyPath(currentDir)
+		prettyPath := varFile.PrettyPath(workingDir)
 		errSlice = append(errSlice,
 			wrapPathErrorSlice(errs, prettyPath)...)
 		if len(items) == 0 {
