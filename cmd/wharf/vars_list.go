@@ -21,7 +21,7 @@ var (
 	colorVarOverriddenNote = color.New(color.FgHiBlack, color.Italic)
 )
 
-var varsubListCmd = &cobra.Command{
+var varsListCmd = &cobra.Command{
 	Use:     "list [path]",
 	Aliases: []string{"ls"},
 	Short:   "Print all variables that would be used for a .wharf-ci.yml file",
@@ -43,8 +43,8 @@ in multiple sources.`,
 		}
 
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    varsubFlags.env,
-			Inputs: parseInputArgs(varsubFlags.inputs),
+			Env:    varsFlags.env,
+			Inputs: parseInputArgs(varsFlags.inputs),
 		})
 		if err != nil {
 			return err
@@ -101,7 +101,7 @@ environment variables, such as:
 			var longestKeyLength int
 			var notUsedCount int
 			for _, v := range vars {
-				if !varsubFlags.showAll && !v.isUsed {
+				if !varsFlags.showAll && !v.isUsed {
 					notUsedCount++
 					continue
 				}
@@ -118,7 +118,7 @@ environment variables, such as:
 
 			longestSpaces := strings.Repeat(" ", longestKeyLength+2)
 			for _, v := range vars {
-				if !varsubFlags.showAll && !v.isUsed {
+				if !varsFlags.showAll && !v.isUsed {
 					continue
 				}
 				spacesCount := longestKeyLength - utf8.RuneCountInString(v.Key) + 2
@@ -134,7 +134,7 @@ environment variables, such as:
 				}
 			}
 
-			if !varsubFlags.showAll && notUsedCount > 0 {
+			if !varsFlags.showAll && notUsedCount > 0 {
 				sb.WriteString("  ")
 				colorVarOverriddenNote.Fprintf(&sb, "(hiding %d overridden variables)\n", notUsedCount)
 			}
@@ -147,5 +147,5 @@ environment variables, such as:
 }
 
 func init() {
-	varsubCmd.AddCommand(varsubListCmd)
+	varsCmd.AddCommand(varsListCmd)
 }
