@@ -59,6 +59,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	sources = append(sources, inputsSource)
 	errSlice.add(errs...)
 
+	sources = append(sources, def.Inputs.DefaultsVarSource())
+
 	// Add environment varsub.Source first, as it should have priority
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)
 	if err != nil {
@@ -73,8 +75,6 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	if args.VarSource != nil {
 		sources = append(sources, args.VarSource)
 	}
-
-	sources = append(sources, def.Inputs.DefaultsVarSource())
 
 	stages, errs := visitDefStageNodes(nodes, sources)
 	def.Stages = stages
