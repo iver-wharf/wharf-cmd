@@ -121,17 +121,19 @@ environment variables, such as:
 
 			longestSpaces := strings.Repeat(" ", longestKeyLength+2)
 			for _, v := range vars {
+				if !varsFlags.showAll && !v.isUsed {
+					continue
+				}
 				spacesCount := longestKeyLength - utf8.RuneCountInString(v.Key) + 2
 				spaces := longestSpaces[:spacesCount]
-				if varsFlags.showAll && !v.isUsed {
-					sb.WriteString("  ")
-					colorVarOverridden.Fprintf(&sb, "%s%s%s\n", v.Key, spaces, v.Value)
-				} else if v.isUsed {
-					sb.WriteString("  ")
+				sb.WriteString("  ")
+				if v.isUsed {
 					fmt.Fprintf(&sb, "%s%s%s\n",
 						colorVarKey.Sprint(v.Key),
 						spaces,
 						colorVarValue.Sprint(v.Value))
+				} else {
+					colorVarOverridden.Fprintf(&sb, "%s%s%s\n", v.Key, spaces, v.Value)
 				}
 			}
 
