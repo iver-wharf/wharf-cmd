@@ -120,7 +120,7 @@ func createPodMeta() v1.Pod {
 						"git",
 						"clone",
 						"--single-branch",
-						"--branch", "feature/aggregator-issue-15",
+						"--branch", "feature/set-k8s-metadata-on-build-pods",
 						"https://github.com/iver-wharf/wharf-cmd",
 						repoVolumeMountPath,
 					},
@@ -149,11 +149,37 @@ func createPodMeta() v1.Pod {
 						"/bin/sh", "-c",
 						`
 make deps-go swag install && \
-cd test/wharf-ci-simple && \
+cd test && \
+export WHARF_VAR_CHART_REPO="chart_repo" && \
+export WHARF_VAR_REG_URL="reg_url" && \
 wharf run --serve --stage test --loglevel debug`,
 					},
 					WorkingDir:   repoVolumeMountPath,
 					VolumeMounts: volumeMounts,
+					Env: []v1.EnvVar{
+						{
+							Name:  "WHARF_KUBERNETES_OWNER_ENABLE",
+							Value: "true",
+						},
+						{
+							Name: "WHARF_KUBERNETES_OWNER_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									APIVersion: "v1",
+									FieldPath:  "metadata.name",
+								},
+							},
+						},
+						{
+							Name: "WHARF_KUBERNETES_OWNER_UID",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									APIVersion: "v1",
+									FieldPath:  "metadata.uid",
+								},
+							},
+						},
+					},
 				},
 			},
 			Volumes: []v1.Volume{
