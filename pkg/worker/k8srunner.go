@@ -86,7 +86,7 @@ type k8sStepRunnerFactory struct {
 func (f k8sStepRunnerFactory) NewStepRunner(
 	ctx context.Context, step wharfyml.Step, stepID uint64) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
-	pod, err := getPodSpec(ctx, step)
+	pod, err := getStepPodSpec(ctx, step)
 	if err != nil {
 		return nil, err
 	}

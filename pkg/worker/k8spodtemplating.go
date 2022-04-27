@@ -10,9 +10,11 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-core/pkg/env"
 	"gopkg.in/typ.v3/pkg/slices"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
@@ -27,7 +29,7 @@ var (
 	nugetPackageScript string
 )
 
-func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
+func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
 		"wharf.iver.com/step": step.Name,
 	}
@@ -39,8 +41,19 @@ func getPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 			GenerateName: getPodGenerateName(step),
 			Annotations:  annotations,
 			Labels: map[string]string{
+				"app": "wharf-cmd-worker-step",
+				"app.kubernetes.io/part-of": "wharf",
+				"app.kubernetes.io/managed-by": "wharf-cmd-worker",
+				"app.kubernetes.io/created-by": "wharf-cmd-worker",
+
+				"wharf.iver.com/instance": "prod",
+				"wharf.iver.com/build-ref": "123",
+				"wharf.iver.com/project-id": "456",
+				"wharf.iver.com/stage-id": "789",
+				"wharf.iver.com/step-id": "789",
 				"wharf.iver.com/build": "true",
 			},
+			OwnerReferences: getOwnerReferences(),
 		},
 		Spec: v1.PodSpec{
 			ServiceAccountName: "wharf-cmd",
@@ -110,6 +123,40 @@ func sanitizePodName(name string) string {
 	name = regexInvalidDNSSubdomainChars.ReplaceAllLiteralString(name, "-")
 	name = strings.Trim(name, "-")
 	return name
+}
+
+func getOwnerReferences() []metav1.OwnerReference {
+	var ownerEnabled bool
+	var ownerName string
+	var ownerUID string
+	if err := env.BindMultiple(map[any]string{
+		&ownerEnabled: "WHARF_KUBERNETES_OWNER_ENABLE",
+		&ownerName: "WHARF_KUBERNETES_OWNER_NAME",
+		&ownerUID: "WHARF_KUBERNETES_OWNER_UID",
+	}); err != nil {
+		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_XXX environment variables.")
+		ownerEnabled = false
+	}
+
+	log.Debug().
+		WithBool("ownerEnabled", ownerEnabled).
+		WithString("ownerName", ownerName).
+		WithString("ownerUID", ownerUID).
+		Message("Environment variables from owner.")
+
+	var ownerReferences []metav1.OwnerReference
+	if ownerEnabled {
+		True := true
+		ownerReferences = append(ownerReferences, metav1.OwnerReference{
+			APIVersion: "v1",
+			Kind: "Pod",
+			Name: ownerName,
+			UID: types.UID(ownerUID),
+			BlockOwnerDeletion: &True,
+			Controller: &True,
+		})
+	}
+	return ownerReferences
 }
 
 func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {

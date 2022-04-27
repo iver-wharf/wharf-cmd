@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"gopkg.in/typ.v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -108,6 +109,7 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
+			AutomountServiceAccountToken: typ.Ref(false),
 			ServiceAccountName: "wharf-cmd",
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
@@ -120,7 +122,7 @@ func createPodMeta() v1.Pod {
 						"git",
 						"clone",
 						"--single-branch",
-						"--branch", "feature/aggregator-issue-15",
+						"--branch", "master",
 						"https://github.com/iver-wharf/wharf-cmd",
 						repoVolumeMountPath,
 					},
@@ -154,6 +156,30 @@ wharf run --serve --stage test --loglevel debug`,
 					},
 					WorkingDir:   repoVolumeMountPath,
 					VolumeMounts: volumeMounts,
+					Env: []v1.EnvVar{
+						{
+							Name: "WHARF_KUBERNETES_OWNER_ENABLE",
+							Value: "true",
+						},
+						{
+							Name: "WHARF_KUBERNETES_OWNER_NAME",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									APIVersion: "v1",
+									FieldPath: "metadata.name",
+								},
+							},
+						},
+						{
+							Name: "WHARF_KUBERNETES_OWNER_UID",
+							ValueFrom: &v1.EnvVarSource{
+								FieldRef: &v1.ObjectFieldSelector{
+									APIVersion: "v1",
+									FieldPath: "metadata.uid",
+								},
+							},
+						},
+					},
 				},
 			},
 			Volumes: []v1.Volume{
