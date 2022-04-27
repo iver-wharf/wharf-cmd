@@ -49,7 +49,6 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 			var errs Errors
 			def.Inputs, errs = visitInputsNode(n.value)
 			errSlice.add(wrapPathErrorSlice(errs, propInputs)...)
-
 		}
 	}
 
