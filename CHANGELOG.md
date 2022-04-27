@@ -52,7 +52,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added "vars" command `wharf vars` with:
 
   - `wharf vars list` that prints out all the variables that
-    would be used in a `wharf run` invocation. (#93, #98, #102, #110)
+    would be used in a `wharf run` invocation. (#93, #98, #102, #108, #110)
 
   - `wharf vars sub` that reads from STDIN or a file and performs variable
     substitution, and then writes to STDOUT. (#110)

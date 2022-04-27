@@ -156,7 +156,7 @@ func parseCurrentDir(dirArg string) (string, error) {
 	if !stat.IsDir() {
 		dir, file := filepath.Split(abs)
 		if file == ".wharf-ci.yml" {
-			return dir, nil
+			return filepath.Clean(dir), nil
 		}
 		return "", fmt.Errorf("path is neither a dir nor a .wharf-ci.yml file: %s", abs)
 	}
