@@ -122,7 +122,7 @@ func createPodMeta() v1.Pod {
 						"git",
 						"clone",
 						"--single-branch",
-						"--branch", "master",
+						"--branch", "feature/set-k8s-metadata-on-build-pods",
 						"https://github.com/iver-wharf/wharf-cmd",
 						repoVolumeMountPath,
 					},
