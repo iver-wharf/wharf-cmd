@@ -27,4 +27,5 @@ func init() {
 	varsCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 	varsCmd.PersistentFlags().BoolVarP(&varsFlags.showAll, "all", "a", false, "Show overridden variables")
 	varsCmd.PersistentFlags().VarP(&varsFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
+	varsCmd.RegisterFlagCompletionFunc("input", completeWharfYmlInputs)
 }

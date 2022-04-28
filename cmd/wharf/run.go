@@ -296,6 +296,7 @@ func init() {
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 	runCmd.Flags().VarP(&runFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
+	runCmd.RegisterFlagCompletionFunc("input", completeWharfYmlInputs)
 
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }
@@ -322,6 +323,18 @@ func completeWharfYmlEnv(cmd *cobra.Command, args []string, _ string) ([]string,
 		envs = append(envs, env)
 	}
 	return envs, cobra.ShellCompDirectiveNoFileComp
+}
+
+func completeWharfYmlInputs(cmd *cobra.Command, args []string, completed string) ([]string, cobra.ShellCompDirective) {
+	def, err := parseWharfYmlForCompletions(cmd, args)
+	if err != nil {
+		return nil, cobra.ShellCompDirectiveError
+	}
+	var inputs []string
+	for _, input := range def.Inputs {
+		inputs = append(inputs, input.InputVarName())
+	}
+	return flagtypes.CompleteKeyValue(inputs, completed)
 }
 
 func parseWharfYmlForCompletions(cmd *cobra.Command, args []string) (wharfyml.Definition, error) {

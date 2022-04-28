@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 )
 
@@ -43,6 +44,21 @@ func (s *KeyValue) Set(val string) error {
 // Type returns the name of this type.
 func (s *KeyValue) Type() string {
 	return "keyvalue"
+}
+
+// CompleteKeyValue returns key=value completions using the given slice of keys.
+func CompleteKeyValue(keys []string, completed string) ([]string, cobra.ShellCompDirective) {
+	if len(keys) == 0 {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	if strings.ContainsRune(completed, '_') {
+		return nil, cobra.ShellCompDirectiveNoFileComp
+	}
+	withDelimiter := make([]string, len(keys))
+	for i, k := range keys {
+		withDelimiter[i] = k + "="
+	}
+	return withDelimiter, cobra.ShellCompDirectiveNoSpace
 }
 
 // KeyValueArray is a flag type that takes in key=value on each flag value and
