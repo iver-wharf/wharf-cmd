@@ -24,6 +24,18 @@ func (m *artifactModule) register(g *gin.RouterGroup) {
 	g.GET("/artifact/:artifactId/download", m.downloadArtifactHandler)
 }
 
+// downloadArtifactHandler godoc
+// @id downloadArtifact
+// @summary Download an artifact file.
+// @description Added in v0.8.0.
+// @tags worker
+// @produce octet-stream
+// @param artifactId path uint true "Artifact ID" minimum(0)
+// @success 200 {file} string "OK"
+// @failure 400 {object} problem.Response "Bad request"
+// @failure 404 {object} problem.Response "Cannot find artifact"
+// @failure 502 {object} problem.Response "Canont read artifact file"
+// @router /artifact/{artifactId}/download [post]
 func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
 	artifactID, ok := ginutil.ParseParamUint(c, "artifactId")
 	if !ok {

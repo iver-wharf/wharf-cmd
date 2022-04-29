@@ -64,17 +64,26 @@ endif
 docker-run:
 	docker run --rm -it quay.io/iver-wharf/wharf-api:$(version)
 
-swag-force:
-	swag init \
-		--dir pkg/provisionerapi,pkg/provisioner,pkg/worker \
-		--generalInfo provisionerapi.go --output pkg/provisionerapi/docs
+clean-swag:
+	rm -vf pkg/provisionerapi/docs/docs.go
+	rm -vf pkg/workerapi/workerserver/docs/docs.go
 
-swag: pkg/provisionerapi/docs/docs.go
+swag-force: clean-swag swag
+
+swag: \
+	pkg/provisionerapi/docs/docs.go \
+	pkg/workerapi/workerserver/docs/docs.go
 
 pkg/provisionerapi/docs/docs.go:
 	swag init \
 		--dir pkg/provisionerapi,pkg/provisioner,pkg/worker \
 		--generalInfo provisionerapi.go --output pkg/provisionerapi/docs
+
+pkg/workerapi/workerserver/docs/docs.go:
+	swag init \
+		--dir pkg/workerapi/workerserver \
+		--parseDependency --parseDepth 2 \
+		--generalInfo restserver.go --output pkg/workerapi/workerserver/docs
 
 lint: lint-md lint-go
 lint-fix: lint-fix-md lint-fix-go
