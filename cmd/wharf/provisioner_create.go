@@ -17,7 +17,7 @@ a container running "wharf run" to perform the build.
 			return err
 		}
 
-		worker, err := p.CreateWorker(rootContext)
+		worker, err := p.CreateWorker(rootContext, provisioner.WorkerArgs{})
 		if err != nil {
 			return err
 		}
