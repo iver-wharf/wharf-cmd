@@ -6,9 +6,9 @@ import (
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
-	"k8s.io/client-go/rest"
 
 	// Load in swagger docs
+	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	_ "github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
 )
 
@@ -25,7 +25,7 @@ var log = logger.NewScoped("PROVISIONER-API")
 // @contact.email wharf@iver.se
 // @basePath /api
 // @query.collection.format multi
-func Serve(ns string, cfg *rest.Config) error {
+func Serve(prov provisioner.Provisioner) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
 	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
 
@@ -39,13 +39,7 @@ func Serve(ns string, cfg *rest.Config) error {
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	g.GET("", pingHandler)
 
-	workerModule := workerModule{}
-	if err := workerModule.init(ns, cfg); err != nil {
-		log.Error().
-			WithError(err).
-			Message("Failed to initialize worker module.")
-		return err
-	}
+	workerModule := workerModule{prov: prov}
 	workerModule.register(g)
 
 	const bindAddress = "0.0.0.0:5009"

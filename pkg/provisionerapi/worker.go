@@ -7,20 +7,10 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"gopkg.in/yaml.v3"
-	"k8s.io/client-go/rest"
 )
 
 type workerModule struct {
 	prov provisioner.Provisioner
-}
-
-func (m *workerModule) init(ns string, cfg *rest.Config) error {
-	p, err := provisioner.NewK8sProvisioner(ns, cfg)
-	if err != nil {
-		return err
-	}
-	m.prov = p
-	return nil
 }
 
 func (m *workerModule) register(g *gin.RouterGroup) {

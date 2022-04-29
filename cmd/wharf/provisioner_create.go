@@ -25,7 +25,7 @@ The <repo> argument is used by Git to clone the repository, such as:
   wharf provisioner create ssh://git@github.com/iver-wharf/wharf-cmd.git`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)
+		p, err := newProvisioner()
 		if err != nil {
 			return err
 		}

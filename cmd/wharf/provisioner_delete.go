@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +11,7 @@ var provisionerDeleteCmd = &cobra.Command{
 	Long: `Terminates a wharf worker pod in Kubernetes, effectively
 cancelling the build.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)
+		p, err := newProvisioner()
 		if err != nil {
 			return err
 		}

@@ -14,22 +14,17 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var listOptionsMatchLabels = metav1.ListOptions{
-	LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
-		"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-		"wharf.iver.com/instance=prod",
-}
-
 type k8sProvisioner struct {
-	Namespace  string
-	Clientset  *kubernetes.Clientset
-	Pods       corev1.PodInterface
-	restConfig *rest.Config
+	Namespace              string
+	Clientset              *kubernetes.Clientset
+	Pods                   corev1.PodInterface
+	restConfig             *rest.Config
+	listOptionsMatchLabels metav1.ListOptions
 }
 
 // NewK8sProvisioner returns a new Provisioner implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, error) {
+func NewK8sProvisioner(instanceID, namespace string, restConfig *rest.Config) (Provisioner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -39,11 +34,16 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 		Clientset:  clientset,
 		Pods:       clientset.CoreV1().Pods(namespace),
 		restConfig: restConfig,
+		listOptionsMatchLabels: metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
+				"wharf.iver.com/instance=" + instanceID,
+		},
 	}, nil
 }
 
 func (p k8sProvisioner) ListWorkers(ctx context.Context) ([]Worker, error) {
-	podList, err := p.listPods(ctx, listOptionsMatchLabels)
+	podList, err := p.listPods(ctx, p.listOptionsMatchLabels)
 	if err != nil {
 		return []Worker{}, err
 	}
@@ -74,7 +74,7 @@ func (p k8sProvisioner) CreateWorker(ctx context.Context, args WorkerArgs) (Work
 }
 
 func (p k8sProvisioner) getPod(ctx context.Context, workerID string) (*v1.Pod, error) {
-	podList, err := p.listPods(ctx, listOptionsMatchLabels)
+	podList, err := p.listPods(ctx, p.listOptionsMatchLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +114,7 @@ func newWorkerPod(args WorkerArgs) v1.Pod {
 	}
 	gitArgs = append(gitArgs, repoVolumeMountPath)
 
-	wharfArgs := []string{"wharf", "run", "--loglevel", "debug"}
+	wharfArgs := []string{"run", "--loglevel", "debug"}
 	if args.Environment != "" {
 		wharfArgs = append(wharfArgs, "--environment", args.Environment)
 	}
@@ -180,7 +180,7 @@ func newWorkerPod(args WorkerArgs) v1.Pod {
 					// TODO: Use image, tag, and pull policy from configs:
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					Args:            gitArgs,
+					Command:         gitArgs,
 					VolumeMounts:    volumeMounts,
 				},
 			},
@@ -190,7 +190,7 @@ func newWorkerPod(args WorkerArgs) v1.Pod {
 					// TODO: Use image, tag, and pull policy from configs:
 					Image:           "quay.io/iver-wharf/wharf-cmd:latest",
 					ImagePullPolicy: v1.PullAlways,
-					Command:         wharfArgs,
+					Args:            wharfArgs,
 					WorkingDir:      repoVolumeMountPath,
 					VolumeMounts:    volumeMounts,
 					Env:             wharfEnvs,
