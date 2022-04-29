@@ -23,6 +23,7 @@ const (
 	exitCodeError           = 1
 	exitCodeCancelForceQuit = 2
 	exitCodeCancelTimeout   = 3
+	exitCodeLoadConfig      = 4
 
 	cancelGracePeriod = 10 * time.Second
 )
@@ -42,6 +43,7 @@ var rootCmd = &cobra.Command{
 }
 
 var rootContext, rootCancel = context.WithCancel(context.Background())
+var rootConfig Config
 
 func addKubernetesFlags(flagSet *pflag.FlagSet, overrides *clientcmd.ConfigOverrides) {
 	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
@@ -67,6 +69,12 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 }
 
 func execute(version app.Version) {
+	var err error
+	if rootConfig, err = loadConfig(); err != nil {
+		log.Error().Message(fmt.Sprintf("Config load: %s", err.Error()))
+		os.Exit(exitCodeLoadConfig)
+	}
+
 	rootCmd.Version = versionString(version)
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()

@@ -34,6 +34,7 @@ var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
 type K8sRunnerOptions struct {
 	BuildOptions
+	Config        Config
 	Namespace     string
 	RestConfig    *rest.Config
 	ResultStore   resultstore.Store
@@ -86,7 +87,7 @@ type k8sStepRunnerFactory struct {
 func (f k8sStepRunnerFactory) NewStepRunner(
 	ctx context.Context, step wharfyml.Step, stepID uint64) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
-	pod, err := getStepPodSpec(ctx, step)
+	pod, err := getStepPodSpec(ctx, f.Config.Steps, step)
 	if err != nil {
 		return nil, err
 	}

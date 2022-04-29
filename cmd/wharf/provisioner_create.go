@@ -12,7 +12,7 @@ var provisionerCreateCmd = &cobra.Command{
 a container running "wharf run" to perform the build.
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := provisioner.NewK8sProvisioner(provisionerFlags.namespace, provisionerFlags.restConfig)
+		p, err := provisioner.NewK8sProvisioner(rootConfig.Provisioner, provisionerFlags.restConfig)
 		if err != nil {
 			return err
 		}

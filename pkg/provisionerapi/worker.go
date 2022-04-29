@@ -13,8 +13,13 @@ type workerModule struct {
 	prov provisioner.Provisioner
 }
 
-func (m *workerModule) init(ns string, cfg *rest.Config) error {
-	p, err := provisioner.NewK8sProvisioner(ns, cfg)
+func (m *workerModule) init(config K8sConfig, cfg *rest.Config) error {
+	p, err := provisioner.NewK8sProvisioner(provisioner.Config{
+		K8s: provisioner.K8sConfig{
+			Context:   config.Context,
+			Namespace: config.Namespace,
+		},
+	}, cfg)
 	if err != nil {
 		return err
 	}

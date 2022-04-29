@@ -42,7 +42,7 @@ var listOptionsMatchLabels = metav1.ListOptions{
 
 // NewK8sAggregator returns a new Aggregator implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, error) {
+func NewK8sAggregator(config Config, restConfig *rest.Config) (Aggregator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -58,9 +58,9 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 		return nil, err
 	}
 	return k8sAggr{
-		namespace:  namespace,
+		namespace:  config.K8s.Namespace,
 		clientset:  clientset,
-		pods:       clientset.CoreV1().Pods(namespace),
+		pods:       clientset.CoreV1().Pods(config.K8s.Namespace),
 		restConfig: restConfig,
 
 		upgrader:   upgrader,

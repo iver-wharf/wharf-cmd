@@ -1,6 +1,7 @@
 package provisionerapi
 
 import (
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -25,7 +26,7 @@ var log = logger.NewScoped("PROVISIONER-API")
 // @contact.email wharf@iver.se
 // @basePath /api
 // @query.collection.format multi
-func Serve(ns string, cfg *rest.Config) error {
+func Serve(config Config, cfg *rest.Config) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
 	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
 
@@ -35,12 +36,14 @@ func Serve(ns string, cfg *rest.Config) error {
 		ginutil.RecoverProblem,
 	)
 
+	applyCORS(r, config.HTTP.CORS)
+
 	g := r.Group("/api")
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	g.GET("", pingHandler)
 
 	workerModule := workerModule{}
-	if err := workerModule.init(ns, cfg); err != nil {
+	if err := workerModule.init(config.K8s, cfg); err != nil {
 		log.Error().
 			WithError(err).
 			Message("Failed to initialize worker module.")
@@ -48,17 +51,34 @@ func Serve(ns string, cfg *rest.Config) error {
 	}
 	workerModule.register(g)
 
-	const bindAddress = "0.0.0.0:5009"
-	log.Info().WithString("address", bindAddress).Message("Starting server.")
-	if err := r.Run(bindAddress); err != nil {
+	log.Info().WithString("address", config.HTTP.BindAddress).Message("Starting server.")
+	if err := r.Run(config.HTTP.BindAddress); err != nil {
 		log.Error().
 			WithError(err).
-			WithString("address", bindAddress).
+			WithString("address", config.HTTP.BindAddress).
 			Message("Failed to start web server.")
 		return err
 	}
 
 	return nil
+}
+
+func applyCORS(r *gin.Engine, c CORSConfig) {
+	if c.AllowAllOrigins {
+		log.Info().Message("Allowing all origins in CORS.")
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowAllOrigins = true
+		r.Use(cors.New(corsConfig))
+	} else if len(c.AllowOrigins) > 0 {
+		log.Info().
+			WithStringf("origin", "%v", c.AllowOrigins).
+			Message("Allowing origins in CORS.")
+		corsConfig := cors.DefaultConfig()
+		corsConfig.AllowOrigins = c.AllowOrigins
+		corsConfig.AddAllowHeaders("Authorization")
+		corsConfig.AllowCredentials = true
+		r.Use(cors.New(corsConfig))
+	}
 }
 
 // Ping is the response from a GET /api/ request.
