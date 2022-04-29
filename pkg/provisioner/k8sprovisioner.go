@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"gopkg.in/typ.v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -19,6 +20,7 @@ type k8sProvisioner struct {
 	Clientset              *kubernetes.Clientset
 	Pods                   corev1.PodInterface
 	restConfig             *rest.Config
+	instanceID             string
 	listOptionsMatchLabels metav1.ListOptions
 }
 
@@ -34,6 +36,7 @@ func NewK8sProvisioner(instanceID, namespace string, restConfig *rest.Config) (P
 		Clientset:  clientset,
 		Pods:       clientset.CoreV1().Pods(namespace),
 		restConfig: restConfig,
+		instanceID: instanceID,
 		listOptionsMatchLabels: metav1.ListOptions{
 			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
 				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
@@ -68,7 +71,7 @@ func (p k8sProvisioner) CreateWorker(ctx context.Context, args WorkerArgs) (Work
 	if args.GitCloneURL == "" {
 		return Worker{}, errors.New("missing required Git clone URL")
 	}
-	podMeta := newWorkerPod(args)
+	podMeta := p.newWorkerPod(args)
 	newPod, err := p.Pods.Create(ctx, &podMeta, metav1.CreateOptions{})
 	return convertPodToWorker(newPod), err
 }
@@ -86,7 +89,7 @@ func (p k8sProvisioner) getPod(ctx context.Context, workerID string) (*v1.Pod, e
 	return nil, fmt.Errorf("found no worker with appropriate labels matching workerID: %s", workerID)
 }
 
-func newWorkerPod(args WorkerArgs) v1.Pod {
+func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	const (
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
@@ -97,7 +100,7 @@ func newWorkerPod(args WorkerArgs) v1.Pod {
 		"app.kubernetes.io/part-of":    "wharf",
 		"app.kubernetes.io/managed-by": "wharf-cmd-provisioner",
 		"app.kubernetes.io/created-by": "wharf-cmd-provisioner",
-		"wharf.iver.com/instance":      args.WharfInstanceID,
+		"wharf.iver.com/instance":      typ.Coal(args.WharfInstanceID, p.instanceID),
 		"wharf.iver.com/build-ref":     uitoa(args.BuildID),
 		"wharf.iver.com/project-id":    uitoa(args.ProjectID),
 	}
