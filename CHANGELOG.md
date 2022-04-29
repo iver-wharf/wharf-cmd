@@ -62,7 +62,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added input variables support using the `inputs` field in `.wharf-ci.yml`
   files, and the `--input, -i` flag to `wharf run` and `wharf vars` commands
-  through the CLI, ex: (#97)
+  through the CLI, ex: (#97, #111)
 
   ```sh
   wharf run --input myInputVar=myValue
