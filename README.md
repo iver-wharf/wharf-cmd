@@ -29,24 +29,24 @@ go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest
 
 ## Development
 
-1. Install Go 1.18 or later: <https://golang.org/>
+1. Install
 
-2. Start hacking with your favorite tool. For example VS Code, GoLand,
-   Vim, Emacs, or whatnot.
+   - Go 1.18 or later (for compilation): <https://golang.org/>
+   - NodeJS & NPM (for markdown linting): <https://nodejs.org/en/>
+   - Protobuf runtime (for regenerating protobuf/gRPC files): <https://developers.google.com/protocol-buffers/>
 
-3. Install formatter and linters:
+2. Install formatters, protobuf dependencies, and linters:
 
    ```sh
-   go install github.com/mgechev/revive@latest
-   go install golang.org/x/tools/cmd/goimports@latest
-   npm install
+   make deps
    ```
+
+3. Start hacking with your favorite tool. For example VS Code, GoLand,
+   Vim, Emacs, or whatnot.
 
 ## Linting
 
 ```sh
-make deps # download linting dependencies
-
 make lint
 
 make lint-go # only lint Go code
