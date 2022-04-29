@@ -95,8 +95,10 @@ lint-fix-md:
 	npx remark . .github -o
 
 lint-go:
-	goimports -d $(shell git ls-files "*.go")
+	@echo goimports -d '**/*.go'
+	@goimports -d $(shell git ls-files "*.go")
 	revive -formatter stylish -config revive.toml ./...
 
 lint-fix-go:
-	goimports -d -w $(shell git ls-files "*.go")
+	@echo goimports -d -w '**/*.go'
+	@goimports -d -w $(shell git ls-files "*.go")
