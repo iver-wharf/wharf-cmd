@@ -84,7 +84,7 @@ func loadConfig() (Config, error) {
 	cfgBuilder := config.NewBuilder(DefaultConfig)
 
 	cfgBuilder.AddConfigYAMLFile("~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
-	cfgBuilder.AddConfigYAMLFile("wharf-cmd-config.yml")
+	cfgBuilder.AddConfigYAMLFile(".wharf-cmd-config.yml")
 	if cfgFile, ok := os.LookupEnv("WHARF_CMD_CONFIG"); ok {
 		cfgBuilder.AddConfigYAMLFile(cfgFile)
 	}
