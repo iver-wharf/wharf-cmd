@@ -117,7 +117,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	}
 	gitArgs = append(gitArgs, repoVolumeMountPath)
 
-	wharfArgs := []string{"run", "--loglevel", "debug"}
+	wharfArgs := []string{"run", "--loglevel", "debug", "--serve"}
 	if args.Environment != "" {
 		wharfArgs = append(wharfArgs, "--environment", args.Environment)
 	}
