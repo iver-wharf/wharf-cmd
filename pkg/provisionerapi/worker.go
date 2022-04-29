@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"k8s.io/client-go/rest"
@@ -13,13 +14,8 @@ type workerModule struct {
 	prov provisioner.Provisioner
 }
 
-func (m *workerModule) init(config K8sConfig, cfg *rest.Config) error {
-	p, err := provisioner.NewK8sProvisioner(provisioner.Config{
-		K8s: provisioner.K8sConfig{
-			Context:   config.Context,
-			Namespace: config.Namespace,
-		},
-	}, cfg)
+func (m *workerModule) init(config config.ProvisionerConfig, cfg *rest.Config) error {
+	p, err := provisioner.NewK8sProvisioner(config, cfg)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-core/pkg/app"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
@@ -43,7 +44,7 @@ var rootCmd = &cobra.Command{
 }
 
 var rootContext, rootCancel = context.WithCancel(context.Background())
-var rootConfig Config
+var rootConfig config.Config
 
 func addKubernetesFlags(flagSet *pflag.FlagSet, overrides *clientcmd.ConfigOverrides) {
 	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
@@ -70,7 +71,7 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 
 func execute(version app.Version) {
 	var err error
-	if rootConfig, err = loadConfig(); err != nil {
+	if rootConfig, err = config.LoadConfig(); err != nil {
 		log.Error().Message(fmt.Sprintf("Config load: %s", err.Error()))
 		os.Exit(exitCodeLoadConfig)
 	}

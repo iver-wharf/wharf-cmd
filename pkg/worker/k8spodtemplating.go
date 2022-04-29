@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/env"
 	"gopkg.in/typ.v3/pkg/slices"
@@ -29,7 +30,7 @@ var (
 	nugetPackageScript string
 )
 
-func getStepPodSpec(ctx context.Context, config StepsConfig, step wharfyml.Step) (v1.Pod, error) {
+func getStepPodSpec(ctx context.Context, config config.StepsConfig, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456",
 		"wharf.iver.com/stage-id":   "789",
@@ -177,7 +178,7 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 	}
 }
 
-func applyStep(c StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
+func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
 	case wharfyml.StepContainer:
 		return applyStepContainer(pod, s)
@@ -257,7 +258,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 	return nil
 }
 
-func applyStepDocker(config DockerStepConfig, pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
+func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
 		Name:  commonContainerName,
@@ -408,7 +409,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 	return nil
 }
 
-func applyStepHelm(config HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) error {
+func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) error {
 	cont := v1.Container{
 		Name: commonContainerName,
 		// Question: What should be done with the step.HelmVersion here?
@@ -462,7 +463,7 @@ func applyStepHelm(config HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) e
 	return nil
 }
 
-func applyStepKubectl(config KubectlStepConfig, pod *v1.Pod, step wharfyml.StepKubectl) error {
+func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfyml.StepKubectl) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      config.KubectlImage,

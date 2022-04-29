@@ -12,6 +12,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/filecopy"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
@@ -34,7 +35,7 @@ var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
 type K8sRunnerOptions struct {
 	BuildOptions
-	Config        Config
+	Config        config.Config
 	Namespace     string
 	RestConfig    *rest.Config
 	ResultStore   resultstore.Store
@@ -87,7 +88,7 @@ type k8sStepRunnerFactory struct {
 func (f k8sStepRunnerFactory) NewStepRunner(
 	ctx context.Context, step wharfyml.Step, stepID uint64) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
-	pod, err := getStepPodSpec(ctx, f.Config.Steps, step)
+	pod, err := getStepPodSpec(ctx, f.Config.Worker.Steps, step)
 	if err != nil {
 		return nil, err
 	}

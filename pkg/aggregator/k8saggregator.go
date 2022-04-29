@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v3/pkg/sets"
@@ -42,7 +43,7 @@ var listOptionsMatchLabels = metav1.ListOptions{
 
 // NewK8sAggregator returns a new Aggregator implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sAggregator(config Config, restConfig *rest.Config) (Aggregator, error) {
+func NewK8sAggregator(config config.AggregatorConfig, restConfig *rest.Config) (Aggregator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err

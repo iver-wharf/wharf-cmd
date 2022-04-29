@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -18,7 +19,7 @@ var listOptionsMatchLabels = metav1.ListOptions{
 }
 
 type k8sProvisioner struct {
-	Namespace  string
+	Config     config.ProvisionerConfig
 	Clientset  *kubernetes.Clientset
 	Pods       corev1.PodInterface
 	restConfig *rest.Config
@@ -26,13 +27,13 @@ type k8sProvisioner struct {
 
 // NewK8sProvisioner returns a new Provisioner implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sProvisioner(config Config, restConfig *rest.Config) (Provisioner, error) {
+func NewK8sProvisioner(config config.ProvisionerConfig, restConfig *rest.Config) (Provisioner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
 	}
 	return k8sProvisioner{
-		Namespace:  config.K8s.Namespace,
+		Config:     config,
 		Clientset:  clientset,
 		Pods:       clientset.CoreV1().Pods(config.K8s.Namespace),
 		restConfig: restConfig,
@@ -62,7 +63,7 @@ func (p k8sProvisioner) DeleteWorker(ctx context.Context, workerID string) error
 }
 
 func (p k8sProvisioner) CreateWorker(ctx context.Context) (Worker, error) {
-	podMeta := createPodMeta()
+	podMeta := createPodMeta(p.Config.Worker)
 	newPod, err := p.Pods.Create(ctx, &podMeta, metav1.CreateOptions{})
 	return convertPodToWorker(newPod), err
 }
@@ -80,7 +81,7 @@ func (p k8sProvisioner) getPod(ctx context.Context, workerID string) (*v1.Pod, e
 	return nil, fmt.Errorf("found no worker with appropriate labels matching workerID: %s", workerID)
 }
 
-func createPodMeta() v1.Pod {
+func createPodMeta(config config.WorkerPodConfig) v1.Pod {
 	const (
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
@@ -108,13 +109,13 @@ func createPodMeta() v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			ServiceAccountName: "wharf-cmd",
+			ServiceAccountName: config.ServiceAccountName,
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
-					Image:           "bitnami/git:2-debian-10",
-					ImagePullPolicy: v1.PullIfNotPresent,
+					Image:           fmt.Sprintf("%s:%s", config.InitContainer.Image, config.InitContainer.ImageTag),
+					ImagePullPolicy: config.InitContainer.ImagePullPolicy,
 					// TODO: Should use repo URL and branch from build params.
 					Args: []string{
 						"git",
@@ -140,8 +141,8 @@ func createPodMeta() v1.Pod {
 					//  Go: 353MB compressed
 					//  ubuntu: 73 MB uncompressed
 					// was barely a factor.
-					Image:           "golang:latest",
-					ImagePullPolicy: v1.PullAlways,
+					Image:           fmt.Sprintf("%s:%s", config.Container.Image, config.Container.ImageTag),
+					ImagePullPolicy: config.Container.ImagePullPolicy,
 					// TODO: Needs better implementation.
 					// Currently works for wharf-cmd, but is not thought through. Takes a long
 					// time to get running.

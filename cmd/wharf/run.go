@@ -97,7 +97,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
-				Config:        rootConfig.Worker,
+				Config:        rootConfig,
 				CurrentDir:    currentDir,
 				Namespace:     ns,
 				RestConfig:    kubeconfig,
