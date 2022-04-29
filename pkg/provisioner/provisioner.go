@@ -16,6 +16,7 @@ type Provisioner interface {
 type WorkerArgs struct {
 	GitCloneURL    string
 	GitCloneBranch string
+	SubDir         string
 
 	Environment string
 	Stage       string

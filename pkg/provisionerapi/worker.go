@@ -88,6 +88,9 @@ func (m *workerModule) createWorkerHandler(c *gin.Context) {
 		ginutil.WriteInvalidBindError(c, err, "One or more parameters failed to parse when reading query parameters.")
 		return
 	}
+	if params.RunStages == "ALL" {
+		params.RunStages = ""
+	}
 	if params.RepoBranch == "" {
 		params.RepoBranch = params.GitBranch
 	}

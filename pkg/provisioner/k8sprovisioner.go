@@ -2,7 +2,9 @@ package provisioner
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path/filepath"
 	"strconv"
 
 	v1 "k8s.io/api/core/v1"
@@ -63,6 +65,9 @@ func (p k8sProvisioner) DeleteWorker(ctx context.Context, workerID string) error
 }
 
 func (p k8sProvisioner) CreateWorker(ctx context.Context, args WorkerArgs) (Worker, error) {
+	if args.GitCloneURL == "" {
+		return Worker{}, errors.New("missing required Git clone URL")
+	}
 	podMeta := newWorkerPod(args)
 	newPod, err := p.Pods.Create(ctx, &podMeta, metav1.CreateOptions{})
 	return convertPodToWorker(newPod), err
@@ -118,6 +123,14 @@ func newWorkerPod(args WorkerArgs) v1.Pod {
 	}
 	for k, v := range args.Inputs {
 		wharfArgs = append(wharfArgs, "--input", fmt.Sprintf("%s=%s", k, v))
+	}
+	if args.SubDir != "" {
+		relSubDir := filepath.ToSlash(args.SubDir)
+		if filepath.IsAbs(relSubDir) {
+			relSubDir = "." + relSubDir
+		}
+		// Need "--" so the path isn't malliciously treated as another flag
+		wharfArgs = append(wharfArgs, "--", relSubDir)
 	}
 
 	wharfEnvs := []v1.EnvVar{
