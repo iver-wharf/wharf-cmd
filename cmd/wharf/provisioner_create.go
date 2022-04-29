@@ -51,11 +51,10 @@ The <repo> argument is used by Git to clone the repository, such as:
 
 func init() {
 	provisionerCmd.AddCommand(provisionerCreateCmd)
-	provisionerCreateCmd.Flags().StringVarP(&provisionerCreateFlags.stage, "stage", "s", "", "Stage to run (will run all stages if unset)")
-	provisionerCreateCmd.RegisterFlagCompletionFunc("stage", completeWharfYmlStage)
-	provisionerCreateCmd.Flags().StringVarP(&provisionerCreateFlags.env, "environment", "e", "", "Environment selection")
-	provisionerCreateCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
-	provisionerCreateCmd.Flags().VarP(&provisionerCreateFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
-	provisionerCreateCmd.RegisterFlagCompletionFunc("input", completeWharfYmlInputs)
+
 	provisionerCreateCmd.Flags().StringVar(&provisionerCreateFlags.subdir, "subdir", "", "Subdirectory of repository where .wharf-ci.yml file is found.")
+
+	addWharfYmlStageFlag(provisionerCreateCmd, &provisionerCreateFlags.stage)
+	addWharfYmlEnvFlag(provisionerCreateCmd, &provisionerCreateFlags.env)
+	addWharfYmlInputsFlag(provisionerCreateCmd, &provisionerCreateFlags.inputs)
 }
