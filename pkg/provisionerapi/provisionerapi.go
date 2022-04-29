@@ -2,13 +2,13 @@ package provisionerapi
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 
 	// Load in swagger docs
-	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	_ "github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
 )
 
