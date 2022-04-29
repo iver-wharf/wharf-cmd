@@ -6,6 +6,11 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
+
+	// Load in swagger docs
+	_ "github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/docs"
 )
 
 type module interface {
@@ -22,13 +27,25 @@ func newRestServer(artifactOpener ArtifactFileOpener) *restServer {
 	}
 }
 
+// serveHTTP godoc
+// @title Wharf worker API
+// @description REST API for wharf-cmd to access build results.
+// @description Please refer to the gRPC API for more endpoints.
+// @license.name MIT
+// @license.url https://github.com/iver-wharf/wharf-cmd/blob/master/LICENSE
+// @contact.name Iver wharf-cmd support
+// @contact.url https://github.com/iver-wharf/wharf-cmd/issues
+// @contact.email wharf@iver.se
+// @basePath /api
+// @query.collection.format multi
 func serveHTTP(s *restServer, listener net.Listener) error {
 	r := gin.New()
 	applyGinHandlers(r)
 	applyCORSConfig(r)
 
 	g := r.Group("/api")
-	g.GET("", func(c *gin.Context) { c.JSON(200, gin.H{"message": "pong"}) })
+	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	g.GET("", pingHandler)
 
 	s.registerModules(g)
 	return r.RunListener(listener)
@@ -57,4 +74,22 @@ func applyCORSConfig(r *gin.Engine) {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowAllOrigins = true
 	r.Use(cors.New(corsConfig))
+}
+
+// Ping is the response from a GET /api/ request.
+type Ping struct {
+	Message string `json:"message" example:"pong"`
+}
+
+// pingHandler godoc
+// @id ping
+// @summary Ping
+// @description Pong.
+// @description Added in v0.8.0.
+// @tags meta
+// @produce json
+// @success 200 {object} Ping
+// @router / [get]
+func pingHandler(c *gin.Context) {
+	c.JSON(200, Ping{Message: "pong"})
 }
