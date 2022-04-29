@@ -87,6 +87,7 @@ type Ping struct {
 // @description Pong.
 // @description Added in v0.8.0.
 // @tags meta
+// @produce json
 // @success 200 {object} Ping
 // @router / [get]
 func pingHandler(c *gin.Context) {
