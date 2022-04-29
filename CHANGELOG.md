@@ -19,7 +19,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `wharf provisioner serve` that launches an HTTP REST api server with
     endpoints:
 
-    - `GET /api` to check health.
+    - `GET /` to ping.
 
     - `GET /api/swagger/index.html` Swagger generated documentation.
 
@@ -162,8 +162,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added gRPC client in `pkg/workerapi/workerclient` to interface with a worker
   gRPC server. (#51)
 
-- Added HTTP server for worker in `pkg/workerapi/workerserver`: (#51, #114)
+- Added HTTP server for worker in `pkg/workerapi/workerserver`:
+  (#51, #114, #117)
 
+  - `GET /` to ping.
+  - `GET /api/swagger/index.html` Swagger generated documentation.
   - `GET /api/artifact/:artifactId/download` Downloads an artifact.
 
 - Added HTTP client in `pkg/workerapi/workerclient` to interface with
