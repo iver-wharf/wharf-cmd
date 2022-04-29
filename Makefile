@@ -33,7 +33,7 @@ deps-go:
 deps-npm:
 	npm install
 
-check:
+check: swag
 	go test ./...
 
 proto:
