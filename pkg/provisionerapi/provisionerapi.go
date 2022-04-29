@@ -36,7 +36,9 @@ func Serve(prov provisioner.Provisioner) error {
 	)
 
 	g := r.Group("/api")
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
+		c.InstanceName = "provisionerapi"
+	}))
 	g.GET("", pingHandler)
 
 	workerModule := workerModule{prov: prov}

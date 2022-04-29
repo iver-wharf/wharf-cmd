@@ -44,7 +44,9 @@ func serveHTTP(s *restServer, listener net.Listener) error {
 	applyCORSConfig(r)
 
 	g := r.Group("/api")
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
+		c.InstanceName = "workerapi"
+	}))
 	g.GET("", pingHandler)
 
 	s.registerModules(g)
