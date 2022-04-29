@@ -162,7 +162,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added gRPC client in `pkg/workerapi/workerclient` to interface with a worker
   gRPC server. (#51)
 
-- Added HTTP server for worker in `pkg/workerapi/workerserver`: (#51)
+- Added HTTP server for worker in `pkg/workerapi/workerserver`: (#51, #114)
 
   - `GET /api/artifact/:artifactId/download` Downloads an artifact.
 
