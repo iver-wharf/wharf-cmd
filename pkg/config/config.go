@@ -55,12 +55,12 @@ type WorkerConfig struct {
 type K8sConfig struct {
 	// Context is the context used when talking to kubernetes.
 	//
-	// Added in v0.8.0
+	// Added in v0.8.0.
 	Context string
 
 	// Namespace is the kubernetes namespace to talk to.
 	//
-	// Added in v0.8.0
+	// Added in v0.8.0.
 	Namespace string
 }
 
@@ -73,26 +73,36 @@ type StepsConfig struct {
 
 // DockerStepConfig holds settings for the docker step type.
 type DockerStepConfig struct {
-	// KanikoImage is the image for the kaniko executor to use in docker steps.
+	// Image is the image for the kaniko executor to use in the docker step.
 	//
-	// Added in v0.8.0
-	KanikoImage string
+	// Added in v0.8.0.
+	Image string
+
+	// ImageTag is the image tag to use for the image.
+	//
+	// Added in v0.8.0.
+	ImageTag string
 }
 
 // KubectlStepConfig holds settings for the kubectl step type.
 type KubectlStepConfig struct {
-	// KubectlImage is the image to use in kubectl steps.
+	// Image is the image to use in the kubectl step.
 	//
-	// Added in v0.8.0
-	KubectlImage string
+	// Added in v0.8.0.
+	Image string
+
+	// ImageTag is the image tag to use for the image.
+	//
+	// Added in v0.8.0.
+	ImageTag string
 }
 
 // HelmStepConfig holds settings for the helm step type.
 type HelmStepConfig struct {
-	// HelmImage is the image to use in helm steps.
+	// Image is the image to use in the helm step.
 	//
-	// Added in v0.8.0
-	HelmImage string
+	// Added in v0.8.0.
+	Image string
 }
 
 // ProvisionerConfig holds settings for the provisioner.
@@ -105,18 +115,28 @@ type ProvisionerConfig struct {
 // provisioner.
 type WorkerPodConfig struct {
 	// ServiceAccountName is the service account name to use for the pod.
+	//
+	// Added in v0.8.0.
 	ServiceAccountName string
 	// InitContainer holds settings for the init container.
+	//
+	// Added in v0.8.0.
 	InitContainer K8sContainerConfig
 	// Container holds settings for the container.
+	//
+	// Added in v0.8.0.
 	Container K8sContainerConfig
 }
 
 // K8sContainerConfig holds settings for a kubernetes container.
 type K8sContainerConfig struct {
 	// Image is the base path for the image to use for a container.
+	//
+	// Added in v0.8.0.
 	Image string
 	// ImageTag is the version tag to use for a container.
+	//
+	// Added in v0.8.0.
 	ImageTag string
 	// ImagePullPolicy is the image pull policy to use for a container.
 	//
@@ -131,6 +151,8 @@ type K8sContainerConfig struct {
 	// "IfNotPresent"
 	//   Pulls if the image isn't present on disk.
 	//   Container will fail if the image isn't present and the pull fails.
+	//
+	// Added in v0.8.0.
 	ImagePullPolicy v1.PullPolicy
 }
 
@@ -194,13 +216,13 @@ var DefaultConfig = Config{
 		},
 		Steps: StepsConfig{
 			Docker: DockerStepConfig{
-				KanikoImage: "gcr.io/kaniko-project/executor:v1.7.0",
+				Image: "gcr.io/kaniko-project/executor:v1.7.0",
 			},
 			Kubectl: KubectlStepConfig{
-				KubectlImage: "docker.io/wharfse/kubectl:v1.23.5",
+				Image: "docker.io/wharfse/kubectl:v1.23.5",
 			},
 			Helm: HelmStepConfig{
-				HelmImage: "docker.io/wharfse/helm:v3.8.1",
+				Image: "docker.io/wharfse/helm:v3.8.1",
 			},
 		},
 	},
