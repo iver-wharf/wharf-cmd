@@ -5,12 +5,10 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/docs"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
-
-	// Load in swagger docs
-	_ "github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/docs"
 )
 
 type module interface {
@@ -45,7 +43,7 @@ func serveHTTP(s *restServer, listener net.Listener) error {
 
 	g := r.Group("/api")
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
-		c.InstanceName = "workerapi"
+		c.InstanceName = docs.SwaggerInfoworkerapi.InstanceName()
 	}))
 	g.GET("", pingHandler)
 

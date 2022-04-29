@@ -3,13 +3,11 @@ package provisionerapi
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
+	"github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
-
-	// Load in swagger docs
-	_ "github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
 )
 
 var log = logger.NewScoped("PROVISIONER-API")
@@ -37,7 +35,7 @@ func Serve(prov provisioner.Provisioner) error {
 
 	g := r.Group("/api")
 	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
-		c.InstanceName = "provisionerapi"
+		c.InstanceName = docs.SwaggerInfoprovisionerapi.InstanceName()
 	}))
 	g.GET("", pingHandler)
 
