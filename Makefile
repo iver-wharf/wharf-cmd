@@ -3,6 +3,9 @@
 	lint lint-md lint-go \
 	lint-fix lint-fix-md lint-fix-go
 
+commit = $(shell git rev-parse HEAD)
+version = latest
+
 ifeq ($(OS),Windows_NT)
 wharf.exe: swag
 	go build -o wharf.exe
