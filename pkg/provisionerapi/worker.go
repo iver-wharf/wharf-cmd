@@ -13,7 +13,7 @@ type workerModule struct {
 	prov provisioner.Provisioner
 }
 
-func (m *workerModule) register(g *gin.RouterGroup) {
+func (m workerModule) register(g *gin.RouterGroup) {
 	g.GET("/worker", m.listWorkersHandler)
 	g.POST("/worker", m.createWorkerHandler)
 	g.DELETE("/worker/:workerId", m.deleteWorkerHandler)
@@ -27,8 +27,8 @@ func (m *workerModule) register(g *gin.RouterGroup) {
 // @produce json
 // @success 200 {object} []provisioner.Worker
 // @failure 500 {object} string "Failed"
-// @router /worker [get]
-func (m *workerModule) listWorkersHandler(c *gin.Context) {
+// @router /api/worker [get]
+func (m workerModule) listWorkersHandler(c *gin.Context) {
 	workers, err := m.prov.ListWorkers(c.Request.Context())
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err)
@@ -58,8 +58,8 @@ func (m *workerModule) listWorkersHandler(c *gin.Context) {
 // @param WHARF_PROJECT_ID query uint   false "Wharf project ID" minimum(0) example(456)
 // @success 201 {object} provisioner.Worker
 // @failure 500 {object} string "Failed"
-// @router /worker [post]
-func (m *workerModule) createWorkerHandler(c *gin.Context) {
+// @router /api/worker [post]
+func (m workerModule) createWorkerHandler(c *gin.Context) {
 	var params = struct {
 		BuildRef       uint   `form:"BUILD_REF"`
 		Environment    string `form:"ENVIRONMENT"`
@@ -131,8 +131,8 @@ func (m *workerModule) createWorkerHandler(c *gin.Context) {
 // @param workerId path uint true "ID of worker to delete" minimum(0)
 // @success 204 "OK"
 // @failure 500 {object} string "Failed"
-// @router /worker/{workerId} [delete]
-func (m *workerModule) deleteWorkerHandler(c *gin.Context) {
+// @router /api/worker/{workerId} [delete]
+func (m workerModule) deleteWorkerHandler(c *gin.Context) {
 	workerID, ok := ginutil.RequireParamString(c, "workerId")
 	if !ok {
 		return

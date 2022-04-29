@@ -21,7 +21,6 @@ var log = logger.NewScoped("PROVISIONER-API")
 // @contact.name Iver wharf-cmd support
 // @contact.url https://github.com/iver-wharf/wharf-cmd/issues
 // @contact.email wharf@iver.se
-// @basePath /api
 // @query.collection.format multi
 func Serve(prov provisioner.Provisioner) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
@@ -33,14 +32,13 @@ func Serve(prov provisioner.Provisioner) error {
 		ginutil.RecoverProblem,
 	)
 
-	g := r.Group("/api")
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
+	r.GET("", pingHandler)
+	api := r.Group("/api")
+	api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
 		c.InstanceName = docs.SwaggerInfoprovisionerapi.InstanceName()
 	}))
-	g.GET("", pingHandler)
 
-	workerModule := workerModule{prov: prov}
-	workerModule.register(g)
+	workerModule{prov: prov}.register(api)
 
 	const bindAddress = "0.0.0.0:5009"
 	log.Info().WithString("address", bindAddress).Message("Starting server.")
