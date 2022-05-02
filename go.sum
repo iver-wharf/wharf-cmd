@@ -411,8 +411,6 @@ github.com/iver-wharf/wharf-api-client-go/v2 v2.0.1-0.20220303151222-6073acc9b23
 github.com/iver-wharf/wharf-api-client-go/v2 v2.0.1-0.20220303151222-6073acc9b23f/go.mod h1:LTwFb2GMvwfp0tMi1h0o9fGxXG9AoSoT6HFT0wQzzYk=
 github.com/iver-wharf/wharf-core v1.3.0 h1:iJqa0JYBkMmJDkBKeErKCpZCa+qa97u5MLMBQ685Jhs=
 github.com/iver-wharf/wharf-core v1.3.0/go.mod h1:dpYtdL52i17Aue7An6mJL9dICeulBDsGZO/PxZYHgrE=
-github.com/iver-wharf/wharf-core/v2 v2.0.0-20220330110040-0dab0ae08577 h1:O12cWASj3Nl+Z551NzQEn44BkKD9psIt5wMrh0Mtr5E=
-github.com/iver-wharf/wharf-core/v2 v2.0.0-20220330110040-0dab0ae08577/go.mod h1:05aKqdBnWZ/lKnmlf0aRA986hBQOCvbsGCqe8xzWBkA=
 github.com/jackc/chunkreader v1.0.0/go.mod h1:RT6O25fNZIuasFJRyZ4R/Y2BbhasbmZXF9QQ7T3kePo=
 github.com/jackc/chunkreader/v2 v2.0.0/go.mod h1:odVSm741yZoC3dpHEUXIqA9tQRhFrgOHwnPIn9lDKlk=
 github.com/jackc/chunkreader/v2 v2.0.1/go.mod h1:odVSm741yZoC3dpHEUXIqA9tQRhFrgOHwnPIn9lDKlk=
