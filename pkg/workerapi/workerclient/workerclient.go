@@ -39,6 +39,7 @@ type Client interface {
 	StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error)
 	DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error)
 	Ping(ctx context.Context) error
+	BuildID() uint
 
 	Close() error
 }
@@ -55,6 +56,7 @@ func New(baseURL string, opts Options) (Client, error) {
 		rest:    rest,
 		grpc:    newGRPCClient(baseURL, opts),
 		baseURL: baseURL,
+		buildID: opts.BuildID,
 	}, nil
 }
 
@@ -62,6 +64,7 @@ type client struct {
 	rest    *restClient
 	grpc    *grpcClient
 	baseURL string
+	buildID uint
 }
 
 // Options contains options that can be used in the creation
@@ -71,6 +74,9 @@ type Options struct {
 	//
 	// Should NOT be true in a production environment.
 	InsecureSkipVerify bool
+
+	// BuildID is the ID of the build from wharf-api.
+	BuildID uint
 }
 
 // StreamLogs returns a stream that will receive log lines from the worker.
@@ -105,6 +111,10 @@ func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 		return nil, err
 	}
 	return res.Body, nil
+}
+
+func (c *client) BuildID() uint {
+	return c.buildID
 }
 
 func (c *client) Ping(ctx context.Context) error {
