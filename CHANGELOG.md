@@ -38,6 +38,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `wharf provisioner delete` with flag `--id` to specify the worker that
     should be deleted, as long as it has certain labels as well.
 
+- Added Git credentials support to `wharf provisioner` when running in
+  Kubernetes via a Kubernetes secret named `wharf-cmd-worker-git-ssh`.
+  See [docs/provisioner-git-ssh-secret.md](docs/provisioner-git-ssh-secret.md)
+  for more info. (#120)
+
 - Added watchdog commands: (#62)
 
   - `wharf watchdog serve` checks stray builds from the wharf-api and
