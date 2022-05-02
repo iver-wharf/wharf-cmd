@@ -8,6 +8,7 @@ import (
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 )
@@ -41,6 +42,7 @@ func (r relayer) relayLogs(ctx context.Context) error {
 	}
 	defer reader.CloseSend()
 
+	buildID := r.worker.BuildID()
 	var sentLogs uint
 
 	writer, err := r.wharfapi.CreateBuildLogStream(ctx)
@@ -73,7 +75,7 @@ func (r relayer) relayLogs(ctx context.Context) error {
 			WithUint64("step", logLine.StepID).
 			Message(logLine.Message)
 		writer.Send(request.Log{
-			BuildID:      uint(logLine.BuildID),
+			BuildID:      buildID,
 			WorkerLogID:  uint(logLine.LogID),
 			WorkerStepID: uint(logLine.StepID),
 			Timestamp:    logLine.Timestamp.AsTime(),
@@ -117,7 +119,8 @@ func (r relayer) relayStatusEvents(ctx context.Context) error {
 	}
 	defer stream.CloseSend()
 
-	// TODO: Update build status based on statuses
+	buildID := r.worker.BuildID()
+
 	for {
 		statusEvent, err := stream.Recv()
 		if err != nil {
@@ -126,10 +129,32 @@ func (r relayer) relayStatusEvents(ctx context.Context) error {
 			}
 			break
 		}
+		status, ok := convBuildStatus(statusEvent.Status)
+		if !ok {
+			continue
+		}
+		r.wharfapi.UpdateBuildStatus(buildID, request.LogOrStatusUpdate{
+			Status: status,
+		})
 		log.Debug().
 			WithUint64("step", statusEvent.StepID).
 			WithStringer("status", statusEvent.Status).
 			Message("Received status event.")
 	}
 	return nil
+}
+
+func convBuildStatus(status v1.Status) (request.BuildStatus, bool) {
+	switch status {
+	case v1.StatusPending, v1.StatusScheduling, v1.StatusInitializing:
+		return request.BuildScheduling, true
+	case v1.StatusRunning:
+		return request.BuildRunning, true
+	case v1.StatusSuccess:
+		return request.BuildCompleted, true
+	case v1.StatusCancelled, v1.StatusFailed:
+		return request.BuildFailed, true
+	default:
+		return "", false
+	}
 }
