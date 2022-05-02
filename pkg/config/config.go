@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-core/v2/pkg/config"
-	"gopkg.in/yaml.v3"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -36,22 +35,13 @@ type Config struct {
 	Aggregator     AggregatorConfig
 }
 
-func (c Config) print() {
-	data, err := yaml.Marshal(&c)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Printf("%s\n", string(data))
-}
-
 // WorkerConfig holds settings for the worker.
 type WorkerConfig struct {
 	K8s   K8sConfig
 	Steps StepsConfig
 }
 
-// K8sConfig holds settings for when the provisioner is using kubernetes.
+// K8sConfig holds settings for using kubernetes.
 type K8sConfig struct {
 	// Context is the context used when talking to kubernetes.
 	//
@@ -73,7 +63,7 @@ type StepsConfig struct {
 
 // DockerStepConfig holds settings for the docker step type.
 type DockerStepConfig struct {
-	// Image is the image for the kaniko executor to use in the docker step.
+	// Image is the image for the kaniko executor to use.
 	//
 	// Added in v0.8.0.
 	Image string
@@ -101,9 +91,9 @@ type KubectlStepConfig struct {
 type HelmStepConfig struct {
 	// Image is the image to use in the helm step.
 	//
-	// There's no config value for the Docker image tag to use, as
-	// that comes from the helmVersion field in the helm step type
-	// from the .wharf-ci.yml file.
+	// There's no config value for the Docker image tag to use, as that comes
+	// from the helmVersion field in the helm step type from the .wharf-ci.yml
+	// file.
 	//
 	// Added in v0.8.0.
 	Image string
@@ -233,7 +223,7 @@ var DefaultConfig = Config{
 	Provisioner: ProvisionerConfig{
 		K8s: K8sConfig{
 			Context:   "",
-			Namespace: "default",
+			Namespace: "",
 		},
 		Worker: WorkerPodConfig{
 			ServiceAccountName: "wharf-cmd",
@@ -303,7 +293,6 @@ func (c Config) validate() error {
 	if ok := validateImagePullPolicy(&containerPullPolicy); !ok {
 		return fmt.Errorf("invalid pull policy: provisioner.worker.container.imagePullPolicy=%s", containerPullPolicy)
 	}
-
 	return nil
 }
 

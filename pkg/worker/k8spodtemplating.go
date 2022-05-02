@@ -262,7 +262,7 @@ func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
 		Name:  commonContainerName,
-		Image: fmt.Sprintf("%s:%s", config.KanikoImage, config.ImageTag),
+		Image: fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
 		// default entrypoint for image is "/kaniko/executor"
 		WorkingDir: repoDir,
 		VolumeMounts: []v1.VolumeMount{
@@ -412,7 +412,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      fmt.Sprintf("%s:%s", config.HelmImage, step.HelmVersion),
+		Image:      fmt.Sprintf("%s:%s", config.Image, step.HelmVersion),
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
@@ -462,7 +462,7 @@ func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.Step
 func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfyml.StepKubectl) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      fmt.Sprintf("%s:%s", config.KubectlImage, config.ImageTag),
+		Image:      fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
