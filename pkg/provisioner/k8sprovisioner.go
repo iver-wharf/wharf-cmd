@@ -93,6 +93,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	const (
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
+		sshVolumeName       = "ssh"
 	)
 	labels := map[string]string{
 		"app":                          "wharf-cmd-worker",
@@ -111,28 +112,10 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		},
 	}
 	gitVolumeMounts := append(volumeMounts, v1.VolumeMount{
-		Name:      "ssh",
+		Name:      sshVolumeName,
 		ReadOnly:  true,
 		MountPath: "/root/.ssh",
 	})
-	volumes := []v1.Volume{
-		{
-			Name: repoVolumeName,
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name: "ssh",
-			VolumeSource: v1.VolumeSource{
-				Secret: &v1.SecretVolumeSource{
-					SecretName:  "wharf-cmd-worker-git-ssh",
-					DefaultMode: typ.Ref[int32](0600),
-					Optional:    typ.Ref(true),
-				},
-			},
-		},
-	}
 
 	gitArgs := []string{"git", "clone", args.GitCloneURL, "--single-branch"}
 	if args.GitCloneBranch != "" {
@@ -222,7 +205,24 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Env:             wharfEnvs,
 				},
 			},
-			Volumes: volumes,
+			Volumes: []v1.Volume{
+				{
+					Name: repoVolumeName,
+					VolumeSource: v1.VolumeSource{
+						EmptyDir: &v1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: sshVolumeName,
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{
+							SecretName:  "wharf-cmd-worker-git-ssh",
+							DefaultMode: typ.Ref[int32](0600),
+							Optional:    typ.Ref(true),
+						},
+					},
+				},
+			},
 		},
 	}
 }
