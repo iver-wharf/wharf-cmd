@@ -24,12 +24,16 @@ kill endpoint.`,
 			return err
 		}
 
+		if aggregatorFlags.k8sOverrides.Context.Namespace == "" {
+			aggregatorFlags.k8sOverrides.Context.Namespace = rootConfig.Aggregator.K8s.Namespace
+		}
 		restConfig, ns, err := loadKubeconfig(aggregatorFlags.k8sOverrides)
 		if err != nil {
 			return err
 		}
 		aggregatorFlags.restConfig = restConfig
 		aggregatorFlags.namespace = ns
+		rootConfig.Aggregator.K8s.Namespace = ns
 		return nil
 	},
 }

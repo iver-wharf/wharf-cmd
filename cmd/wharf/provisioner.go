@@ -28,22 +28,16 @@ orchestration is handled inside the Kubernetes cluster, in comparison to the
 			return err
 		}
 
+		if provisionerFlags.k8sOverrides.Context.Namespace == "" {
+			provisionerFlags.k8sOverrides.Context.Namespace = rootConfig.Provisioner.K8s.Namespace
+		}
 		restConfig, ns, err := loadKubeconfig(provisionerFlags.k8sOverrides)
 		if err != nil {
 			return err
 		}
-		// Question: Should the flag override the wharf-cmd-config.yml,
-		// vice-versa, or one of them act as a fallback?
-		//
-		// Currently going with value from provisionerFlags as fallback.
 		provisionerFlags.restConfig = restConfig
 		provisionerFlags.namespace = ns
-		if rootConfig.Provisioner.K8s.Namespace == "default" && ns != "" {
-			rootConfig.Provisioner.K8s.Namespace = ns
-		}
-		if rootConfig.ProvisionerAPI.K8s.Namespace == "default" && ns != "" {
-			rootConfig.ProvisionerAPI.K8s.Namespace = ns
-		}
+		rootConfig.Provisioner.K8s.Namespace = ns
 		return nil
 	},
 }
