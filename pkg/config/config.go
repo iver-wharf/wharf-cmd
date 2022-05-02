@@ -101,6 +101,10 @@ type KubectlStepConfig struct {
 type HelmStepConfig struct {
 	// Image is the image to use in the helm step.
 	//
+	// There's no config value for the Docker image tag to use, as
+	// that comes from the helmVersion field in the helm step type
+	// from the .wharf-ci.yml file.
+	//
 	// Added in v0.8.0.
 	Image string
 }
