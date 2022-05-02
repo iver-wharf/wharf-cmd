@@ -209,9 +209,6 @@ func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string, buildID ui
 		return fmt.Errorf("relaying to wharf: %w", err)
 	}
 
-	// TODO: Check build results from already-streamed status events if the
-	// build is actually done. If not, then set build as failed via wharfapi.
-
 	log.Debug().
 		WithStringf("pod", "%s/%s", a.namespace, podName).
 		Message("Done relaying. Terminating pod.")
