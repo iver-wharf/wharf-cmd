@@ -249,7 +249,7 @@ var DefaultConfig = Config{
 		},
 		K8s: K8sConfig{
 			Context:   "",
-			Namespace: "default",
+			Namespace: "",
 		},
 	},
 	Aggregator: AggregatorConfig{
