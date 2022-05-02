@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
 )
 
@@ -11,7 +10,7 @@ var provisionerListCmd = &cobra.Command{
 	Long: `Lists wharf worker pods inside Kubernetes
 that are either scheduling, running, or completed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		p, err := provisioner.NewK8sProvisioner(rootConfig.Provisioner, provisionerFlags.restConfig)
+		p, err := newProvisioner()
 		if err != nil {
 			return err
 		}

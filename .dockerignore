@@ -1,0 +1,11 @@
+
+**/.git
+**/.gitignore
+**/.wharf-ci.yml
+**/.dockerignore
+**/Dockerfile
+**/*.swp
+**/*.exe
+node_modules
+package-lock.json
+**/docs
