@@ -110,6 +110,29 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			MountPath: repoVolumeMountPath,
 		},
 	}
+	gitVolumeMounts := append(volumeMounts, v1.VolumeMount{
+		Name:      "ssh",
+		ReadOnly:  true,
+		MountPath: "/root/.ssh",
+	})
+	volumes := []v1.Volume{
+		{
+			Name: repoVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: "ssh",
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName:  "wharf-cmd-worker-git-ssh",
+					DefaultMode: typ.Ref[int32](0600),
+					Optional:    typ.Ref(true),
+				},
+			},
+		},
+	}
 
 	gitArgs := []string{"git", "clone", args.GitCloneURL, "--single-branch"}
 	if args.GitCloneBranch != "" {
@@ -184,7 +207,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
 					Command:         gitArgs,
-					VolumeMounts:    volumeMounts,
+					VolumeMounts:    gitVolumeMounts,
 				},
 			},
 			Containers: []v1.Container{
@@ -199,14 +222,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Env:             wharfEnvs,
 				},
 			},
-			Volumes: []v1.Volume{
-				{
-					Name: repoVolumeName,
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-			},
+			Volumes: volumes,
 		},
 	}
 }
