@@ -20,7 +20,7 @@ type ArtifactFileOpener interface {
 	OpenArtifactFile(artifactID uint) (io.ReadCloser, error)
 }
 
-func (m *artifactModule) register(g *gin.RouterGroup) {
+func (m artifactModule) register(g *gin.RouterGroup) {
 	g.GET("/artifact/:artifactId/download", m.downloadArtifactHandler)
 }
 
@@ -35,8 +35,8 @@ func (m *artifactModule) register(g *gin.RouterGroup) {
 // @failure 400 {object} problem.Response "Bad request"
 // @failure 404 {object} problem.Response "Cannot find artifact"
 // @failure 502 {object} problem.Response "Canont read artifact file"
-// @router /artifact/{artifactId}/download [post]
-func (m *artifactModule) downloadArtifactHandler(c *gin.Context) {
+// @router /api/artifact/{artifactId}/download [post]
+func (m artifactModule) downloadArtifactHandler(c *gin.Context) {
 	artifactID, ok := ginutil.ParseParamUint(c, "artifactId")
 	if !ok {
 		return

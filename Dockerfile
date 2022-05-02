@@ -13,14 +13,13 @@ ARG BUILD_DATE=""
 RUN chmod +x scripts/update-version.sh  \
     && scripts/update-version.sh assets/version.yaml \
     && make swag check \
-    && CGO_ENABLED=0 go build -o main
+    && CGO_ENABLED=0 go build -o wharf ./cmd/wharf
 
 ARG REG=docker.io
 FROM ${REG}/library/alpine:3.15 AS final
 RUN apk add --no-cache ca-certificates tzdata
-WORKDIR /app
-COPY --from=build /src/main ./
-ENTRYPOINT ["/app/main"]
+COPY --from=build /src/wharf /usr/local/bin/wharf
+ENTRYPOINT ["/usr/local/bin/wharf"]
 
 ARG BUILD_VERSION
 ARG BUILD_GIT_COMMIT

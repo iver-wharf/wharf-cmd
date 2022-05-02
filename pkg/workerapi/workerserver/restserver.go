@@ -5,17 +5,11 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/docs"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
-
-	// Load in swagger docs
-	_ "github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/docs"
 )
-
-type module interface {
-	register(g *gin.RouterGroup)
-}
 
 type restServer struct {
 	artifactOpener ArtifactFileOpener
@@ -36,28 +30,20 @@ func newRestServer(artifactOpener ArtifactFileOpener) *restServer {
 // @contact.name Iver wharf-cmd support
 // @contact.url https://github.com/iver-wharf/wharf-cmd/issues
 // @contact.email wharf@iver.se
-// @basePath /api
 // @query.collection.format multi
 func serveHTTP(s *restServer, listener net.Listener) error {
 	r := gin.New()
 	applyGinHandlers(r)
 	applyCORSConfig(r)
 
-	g := r.Group("/api")
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	g.GET("", pingHandler)
+	r.GET("", pingHandler)
 
-	s.registerModules(g)
+	api := r.Group("/api")
+	api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
+		c.InstanceName = docs.SwaggerInfoworkerapi.InstanceName()
+	}))
+	artifactModule{s.artifactOpener}.register(api)
 	return r.RunListener(listener)
-}
-
-func (s *restServer) registerModules(r *gin.RouterGroup) {
-	modules := []module{
-		&artifactModule{s.artifactOpener},
-	}
-	for _, module := range modules {
-		module.register(r)
-	}
 }
 
 func applyGinHandlers(r *gin.Engine) {

@@ -23,9 +23,8 @@ var varsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(varsCmd)
 
-	varsCmd.PersistentFlags().StringVarP(&varsFlags.env, "environment", "e", "", "Environment selection")
-	varsCmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 	varsCmd.PersistentFlags().BoolVarP(&varsFlags.showAll, "all", "a", false, "Show overridden variables")
-	varsCmd.PersistentFlags().VarP(&varsFlags.inputs, "input", "i", "Inputs (--input key=value), can be set multiple times")
-	varsCmd.RegisterFlagCompletionFunc("input", completeWharfYmlInputs)
+
+	addWharfYmlEnvFlag(varsCmd, &varsFlags.env)
+	addWharfYmlInputsFlag(varsCmd, &varsFlags.inputs)
 }

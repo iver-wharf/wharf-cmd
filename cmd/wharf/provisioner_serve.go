@@ -18,7 +18,11 @@ the following URL path on a running wharf provisioner server:
 	/api/swagger/index.html
 `,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return provisionerapi.Serve(provisionerFlags.namespace, provisionerFlags.restConfig)
+		prov, err := newProvisioner()
+		if err != nil {
+			return err
+		}
+		return provisionerapi.Serve(prov)
 	},
 }
 

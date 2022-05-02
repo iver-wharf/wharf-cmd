@@ -2,8 +2,12 @@ package provisioner
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"path/filepath"
+	"strconv"
 
+	"gopkg.in/typ.v3"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -11,22 +15,18 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var listOptionsMatchLabels = metav1.ListOptions{
-	LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
-		"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-		"wharf.iver.com/instance=prod",
-}
-
 type k8sProvisioner struct {
-	Namespace  string
-	Clientset  *kubernetes.Clientset
-	Pods       corev1.PodInterface
-	restConfig *rest.Config
+	Namespace              string
+	Clientset              *kubernetes.Clientset
+	Pods                   corev1.PodInterface
+	restConfig             *rest.Config
+	instanceID             string
+	listOptionsMatchLabels metav1.ListOptions
 }
 
 // NewK8sProvisioner returns a new Provisioner implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, error) {
+func NewK8sProvisioner(instanceID, namespace string, restConfig *rest.Config) (Provisioner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -36,11 +36,17 @@ func NewK8sProvisioner(namespace string, restConfig *rest.Config) (Provisioner, 
 		Clientset:  clientset,
 		Pods:       clientset.CoreV1().Pods(namespace),
 		restConfig: restConfig,
+		instanceID: instanceID,
+		listOptionsMatchLabels: metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
+				"wharf.iver.com/instance=" + instanceID,
+		},
 	}, nil
 }
 
 func (p k8sProvisioner) ListWorkers(ctx context.Context) ([]Worker, error) {
-	podList, err := p.listPods(ctx, listOptionsMatchLabels)
+	podList, err := p.listPods(ctx, p.listOptionsMatchLabels)
 	if err != nil {
 		return []Worker{}, err
 	}
@@ -61,14 +67,17 @@ func (p k8sProvisioner) DeleteWorker(ctx context.Context, workerID string) error
 	return p.Pods.Delete(ctx, pod.Name, metav1.DeleteOptions{})
 }
 
-func (p k8sProvisioner) CreateWorker(ctx context.Context) (Worker, error) {
-	podMeta := createPodMeta()
+func (p k8sProvisioner) CreateWorker(ctx context.Context, args WorkerArgs) (Worker, error) {
+	if args.GitCloneURL == "" {
+		return Worker{}, errors.New("missing required Git clone URL")
+	}
+	podMeta := p.newWorkerPod(args)
 	newPod, err := p.Pods.Create(ctx, &podMeta, metav1.CreateOptions{})
 	return convertPodToWorker(newPod), err
 }
 
 func (p k8sProvisioner) getPod(ctx context.Context, workerID string) (*v1.Pod, error) {
-	podList, err := p.listPods(ctx, listOptionsMatchLabels)
+	podList, err := p.listPods(ctx, p.listOptionsMatchLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +89,7 @@ func (p k8sProvisioner) getPod(ctx context.Context, workerID string) (*v1.Pod, e
 	return nil, fmt.Errorf("found no worker with appropriate labels matching workerID: %s", workerID)
 }
 
-func createPodMeta() v1.Pod {
+func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	const (
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
@@ -91,9 +100,9 @@ func createPodMeta() v1.Pod {
 		"app.kubernetes.io/part-of":    "wharf",
 		"app.kubernetes.io/managed-by": "wharf-cmd-provisioner",
 		"app.kubernetes.io/created-by": "wharf-cmd-provisioner",
-		"wharf.iver.com/instance":      "prod",
-		"wharf.iver.com/build-ref":     "123",
-		"wharf.iver.com/project-id":    "456",
+		"wharf.iver.com/instance":      typ.Coal(args.WharfInstanceID, p.instanceID),
+		"wharf.iver.com/build-ref":     uitoa(args.BuildID),
+		"wharf.iver.com/project-id":    uitoa(args.ProjectID),
 	}
 	volumeMounts := []v1.VolumeMount{
 		{
@@ -102,84 +111,92 @@ func createPodMeta() v1.Pod {
 		},
 	}
 
+	gitArgs := []string{"git", "clone", args.GitCloneURL, "--single-branch"}
+	if args.GitCloneBranch != "" {
+		gitArgs = append(gitArgs, "--branch", args.GitCloneBranch)
+	}
+	gitArgs = append(gitArgs, repoVolumeMountPath)
+
+	wharfArgs := []string{"run", "--loglevel", "debug", "--serve"}
+	if args.Environment != "" {
+		wharfArgs = append(wharfArgs, "--environment", args.Environment)
+	}
+	if args.Stage != "" {
+		wharfArgs = append(wharfArgs, "--stage", args.Stage)
+	}
+	for k, v := range args.Inputs {
+		wharfArgs = append(wharfArgs, "--input", fmt.Sprintf("%s=%s", k, v))
+	}
+	if args.SubDir != "" {
+		relSubDir := filepath.ToSlash(args.SubDir)
+		if filepath.IsAbs(relSubDir) {
+			relSubDir = "." + relSubDir
+		}
+		// Need "--" so the path isn't malliciously treated as another flag
+		wharfArgs = append(wharfArgs, "--", relSubDir)
+	}
+
+	wharfEnvs := []v1.EnvVar{
+		{
+			Name:  "WHARF_KUBERNETES_OWNER_ENABLE",
+			Value: "true",
+		},
+		{
+			Name: "WHARF_KUBERNETES_OWNER_NAME",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "metadata.name",
+				},
+			},
+		},
+		{
+			Name: "WHARF_KUBERNETES_OWNER_UID",
+			ValueFrom: &v1.EnvVarSource{
+				FieldRef: &v1.ObjectFieldSelector{
+					APIVersion: "v1",
+					FieldPath:  "metadata.uid",
+				},
+			},
+		},
+	}
+
+	for k, v := range args.AdditionalVars {
+		wharfEnvs = append(wharfEnvs, v1.EnvVar{
+			Name:  "WHARF_VAR_" + k,
+			Value: stringify(v),
+		})
+	}
+
 	return v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "wharf-cmd-worker-",
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
+			// TODO: Use serviceaccount name from configs:
 			ServiceAccountName: "wharf-cmd",
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
-					Name:            "init",
+					Name: "init",
+					// TODO: Use image, tag, and pull policy from configs:
 					Image:           "bitnami/git:2-debian-10",
 					ImagePullPolicy: v1.PullIfNotPresent,
-					// TODO: Should use repo URL and branch from build params.
-					Args: []string{
-						"git",
-						"clone",
-						"--single-branch",
-						"--branch", "feature/set-k8s-metadata-on-build-pods",
-						"https://github.com/iver-wharf/wharf-cmd",
-						repoVolumeMountPath,
-					},
-					VolumeMounts: volumeMounts,
+					Command:         gitArgs,
+					VolumeMounts:    volumeMounts,
 				},
 			},
 			Containers: []v1.Container{
 				{
 					Name: "app",
-					// TODO: Do some research on which image would be best to use.
-					//
-					// Note: golang:latest was faster than ubuntu:20.04 up until
-					// running `go install`, by around 20 seconds.
-					//
-					// Note2: The testing environment's internet speed was very
-					// fast, so the larger size:
-					//  Go: 353MB compressed
-					//  ubuntu: 73 MB uncompressed
-					// was barely a factor.
-					Image:           "golang:latest",
+					// TODO: Use image, tag, and pull policy from configs:
+					Image:           "quay.io/iver-wharf/wharf-cmd:latest",
 					ImagePullPolicy: v1.PullAlways,
-					// TODO: Needs better implementation.
-					// Currently works for wharf-cmd, but is not thought through. Takes a long
-					// time to get running.
-					Command: []string{
-						"/bin/sh", "-c",
-						`
-make deps-go swag install && \
-cd test && \
-export WHARF_VAR_CHART_REPO="chart_repo" && \
-export WHARF_VAR_REG_URL="reg_url" && \
-wharf run --serve --stage test --loglevel debug`,
-					},
-					WorkingDir:   repoVolumeMountPath,
-					VolumeMounts: volumeMounts,
-					Env: []v1.EnvVar{
-						{
-							Name:  "WHARF_KUBERNETES_OWNER_ENABLE",
-							Value: "true",
-						},
-						{
-							Name: "WHARF_KUBERNETES_OWNER_NAME",
-							ValueFrom: &v1.EnvVarSource{
-								FieldRef: &v1.ObjectFieldSelector{
-									APIVersion: "v1",
-									FieldPath:  "metadata.name",
-								},
-							},
-						},
-						{
-							Name: "WHARF_KUBERNETES_OWNER_UID",
-							ValueFrom: &v1.EnvVarSource{
-								FieldRef: &v1.ObjectFieldSelector{
-									APIVersion: "v1",
-									FieldPath:  "metadata.uid",
-								},
-							},
-						},
-					},
+					Args:            wharfArgs,
+					WorkingDir:      repoVolumeMountPath,
+					VolumeMounts:    volumeMounts,
+					Env:             wharfEnvs,
 				},
 			},
 			Volumes: []v1.Volume{
@@ -191,5 +208,20 @@ wharf run --serve --stage test --loglevel debug`,
 				},
 			},
 		},
+	}
+}
+
+func uitoa(i uint) string {
+	return strconv.FormatUint(uint64(i), 10)
+}
+
+func stringify(value any) string {
+	switch value := value.(type) {
+	case string:
+		return value
+	case nil:
+		return "" // fmt.Sprint returns "<nil>", which we don't want
+	default:
+		return fmt.Sprint(value)
 	}
 }

@@ -2,14 +2,12 @@ package provisionerapi
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
+	"github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
-	"k8s.io/client-go/rest"
-
-	// Load in swagger docs
-	_ "github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
 )
 
 var log = logger.NewScoped("PROVISIONER-API")
@@ -23,9 +21,8 @@ var log = logger.NewScoped("PROVISIONER-API")
 // @contact.name Iver wharf-cmd support
 // @contact.url https://github.com/iver-wharf/wharf-cmd/issues
 // @contact.email wharf@iver.se
-// @basePath /api
 // @query.collection.format multi
-func Serve(ns string, cfg *rest.Config) error {
+func Serve(prov provisioner.Provisioner) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
 	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
 
@@ -35,18 +32,13 @@ func Serve(ns string, cfg *rest.Config) error {
 		ginutil.RecoverProblem,
 	)
 
-	g := r.Group("/api")
-	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	g.GET("", pingHandler)
+	r.GET("", pingHandler)
+	api := r.Group("/api")
+	api.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler, func(c *ginSwagger.Config) {
+		c.InstanceName = docs.SwaggerInfoprovisionerapi.InstanceName()
+	}))
 
-	workerModule := workerModule{}
-	if err := workerModule.init(ns, cfg); err != nil {
-		log.Error().
-			WithError(err).
-			Message("Failed to initialize worker module.")
-		return err
-	}
-	workerModule.register(g)
+	workerModule{prov: prov}.register(api)
 
 	const bindAddress = "0.0.0.0:5009"
 	log.Info().WithString("address", bindAddress).Message("Starting server.")
@@ -72,6 +64,7 @@ type Ping struct {
 // @description Pong.
 // @description Added in v0.8.0.
 // @tags meta
+// @produce json
 // @success 200 {object} Ping
 // @router / [get]
 func pingHandler(c *gin.Context) {
