@@ -206,6 +206,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
   - `github.com/spf13/cobra` v1.1.3 to v1.3.0 (#64)
+  - `github.com/stretchr/testify` v1.7.0 to v1.7.1 (#116)
+  - `google.golang.org/grpc` v1.44.0 to v1.45.0 (#116)
+  - `google.golang.org/protobuf` v1.27.1 to v1.28.0 (#116)
   - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
   - `k8s.io/apimachinery` from v0.0.0 to v0.23.3 (#8)
   - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)
