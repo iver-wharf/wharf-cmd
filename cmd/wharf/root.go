@@ -72,7 +72,7 @@ func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, 
 func execute(version app.Version) {
 	var err error
 	if rootConfig, err = config.LoadConfig(); err != nil {
-		log.Error().Message(fmt.Sprintf("Config load: %s", err.Error()))
+		log.Error().Messagef("Config load: %s", err)
 		os.Exit(exitCodeLoadConfig)
 	}
 
