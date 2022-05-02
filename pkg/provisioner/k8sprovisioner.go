@@ -17,7 +17,7 @@ import (
 )
 
 type k8sProvisioner struct {
-	Config                 config.ProvisionerConfig
+	Config                 config.WorkerPodConfig
 	Clientset              *kubernetes.Clientset
 	Pods                   corev1.PodInterface
 	restConfig             *rest.Config
@@ -33,7 +33,7 @@ func NewK8sProvisioner(instanceID string, config config.ProvisionerConfig, restC
 		return nil, err
 	}
 	return k8sProvisioner{
-		Config:     config,
+		Config:     config.Worker,
 		Clientset:  clientset,
 		Pods:       clientset.CoreV1().Pods(config.K8s.Namespace),
 		restConfig: restConfig,
@@ -175,13 +175,13 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			ServiceAccountName: p.Config.Worker.ServiceAccountName,
+			ServiceAccountName: p.Config.ServiceAccountName,
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
-					Image:           fmt.Sprintf("%s:%s", p.Config.Worker.InitContainer.Image, p.Config.Worker.InitContainer.ImageTag),
-					ImagePullPolicy: p.Config.Worker.InitContainer.ImagePullPolicy,
+					Image:           fmt.Sprintf("%s:%s", p.Config.InitContainer.Image, p.Config.InitContainer.ImageTag),
+					ImagePullPolicy: p.Config.InitContainer.ImagePullPolicy,
 					Command:         gitArgs,
 					VolumeMounts:    volumeMounts,
 				},
@@ -189,8 +189,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			Containers: []v1.Container{
 				{
 					Name:            "app",
-					Image:           fmt.Sprintf("%s:%s", p.Config.Worker.Container.Image, p.Config.Worker.Container.ImageTag),
-					ImagePullPolicy: p.Config.Worker.Container.ImagePullPolicy,
+					Image:           fmt.Sprintf("%s:%s", p.Config.Container.Image, p.Config.Container.ImageTag),
+					ImagePullPolicy: p.Config.Container.ImagePullPolicy,
 					Args:            wharfArgs,
 					WorkingDir:      repoVolumeMountPath,
 					VolumeMounts:    volumeMounts,
