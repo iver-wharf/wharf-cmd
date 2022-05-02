@@ -24,11 +24,11 @@ fingerprint to the console:
 
 ```console
 $ ssh-keyscan -t rsa github.com | tee -a known_hosts | ssh-keygen -lf -
-# github.com:22 SSH-2.0-babeld-98453d8a
+♯ github.com:22 SSH-2.0-babeld-98453d8a
 2048 SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8 github.com (RSA)
 
 $ ssh-keyscan -t rsa gitlab.com | tee -a known_hosts | ssh-keygen -lf -
-# gitlab.com:22 SSH-2.0-OpenSSH_8.4p1 Debian-5
+♯ gitlab.com:22 SSH-2.0-OpenSSH_8.4p1 Debian-5
 2048 SHA256:ROQFvPThGrW4RuWLoL9tq9I9zJ42fK4XywyRtbOz/EQ gitlab.com (RSA)
 ```
 
@@ -87,6 +87,8 @@ Host github.com
 Host *
     IdentityFile ~/.ssh/id_rsa
 ```
+
+Full manual of the `~/.ssh/config` file can be read at: [ssh_config(5)](https://linux.die.net/man/5/ssh_config)
 
 ## Kubernetes
 
