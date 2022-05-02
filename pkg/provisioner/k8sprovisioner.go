@@ -17,7 +17,7 @@ import (
 )
 
 type k8sProvisioner struct {
-	Config                 config.WorkerPodConfig
+	Config                 config.ProvisionerWorkerConfig
 	Clientset              *kubernetes.Clientset
 	Pods                   corev1.PodInterface
 	restConfig             *rest.Config

@@ -24,7 +24,7 @@ var log = logger.NewScoped("PROVISIONER-API")
 // @contact.url https://github.com/iver-wharf/wharf-cmd/issues
 // @contact.email wharf@iver.se
 // @query.collection.format multi
-func Serve(prov provisioner.Provisioner, config config.ProvisionerAPIConfig) error {
+func Serve(prov provisioner.Provisioner, config config.ProvisionerConfig) error {
 	gin.DefaultWriter = ginutil.DefaultLoggerWriter
 	gin.DefaultErrorWriter = ginutil.DefaultLoggerWriter
 

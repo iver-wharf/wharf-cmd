@@ -24,7 +24,7 @@ const (
 	exitCodeError           = 1
 	exitCodeCancelForceQuit = 2
 	exitCodeCancelTimeout   = 3
-	exitCodeLoadConfig      = 4
+	exitCodeLoadConfigError = 4
 
 	cancelGracePeriod = 10 * time.Second
 )
@@ -73,7 +73,7 @@ func execute(version app.Version) {
 	var err error
 	if rootConfig, err = config.LoadConfig(); err != nil {
 		log.Error().Message(fmt.Sprintf("Config load: %s", err.Error()))
-		os.Exit(exitCodeLoadConfig)
+		os.Exit(exitCodeLoadConfigError)
 	}
 
 	rootCmd.Version = versionString(version)

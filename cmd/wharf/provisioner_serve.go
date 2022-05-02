@@ -22,7 +22,7 @@ the following URL path on a running wharf provisioner server:
 		if err != nil {
 			return err
 		}
-		return provisionerapi.Serve(prov, rootConfig.ProvisionerAPI)
+		return provisionerapi.Serve(prov, rootConfig.Provisioner)
 	},
 }
 

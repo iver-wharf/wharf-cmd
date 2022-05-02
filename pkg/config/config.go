@@ -13,13 +13,13 @@ import (
 //
 // The config is read in the following order:
 //
-// 1. File: ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+// 1. File: /etc/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
 //
 // 2. File: ./wharf-cmd-config.yml
 //
 // 3. File from environment variable: WHARF_CONFIG
 //
-// 4. Environment variables, prefixed with WHARF
+// 4. Environment variables, prefixed with WHARF_
 //
 // Each inner struct is represented as a deeper field in the different
 // configurations. For YAML they represent deeper nested maps. For environment
@@ -29,10 +29,9 @@ import (
 // case-insensitive. Keeping camelCasing in YAML config files is recommended
 // for consistency.
 type Config struct {
-	Worker         WorkerConfig
-	Provisioner    ProvisionerConfig
-	ProvisionerAPI ProvisionerAPIConfig
-	Aggregator     AggregatorConfig
+	Worker      WorkerConfig
+	Provisioner ProvisionerConfig
+	Aggregator  AggregatorConfig
 }
 
 // WorkerConfig holds settings for the worker.
@@ -102,12 +101,13 @@ type HelmStepConfig struct {
 // ProvisionerConfig holds settings for the provisioner.
 type ProvisionerConfig struct {
 	K8s    K8sConfig
-	Worker WorkerPodConfig
+	HTTP   HTTPConfig
+	Worker ProvisionerWorkerConfig
 }
 
-// WorkerPodConfig holds settings for worker pods that are created by the
+// ProvisionerWorkerConfig holds settings for worker pods that are created by the
 // provisioner.
-type WorkerPodConfig struct {
+type ProvisionerWorkerConfig struct {
 	// ServiceAccountName is the service account name to use for the pod.
 	//
 	// Added in v0.8.0.
@@ -150,12 +150,6 @@ type K8sContainerConfig struct {
 	ImagePullPolicy v1.PullPolicy
 }
 
-// ProvisionerAPIConfig holds settings for the Provisioner API.
-type ProvisionerAPIConfig struct {
-	HTTP HTTPConfig
-	K8s  K8sConfig
-}
-
 // HTTPConfig holds settings for the HTTP server.
 type HTTPConfig struct {
 	CORS CORSConfig
@@ -194,11 +188,11 @@ type AggregatorConfig struct {
 	// Added in v0.8.0.
 	WharfAPIURL string
 
-	// WharfCMDProvisionerURL is the URL used to connect to the Wharf CMD
+	// WharfCmdProvisionerURL is the URL used to connect to the Wharf Cmd
 	// provisioner.
 	//
 	// Added in v0.8.0.
-	WharfCMDProvisionerURL string
+	WharfCmdProvisionerURL string
 }
 
 // DefaultConfig is the hard-coded default values for wharf-cmd's configs.
@@ -225,7 +219,14 @@ var DefaultConfig = Config{
 			Context:   "",
 			Namespace: "",
 		},
-		Worker: WorkerPodConfig{
+		HTTP: HTTPConfig{
+			CORS: CORSConfig{
+				AllowAllOrigins: false,
+				AllowOrigins:    []string{},
+			},
+			BindAddress: "0.0.0.0:5009",
+		},
+		Worker: ProvisionerWorkerConfig{
 			ServiceAccountName: "wharf-cmd",
 			InitContainer: K8sContainerConfig{
 				Image:           "bitnami/git",
@@ -239,22 +240,9 @@ var DefaultConfig = Config{
 			},
 		},
 	},
-	ProvisionerAPI: ProvisionerAPIConfig{
-		HTTP: HTTPConfig{
-			CORS: CORSConfig{
-				AllowAllOrigins: false,
-				AllowOrigins:    []string{},
-			},
-			BindAddress: "0.0.0.0:5009",
-		},
-		K8s: K8sConfig{
-			Context:   "",
-			Namespace: "",
-		},
-	},
 	Aggregator: AggregatorConfig{
 		WharfAPIURL:            "http://wharf-api:8080",
-		WharfCMDProvisionerURL: "http://wharf-cmd-provisioner:8080",
+		WharfCmdProvisionerURL: "http://wharf-cmd-provisioner:8080",
 	},
 }
 
@@ -262,8 +250,11 @@ var DefaultConfig = Config{
 // Config object.
 func LoadConfig() (Config, error) {
 	cfgBuilder := config.NewBuilder(DefaultConfig)
-
-	cfgBuilder.AddConfigYAMLFile("~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
+	// TODO: Also add config file relative to home, e.g.:
+	//  ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+	//  $HOME/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+	// And OS-specific config paths.
+	cfgBuilder.AddConfigYAMLFile("/etc/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
 	cfgBuilder.AddConfigYAMLFile(".wharf-cmd-config.yml")
 	if cfgFile, ok := os.LookupEnv("WHARF_CONFIG"); ok {
 		cfgBuilder.AddConfigYAMLFile(cfgFile)
@@ -271,14 +262,11 @@ func LoadConfig() (Config, error) {
 	cfgBuilder.AddEnvironmentVariables("WHARF")
 
 	var cfg Config
-	err := cfgBuilder.Unmarshal(&cfg)
-	if err != nil {
-		fmt.Printf("Failed unmarshaling: %v\n", err)
-		return Config{}, err
+	if err := cfgBuilder.Unmarshal(&cfg); err != nil {
+		return Config{}, fmt.Errorf("load config: %w", err)
 	}
 	if err := cfg.validate(); err != nil {
-		fmt.Printf("Failed validating: %v\n", err)
-		return Config{}, err
+		return Config{}, fmt.Errorf("load config: %w", err)
 	}
 
 	return cfg, nil
@@ -286,17 +274,17 @@ func LoadConfig() (Config, error) {
 
 func (c Config) validate() error {
 	initContainerPullPolicy := c.Provisioner.Worker.InitContainer.ImagePullPolicy
-	if ok := validateImagePullPolicy(&initContainerPullPolicy); !ok {
+	if !parseImagePolicy(&initContainerPullPolicy) {
 		return fmt.Errorf("invalid pull policy: provisioner.worker.initContainer.imagePullPolicy=%s", initContainerPullPolicy)
 	}
 	containerPullPolicy := c.Provisioner.Worker.Container.ImagePullPolicy
-	if ok := validateImagePullPolicy(&containerPullPolicy); !ok {
+	if !parseImagePolicy(&containerPullPolicy) {
 		return fmt.Errorf("invalid pull policy: provisioner.worker.container.imagePullPolicy=%s", containerPullPolicy)
 	}
 	return nil
 }
 
-func validateImagePullPolicy(p *v1.PullPolicy) bool {
+func parseImagePolicy(p *v1.PullPolicy) bool {
 	switch strings.ToLower(string(*p)) {
 	case "always":
 		*p = v1.PullAlways
@@ -304,10 +292,8 @@ func validateImagePullPolicy(p *v1.PullPolicy) bool {
 		*p = v1.PullNever
 	case "ifnotpresent":
 		*p = v1.PullIfNotPresent
+	default:
+		return false
 	}
-	switch *p {
-	case v1.PullAlways, v1.PullIfNotPresent, v1.PullNever:
-		return true
-	}
-	return false
+	return true
 }
