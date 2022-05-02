@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"sync"
 	"time"
 
@@ -120,6 +121,13 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			if pod.Status.Phase != v1.PodRunning {
 				continue
 			}
+			buildID, err := parsePodBuildID(pod.ObjectMeta)
+			if err != nil {
+				log.Warn().WithError(err).
+					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+					Message("Failed to parse worker's build ID.")
+				continue
+			}
 			if inProgress.Has(pod.UID) {
 				continue
 			}
@@ -128,18 +136,32 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 				Message("Pod found.")
 
-			go func(p v1.Pod) {
-				if err := a.relayToWharfAPI(ctx, p.Name); err != nil {
-					log.Error().WithError(err).Message("Relay error.")
+			go func(pod v1.Pod) {
+				if err := a.relayToWharfAPI(ctx, pod.Name, buildID); err != nil {
+					log.Error().WithError(err).
+						WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+						Message("Relay error.")
 				}
 				mutex.Lock()
-				inProgress.Remove(p.UID)
+				inProgress.Remove(pod.UID)
 				mutex.Unlock()
 			}(pod)
 		}
 		mutex.Unlock()
 		time.Sleep(pollDelay)
 	}
+}
+
+func parsePodBuildID(podMeta metav1.ObjectMeta) (uint, error) {
+	buildRef, ok := podMeta.Labels["wharf.iver.com/build-ref"]
+	if !ok {
+		return 0, errors.New("missing label 'wharf.iver.com/build-ref'")
+	}
+	buildID, err := strconv.ParseUint(buildRef, 10, 0)
+	if err != nil {
+		return 0, err
+	}
+	return uint(buildID), nil
 }
 
 func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
@@ -162,14 +184,14 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 	return pods, nil
 }
 
-func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
+func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string, buildID uint) error {
 	portConn, err := a.newPortForwarding(a.namespace, podName)
 	if err != nil {
 		return err
 	}
 	defer portConn.Close()
 
-	worker, err := a.newWorkerClient(portConn)
+	worker, err := a.newWorkerClient(portConn, buildID)
 	if err != nil {
 		return err
 	}
@@ -204,13 +226,14 @@ func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string) error {
 	return nil
 }
 
-func (a k8sAggr) newWorkerClient(portConn portConnection) (workerclient.Client, error) {
+func (a k8sAggr) newWorkerClient(portConn portConnection, buildID uint) (workerclient.Client, error) {
 	// Intentionally "localhost" because we're port-forwarding
 	return workerclient.New(fmt.Sprintf("http://localhost:%d", portConn.Local), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
 		// Don't need to add TLS on top of TLS.
 		InsecureSkipVerify: true,
+		BuildID:            buildID,
 	})
 }
 
