@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"gopkg.in/typ.v3/pkg/slices"
+	"gopkg.in/typ.v4/slices"
 )
 
 var (

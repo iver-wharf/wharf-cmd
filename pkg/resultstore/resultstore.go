@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
-	"gopkg.in/typ.v3/pkg/chans"
-	"gopkg.in/typ.v3/pkg/sync2"
+	"gopkg.in/typ.v4/chans"
+	"gopkg.in/typ.v4/sync2"
 )
 
 var (

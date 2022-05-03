@@ -3,7 +3,7 @@ package resultstore
 import (
 	"sync"
 
-	"gopkg.in/typ.v3/pkg/sets"
+	"gopkg.in/typ.v4/sets"
 )
 
 func newSyncSet[T comparable]() syncSet[T] {
@@ -13,7 +13,7 @@ func newSyncSet[T comparable]() syncSet[T] {
 	}
 }
 
-// syncSet is a wrapper for gopkg.in/typ.v3/pkg/sets.Set that is safe to use in
+// syncSet is a wrapper for gopkg.in/typ.v4/sets.Set that is safe to use in
 // a multithreaded environment.
 type syncSet[T comparable] struct {
 	s  sets.Set[T]
