@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/typ.v3/pkg/chans"
+	"gopkg.in/typ.v4/chans"
 )
 
 var (

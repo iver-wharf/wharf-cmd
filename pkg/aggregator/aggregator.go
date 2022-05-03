@@ -8,6 +8,7 @@ import (
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 )
@@ -19,8 +20,9 @@ type Aggregator interface {
 
 func relayAll(ctx context.Context, wharfapi wharfapi.Client, worker workerclient.Client) error {
 	r := relayer{
-		wharfapi: wharfapi,
-		worker:   worker,
+		wharfapi:       wharfapi,
+		worker:         worker,
+		previousStatus: request.BuildScheduling,
 	}
 	var pg parallel.Group
 	pg.AddFunc("logs", r.relayLogs)
@@ -30,8 +32,9 @@ func relayAll(ctx context.Context, wharfapi wharfapi.Client, worker workerclient
 }
 
 type relayer struct {
-	wharfapi wharfapi.Client
-	worker   workerclient.Client
+	wharfapi       wharfapi.Client
+	worker         workerclient.Client
+	previousStatus request.BuildStatus
 }
 
 func (r relayer) relayLogs(ctx context.Context) error {
@@ -41,6 +44,7 @@ func (r relayer) relayLogs(ctx context.Context) error {
 	}
 	defer reader.CloseSend()
 
+	buildID := r.worker.BuildID()
 	var sentLogs uint
 
 	writer, err := r.wharfapi.CreateBuildLogStream(ctx)
@@ -73,7 +77,7 @@ func (r relayer) relayLogs(ctx context.Context) error {
 			WithUint64("step", logLine.StepID).
 			Message(logLine.Message)
 		writer.Send(request.Log{
-			BuildID:      uint(logLine.BuildID),
+			BuildID:      buildID,
 			WorkerLogID:  uint(logLine.LogID),
 			WorkerStepID: uint(logLine.StepID),
 			Timestamp:    logLine.Timestamp.AsTime(),
@@ -110,14 +114,13 @@ func (r relayer) relayArtifactEvents(ctx context.Context) error {
 	return nil
 }
 
-func (r relayer) relayStatusEvents(ctx context.Context) error {
+func (r *relayer) relayStatusEvents(ctx context.Context) error {
 	stream, err := r.worker.StreamStatusEvents(ctx, &workerclient.StatusEventsRequest{})
 	if err != nil {
 		return fmt.Errorf("open status events stream from wharf-cmd-worker: %w", err)
 	}
 	defer stream.CloseSend()
 
-	// TODO: Update build status based on statuses
 	for {
 		statusEvent, err := stream.Recv()
 		if err != nil {
@@ -126,10 +129,51 @@ func (r relayer) relayStatusEvents(ctx context.Context) error {
 			}
 			break
 		}
+		newStatus, ok := convBuildStatus(statusEvent.Status)
+		if !ok {
+			continue
+		}
 		log.Debug().
 			WithUint64("step", statusEvent.StepID).
 			WithStringer("status", statusEvent.Status).
 			Message("Received status event.")
+		if newStatus == request.BuildFailed || newStatus == request.BuildCompleted {
+			r.updateStatus(newStatus)
+			return nil
+		}
+		if newStatus == request.BuildRunning && r.previousStatus == request.BuildScheduling {
+			r.updateStatus(request.BuildRunning)
+		}
+	}
+
+	if r.previousStatus != request.BuildCompleted && r.previousStatus != request.BuildFailed {
+		r.updateStatus(request.BuildFailed)
 	}
 	return nil
+}
+
+func (r *relayer) updateStatus(newStatus request.BuildStatus) {
+	r.wharfapi.UpdateBuildStatus(r.worker.BuildID(), request.LogOrStatusUpdate{
+		Status: newStatus,
+	})
+	log.Info().
+		WithString("new", string(newStatus)).
+		WithString("previous", string(r.previousStatus)).
+		Message("Updated build status.")
+	r.previousStatus = newStatus
+}
+
+func convBuildStatus(status v1.Status) (request.BuildStatus, bool) {
+	switch status {
+	case v1.StatusPending, v1.StatusScheduling:
+		return request.BuildScheduling, true
+	case v1.StatusRunning, v1.StatusInitializing:
+		return request.BuildRunning, true
+	case v1.StatusSuccess:
+		return request.BuildCompleted, true
+	case v1.StatusCancelled, v1.StatusFailed:
+		return request.BuildFailed, true
+	default:
+		return "", false
+	}
 }
