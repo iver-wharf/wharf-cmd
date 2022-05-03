@@ -4,14 +4,10 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var provisionerFlags = struct {
-	k8sOverrides clientcmd.ConfigOverrides
-
 	restConfig *rest.Config
-	namespace  string
 
 	instanceID string
 }{
@@ -40,15 +36,11 @@ orchestration is handled inside the Kubernetes cluster, in comparison to the
 			return err
 		}
 
-		if provisionerFlags.k8sOverrides.Context.Namespace == "" {
-			provisionerFlags.k8sOverrides.Context.Namespace = rootConfig.Provisioner.K8s.Namespace
-		}
-		restConfig, ns, err := loadKubeconfig(provisionerFlags.k8sOverrides)
+		restConfig, ns, err := loadKubeconfig()
 		if err != nil {
 			return err
 		}
 		provisionerFlags.restConfig = restConfig
-		provisionerFlags.namespace = ns
 		rootConfig.Provisioner.K8s.Namespace = ns
 		return nil
 	},
@@ -58,5 +50,5 @@ func init() {
 	rootCmd.AddCommand(provisionerCmd)
 
 	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
-	addKubernetesFlags(provisionerCmd.PersistentFlags(), &provisionerFlags.k8sOverrides)
+	addKubernetesFlags(provisionerCmd.PersistentFlags(), rootConfig.Provisioner.K8s.Namespace)
 }

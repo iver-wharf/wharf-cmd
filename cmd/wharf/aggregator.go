@@ -3,14 +3,10 @@ package main
 import (
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var aggregatorFlags = struct {
-	k8sOverrides clientcmd.ConfigOverrides
-
 	restConfig *rest.Config
-	namespace  string
 }{}
 
 var aggregatorCmd = &cobra.Command{
@@ -24,15 +20,11 @@ kill endpoint.`,
 			return err
 		}
 
-		if aggregatorFlags.k8sOverrides.Context.Namespace == "" {
-			aggregatorFlags.k8sOverrides.Context.Namespace = rootConfig.Aggregator.K8s.Namespace
-		}
-		restConfig, ns, err := loadKubeconfig(aggregatorFlags.k8sOverrides)
+		restConfig, ns, err := loadKubeconfig()
 		if err != nil {
 			return err
 		}
 		aggregatorFlags.restConfig = restConfig
-		aggregatorFlags.namespace = ns
 		rootConfig.Aggregator.K8s.Namespace = ns
 		return nil
 	},
@@ -41,5 +33,5 @@ kill endpoint.`,
 func init() {
 	rootCmd.AddCommand(aggregatorCmd)
 
-	addKubernetesFlags(aggregatorCmd.PersistentFlags(), &aggregatorFlags.k8sOverrides)
+	addKubernetesFlags(aggregatorCmd.PersistentFlags(), rootConfig.Aggregator.K8s.Namespace)
 }
