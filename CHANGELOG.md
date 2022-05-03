@@ -197,7 +197,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
   - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
-  - `gopkg.in/typ.v3` v3.1.0 (#75, #89)
+  - `gopkg.in/typ.v4` v4.0.0 (#75, #89, #127)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:
