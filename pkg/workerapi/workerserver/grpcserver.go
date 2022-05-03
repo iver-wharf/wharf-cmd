@@ -118,24 +118,24 @@ func ConvertToStreamStatusEventsResponse(update resultstore.StatusUpdate) *v1.St
 	}
 }
 
-func convertToStreamStatusEventsResponseStatus(status workermodel.Status) v1.StreamStatusEventsResponseStatus {
+func convertToStreamStatusEventsResponseStatus(status workermodel.Status) v1.Status {
 	switch status {
 	case workermodel.StatusNone:
-		return v1.StreamStatusEventsResponsePending
+		return v1.StatusPending
 	case workermodel.StatusScheduling:
-		return v1.StreamStatusEventsResponseScheduling
+		return v1.StatusScheduling
 	case workermodel.StatusInitializing:
-		return v1.StreamStatusEventsResponseInitializing
+		return v1.StatusInitializing
 	case workermodel.StatusRunning:
-		return v1.StreamStatusEventsResponseRunning
+		return v1.StatusRunning
 	case workermodel.StatusSuccess:
-		return v1.StreamStatusEventsResponseSuccess
+		return v1.StatusSuccess
 	case workermodel.StatusFailed:
-		return v1.StreamStatusEventsResponseFailed
+		return v1.StatusFailed
 	case workermodel.StatusCancelled:
-		return v1.StreamStatusEventsResponseCancelled
+		return v1.StatusCancelled
 	default:
-		return v1.StreamStatusEventsResponseUnspecified
+		return v1.StatusUnspecified
 	}
 }
 

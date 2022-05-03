@@ -38,6 +38,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `wharf provisioner delete` with flag `--id` to specify the worker that
     should be deleted, as long as it has certain labels as well.
 
+- Added Git credentials support to `wharf provisioner` when running in
+  Kubernetes via a Kubernetes secret named `wharf-cmd-worker-git-ssh`.
+  See [docs/provisioner-git-ssh-secret.md](docs/provisioner-git-ssh-secret.md)
+  for more info. (#120)
+
 - Added watchdog commands: (#62)
 
   - `wharf watchdog serve` checks stray builds from the wharf-api and
@@ -45,7 +50,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     to clean up forgotten builds/workers.
 
 - Added aggregator command `wharf aggregator serve` that looks for
-  wharf-cmd-worker pods and pipes build results over to the wharf-api. (#77)
+  wharf-cmd-worker pods and pipes build results over to the wharf-api.
+  (#77, #126)
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84, #107)
 
@@ -191,7 +197,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `google.golang.org/grpc` v1.44.0 (#51)
   - `google.golang.org/protobuf` v1.27.1 (#51)
   - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
-  - `gopkg.in/typ.v3` v3.1.0 (#75, #89)
+  - `gopkg.in/typ.v4` v4.0.0 (#75, #89, #127)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
 
 - Removed dependencies:

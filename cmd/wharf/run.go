@@ -14,7 +14,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
-	"gopkg.in/typ.v3/pkg/slices"
+	"gopkg.in/typ.v4/slices"
 )
 
 var runFlags = struct {

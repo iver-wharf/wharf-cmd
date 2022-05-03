@@ -8,7 +8,7 @@ import (
 	"strconv"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
-	"gopkg.in/typ.v3"
+	"gopkg.in/typ.v4"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -94,6 +94,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	const (
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
+		sshVolumeName       = "ssh"
 	)
 	labels := map[string]string{
 		"app":                          "wharf-cmd-worker",
@@ -111,6 +112,11 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			MountPath: repoVolumeMountPath,
 		},
 	}
+	gitVolumeMounts := append(volumeMounts, v1.VolumeMount{
+		Name:      sshVolumeName,
+		ReadOnly:  true,
+		MountPath: "/root/.ssh",
+	})
 
 	gitArgs := []string{"git", "clone", args.GitCloneURL, "--single-branch"}
 	if args.GitCloneBranch != "" {
@@ -183,7 +189,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Image:           fmt.Sprintf("%s:%s", p.Config.InitContainer.Image, p.Config.InitContainer.ImageTag),
 					ImagePullPolicy: p.Config.InitContainer.ImagePullPolicy,
 					Command:         gitArgs,
-					VolumeMounts:    volumeMounts,
+					VolumeMounts:    gitVolumeMounts,
 				},
 			},
 			Containers: []v1.Container{
@@ -202,6 +208,16 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Name: repoVolumeName,
 					VolumeSource: v1.VolumeSource{
 						EmptyDir: &v1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: sshVolumeName,
+					VolumeSource: v1.VolumeSource{
+						Secret: &v1.SecretVolumeSource{
+							SecretName:  "wharf-cmd-worker-git-ssh",
+							DefaultMode: typ.Ref[int32](0600),
+							Optional:    typ.Ref(true),
+						},
 					},
 				},
 			},

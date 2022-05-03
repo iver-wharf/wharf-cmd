@@ -11,7 +11,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"gopkg.in/typ.v3/pkg/sync2"
+	"gopkg.in/typ.v4/sync2"
 )
 
 var log = logger.NewScoped("TARSTORE")
