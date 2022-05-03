@@ -171,8 +171,7 @@ type LogLineReadCloser interface {
 // NewStore creates a new store using a given filesystem.
 func NewStore(fs FS) Store {
 	return &store{
-		fs:               fs,
-		logReadersOpened: newSyncSet[*logLineReadCloser](),
+		fs: fs,
 	}
 }
 
@@ -186,7 +185,7 @@ type store struct {
 	logSubMutex      sync.RWMutex
 	logPubSub        chans.PubSub[LogLine]
 	logWritersOpened sync2.Map[uint64, *logLineWriteCloser]
-	logReadersOpened syncSet[*logLineReadCloser]
+	logReadersOpened sync2.Set[*logLineReadCloser]
 
 	artifactPubSub   chans.PubSub[ArtifactEvent]
 	artifactSubMutex sync.RWMutex
