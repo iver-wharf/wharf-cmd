@@ -13,7 +13,7 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"gopkg.in/typ.v3/pkg/sets"
+	"gopkg.in/typ.v4/maps"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -98,7 +98,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 	k8sruntime.ErrorHandlers = []func(error){}
 
 	var mutex sync.Mutex
-	inProgress := make(sets.Set[types.UID])
+	inProgress := make(maps.Set[types.UID])
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//

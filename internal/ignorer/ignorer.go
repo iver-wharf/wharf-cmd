@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gopkg.in/typ.v3/pkg/slices"
+	"gopkg.in/typ.v4/slices"
 )
 
 // Ignorer is an interface for conditionally ignoring files or directory trees

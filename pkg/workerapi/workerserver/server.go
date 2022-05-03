@@ -10,7 +10,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/soheilhy/cmux"
-	"gopkg.in/typ.v3"
+	"gopkg.in/typ.v4"
 )
 
 var log = logger.NewScoped("WORKER-SERVER")
