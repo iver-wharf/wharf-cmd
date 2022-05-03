@@ -1,7 +1,3 @@
-.PHONY: install tidy deps deps-go deps-npm check \
-	docker docker-run swag swag-force proto \
-	lint lint-md lint-go \
-	lint-fix lint-fix-md lint-fix-go
 
 commit = $(shell git rev-parse HEAD)
 version = latest
@@ -14,29 +10,49 @@ wharf: swag
 	go build -o wharf
 endif
 
+.PHONY: clean
+clean: clean-swag clean-build
+
+.PHONY: clean-build
+clean-build:
+ifeq ($(OS),Windows_NT)
+	rm -rfv wharf.exe
+else
+	rm -rfv wharf
+endif
+
+.PHONY: install
 install: swag
 	go install ./cmd/wharf
 
+.PHONY: tidy
 tidy:
 	go mod tidy
 
+.PHONY: deps
 deps: deps-go deps-npm
 
+.PHONY: deps-go
 deps-go:
 	go install github.com/mgechev/revive@latest
 	go install golang.org/x/tools/cmd/goimports@latest
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.26
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
 	go install github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.0
-	go install github.com/swaggo/swag/cmd/swag@v1.8.0
+	go install github.com/swaggo/swag/cmd/swag@v1.8.1
 
+.PHONY: deps-npm
 deps-npm:
 	npm install
 
+.PHONY: check
 check: swag
 	go test ./...
 
-proto:
+.PHONY: proto
+proto: api/workerapi/v1/worker.pb.go
+
+api/workerapi/v1/worker.pb.go:
 	protoc -I . \
 		-I `go list -m -f {{.Dir}} github.com/alta/protopatch` \
 		-I `go list -m -f {{.Dir}} google.golang.org/protobuf` \
@@ -46,6 +62,7 @@ proto:
 # Generated files have some non-standard formatting, so let's format it.
 	goimports -w ./api/workerapi/v1/.
 
+.PHONY: docker
 docker:
 	docker build . \
 		--pull \
@@ -61,14 +78,18 @@ ifneq "$(version)" "latest"
 	@echo "docker push quay.io/iver-wharf/wharf-cmd:$(version)"
 endif
 
+.PHONY: docker-run
 docker-run:
 	docker run --rm -it quay.io/iver-wharf/wharf-api:$(version)
 
+.PHONY: clean-swag
 clean-swag:
 	rm -vrf pkg/provisionerapi/docs pkg/workerapi/workerserver/docs
 
+.PHONY: swag-force
 swag-force: clean-swag swag
 
+.PHONY: swag
 swag: \
 	pkg/provisionerapi/docs \
 	pkg/workerapi/workerserver/docs
@@ -88,6 +109,9 @@ pkg/workerapi/workerserver/docs:
 		--output pkg/workerapi/workerserver/docs \
 		--instanceName workerapi
 
+.PHONY: lint lint-fix \
+	lint-md lint-go \
+	lint-fix-md lint-fix-go
 lint: lint-md lint-go
 lint-fix: lint-fix-md lint-fix-go
 
