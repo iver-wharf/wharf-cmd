@@ -149,8 +149,8 @@ func (wd *watchdog) killWorkers(workersToKill []provisioner.Worker) error {
 	log.Debug().WithInt("workers", len(workersToKill)).
 		Message("Killing workers.")
 	for _, w := range workersToKill {
-		if err := wd.prov.DeleteWorker(w.ID); err != nil {
-			return fmt.Errorf("kill worker by ID %q: %w", w.ID, err)
+		if err := wd.prov.DeleteWorker(w.WorkerID); err != nil {
+			return fmt.Errorf("kill worker by ID %q: %w", w.WorkerID, err)
 		}
 	}
 	return nil
@@ -181,7 +181,7 @@ func getWorkersToKill(builds []response.Build, workers []provisioner.Worker, saf
 	buildsMap := mapBuildsOnWorkerID(builds)
 	var toKill []provisioner.Worker
 	for _, w := range workers {
-		if _, ok := buildsMap[w.ID]; ok {
+		if _, ok := buildsMap[w.WorkerID]; ok {
 			continue
 		}
 		if w.CreatedAt.After(safeAfter) {
@@ -203,7 +203,7 @@ func mapBuildsOnWorkerID(builds []response.Build) map[string]response.Build {
 func mapWorkersOnID(workers []provisioner.Worker) map[string]provisioner.Worker {
 	m := make(map[string]provisioner.Worker, len(workers))
 	for _, w := range workers {
-		m[w.ID] = w
+		m[w.WorkerID] = w
 	}
 	return m
 }

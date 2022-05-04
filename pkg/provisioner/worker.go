@@ -12,10 +12,10 @@ import (
 // rougly comparable to a group of Docker containers sharing
 // namespaces/volumes.
 type Worker struct {
-	ID        string
-	Name      string
-	Status    workermodel.Status
-	CreatedAt time.Time
+	WorkerID  string             `json:"workerId"`
+	Name      string             `json:"name"`
+	Status    workermodel.Status `json:"status"`
+	CreatedAt time.Time          `json:"createdAt"`
 }
 
 func convertPodsToWorkers(pods []v1.Pod) []Worker {
@@ -46,7 +46,7 @@ func convertPodToWorker(pod *v1.Pod) Worker {
 	}
 
 	return Worker{
-		ID:        string(pod.UID),
+		WorkerID:  string(pod.UID),
 		Name:      fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 		Status:    status,
 		CreatedAt: pod.CreationTimestamp.Time,

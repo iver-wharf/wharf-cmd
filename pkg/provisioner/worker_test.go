@@ -11,9 +11,9 @@ import (
 
 func TestConvertPodToWorker_NilPodReturnsEmptyWorker(t *testing.T) {
 	wantWorker := Worker{
-		ID:     "",
-		Name:   "",
-		Status: 0,
+		WorkerID: "",
+		Name:     "",
+		Status:   0,
 	}
 	gotWorker := convertPodToWorker(nil)
 
@@ -29,12 +29,12 @@ func TestConvertPodToWorker_BasicConversionIgnoringStatusInfo(t *testing.T) {
 		},
 	}
 	wantWorker := Worker{
-		ID:   "some-uid-420",
-		Name: "some-namespace/some-name",
+		WorkerID: "some-uid-420",
+		Name:     "some-namespace/some-name",
 	}
 	gotWorker := convertPodToWorker(&pod)
 
-	assert.Equal(t, wantWorker.ID, gotWorker.ID)
+	assert.Equal(t, wantWorker.WorkerID, gotWorker.WorkerID)
 	assert.Equal(t, wantWorker.Name, gotWorker.Name)
 }
 
@@ -136,19 +136,19 @@ func TestConvertPodsToWorkers(t *testing.T) {
 
 	wantWorkers := []Worker{
 		{
-			ID:     "first-uid-420",
-			Name:   "first-namespace/first-name",
-			Status: workermodel.StatusUnknown,
+			WorkerID: "first-uid-420",
+			Name:     "first-namespace/first-name",
+			Status:   workermodel.StatusUnknown,
 		},
 		{
-			ID:     "second-uid-420",
-			Name:   "first-namespace/second-name",
-			Status: workermodel.StatusUnknown,
+			WorkerID: "second-uid-420",
+			Name:     "first-namespace/second-name",
+			Status:   workermodel.StatusUnknown,
 		},
 		{
-			ID:     "third-uid-420",
-			Name:   "second-namespace/third-name",
-			Status: workermodel.StatusUnknown,
+			WorkerID: "third-uid-420",
+			Name:     "second-namespace/third-name",
+			Status:   workermodel.StatusUnknown,
 		},
 	}
 	gotWorkers := convertPodsToWorkers(pods)
