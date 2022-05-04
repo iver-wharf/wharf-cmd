@@ -33,16 +33,9 @@ const (
 	workerAPIExternalPort = 5010
 )
 
-// Copied from pkg/provisioner/k8sprovisioner.go
-var listOptionsMatchLabels = metav1.ListOptions{
-	LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
-		"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-		"wharf.iver.com/instance=prod",
-}
-
 // NewK8sAggregator returns a new Aggregator implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, error) {
+func NewK8sAggregator(instanceID, namespace string, restConfig *rest.Config) (Aggregator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -65,6 +58,13 @@ func NewK8sAggregator(namespace string, restConfig *rest.Config) (Aggregator, er
 
 		upgrader:   upgrader,
 		httpClient: httpClient,
+		instanceID: instanceID,
+		listOptionsMatchLabels: metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
+				"wharf.iver.com/instance=" + instanceID,
+		},
+
 		wharfapi: wharfapi.Client{
 			// TODO: Get from params
 			APIURL: "http://localhost:5001",
@@ -77,9 +77,11 @@ type k8sAggr struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 
-	restConfig *rest.Config
-	upgrader   spdy.Upgrader
-	httpClient *http.Client
+	restConfig             *rest.Config
+	upgrader               spdy.Upgrader
+	httpClient             *http.Client
+	instanceID             string
+	listOptionsMatchLabels metav1.ListOptions
 
 	wharfapi wharfapi.Client
 }
@@ -159,7 +161,7 @@ func parsePodBuildID(podMeta metav1.ObjectMeta) (uint, error) {
 }
 
 func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
-	list, err := a.pods.List(ctx, listOptionsMatchLabels)
+	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
 	if err != nil {
 		return nil, err
 	}
