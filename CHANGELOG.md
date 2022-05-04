@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added provisioner commands: (#46, #59, #117, #121)
+- Added provisioner commands: (#46, #59, #117, #121, #129)
 
   - `wharf provisioner serve` that launches an HTTP REST api server with
     endpoints:
@@ -43,7 +43,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   See [docs/provisioner-git-ssh-secret.md](docs/provisioner-git-ssh-secret.md)
   for more info. (#120)
 
-- Added watchdog commands: (#62)
+- Added watchdog commands: (#62, #129)
 
   - `wharf watchdog serve` checks stray builds from the wharf-api and
     wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort
@@ -51,7 +51,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added aggregator command `wharf aggregator serve` that looks for
   wharf-cmd-worker pods and pipes build results over to the wharf-api.
-  (#77, #126)
+  (#77, #126, #129)
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84, #107)
 

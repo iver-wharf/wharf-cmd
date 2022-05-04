@@ -56,7 +56,7 @@ The <repo> argument is used by Git to clone the repository, such as:
 		}
 
 		log.Info().WithString("name", worker.Name).
-			WithString("workerID", string(worker.ID)).
+			WithString("workerID", string(worker.WorkerID)).
 			Message("Created worker")
 
 		return nil
