@@ -18,6 +18,7 @@ func newProvisioner() (provisioner.Provisioner, error) {
 	return provisioner.NewK8sProvisioner(
 		provisionerFlags.instanceID,
 		rootConfig.Provisioner,
+		rootConfig.K8s.Namespace,
 		provisionerFlags.restConfig)
 }
 
@@ -41,7 +42,7 @@ orchestration is handled inside the Kubernetes cluster, in comparison to the
 			return err
 		}
 		provisionerFlags.restConfig = restConfig
-		rootConfig.Provisioner.K8s.Namespace = ns
+		rootConfig.K8s.Namespace = ns
 		return nil
 	},
 }
@@ -50,5 +51,5 @@ func init() {
 	rootCmd.AddCommand(provisionerCmd)
 
 	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
-	addKubernetesFlags(provisionerCmd.PersistentFlags(), rootConfig.Provisioner.K8s.Namespace)
+	addKubernetesFlags(provisionerCmd.PersistentFlags(), &rootConfig.K8s.Namespace)
 }

@@ -48,13 +48,18 @@ var rootConfig config.Config
 
 var k8sOverridesFlags clientcmd.ConfigOverrides
 
-func addKubernetesFlags(flagSet *pflag.FlagSet, defaultNamespace string) {
-	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
-	k8sOverridesFlags.Context.Namespace = defaultNamespace
-	clientcmd.BindOverrideFlags(&k8sOverridesFlags, flagSet, overrideFlags)
+var runAfterConfig []func()
+
+func addKubernetesFlags(flagSet *pflag.FlagSet, namespace *string) {
+	runAfterConfig = append(runAfterConfig, func() {
+		overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
+		overrideFlags.ContextOverrideFlags.Namespace.Default = *namespace
+		clientcmd.BindOverrideFlags(&k8sOverridesFlags, flagSet, overrideFlags)
+	})
 }
 
 func loadKubeconfig() (*rest.Config, string, error) {
+	log.Debug().WithString("k8sOverridesFlags.Context.Namespace", k8sOverridesFlags.Context.Namespace).Message("loadKubeconfig")
 	loader := clientcmd.NewDefaultClientConfigLoadingRules()
 	clientConf := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, &k8sOverridesFlags)
 	restConf, err := clientConf.ClientConfig()
@@ -75,8 +80,13 @@ func loadKubeconfig() (*rest.Config, string, error) {
 func execute(version app.Version) {
 	var err error
 	if rootConfig, err = config.LoadConfig(); err != nil {
+		initLoggingIfNeeded()
 		log.Error().Messagef("Config load: %s", err)
 		os.Exit(exitCodeLoadConfigError)
+	}
+
+	for _, f := range runAfterConfig {
+		f()
 	}
 
 	rootCmd.Version = versionString(version)

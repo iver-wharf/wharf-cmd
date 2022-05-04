@@ -13,7 +13,7 @@ wharf-cmd-provisioner, perform a diff, and kill any builds or workers
 that are missing from one another. Effectively killing all in the
 symmetrical difference result.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		watchdog.Watch()
+		watchdog.Watch(rootConfig.Watchdog)
 	},
 }
 

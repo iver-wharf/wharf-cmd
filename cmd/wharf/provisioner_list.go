@@ -10,6 +10,8 @@ var provisionerListCmd = &cobra.Command{
 	Long: `Lists wharf worker pods inside Kubernetes
 that are either scheduling, running, or completed.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		log.Debug().WithString("ns", rootConfig.K8s.Namespace).Message("Namespace")
+
 		p, err := newProvisioner()
 		if err != nil {
 			return err

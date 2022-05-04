@@ -25,7 +25,7 @@ kill endpoint.`,
 			return err
 		}
 		aggregatorFlags.restConfig = restConfig
-		rootConfig.Aggregator.K8s.Namespace = ns
+		rootConfig.K8s.Namespace = ns
 		return nil
 	},
 }
@@ -33,5 +33,5 @@ kill endpoint.`,
 func init() {
 	rootCmd.AddCommand(aggregatorCmd)
 
-	addKubernetesFlags(aggregatorCmd.PersistentFlags(), rootConfig.Aggregator.K8s.Namespace)
+	addKubernetesFlags(aggregatorCmd.PersistentFlags(), &rootConfig.K8s.Namespace)
 }

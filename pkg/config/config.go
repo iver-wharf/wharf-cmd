@@ -13,7 +13,7 @@ import (
 //
 // The config is read in the following order:
 //
-// 1. File: /etc/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+// 1. File: /etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml
 //
 // 2. File: ./wharf-cmd-config.yml
 //
@@ -29,15 +29,11 @@ import (
 // case-insensitive. Keeping camelCasing in YAML config files is recommended
 // for consistency.
 type Config struct {
+	K8s         K8sConfig
 	Worker      WorkerConfig
 	Provisioner ProvisionerConfig
 	Aggregator  AggregatorConfig
-}
-
-// WorkerConfig holds settings for the worker.
-type WorkerConfig struct {
-	K8s   K8sConfig
-	Steps StepsConfig
+	Watchdog    WatchdogConfig
 }
 
 // K8sConfig holds settings for using kubernetes.
@@ -46,11 +42,15 @@ type K8sConfig struct {
 	//
 	// Added in v0.8.0.
 	Context string
-
 	// Namespace is the kubernetes namespace to talk to.
 	//
 	// Added in v0.8.0.
 	Namespace string
+}
+
+// WorkerConfig holds settings for the worker.
+type WorkerConfig struct {
+	Steps StepsConfig
 }
 
 // StepsConfig holds settings for the different types of steps.
@@ -66,7 +66,6 @@ type DockerStepConfig struct {
 	//
 	// Added in v0.8.0.
 	Image string
-
 	// ImageTag is the image tag to use for the image.
 	//
 	// Added in v0.8.0.
@@ -79,7 +78,6 @@ type KubectlStepConfig struct {
 	//
 	// Added in v0.8.0.
 	Image string
-
 	// ImageTag is the image tag to use for the image.
 	//
 	// Added in v0.8.0.
@@ -100,7 +98,6 @@ type HelmStepConfig struct {
 
 // ProvisionerConfig holds settings for the provisioner.
 type ProvisionerConfig struct {
-	K8s    K8sConfig
 	HTTP   HTTPConfig
 	Worker ProvisionerWorkerConfig
 }
@@ -153,7 +150,6 @@ type K8sContainerConfig struct {
 // HTTPConfig holds settings for the HTTP server.
 type HTTPConfig struct {
 	CORS CORSConfig
-
 	// BindAddress is the IP-address and port, separated by a colon, to bind
 	// the HTTP server to. An IP-address of 0.0.0.0 will bind to all
 	// IP-addresses.
@@ -170,7 +166,6 @@ type CORSConfig struct {
 	//
 	// Added in v0.8.0.
 	AllowAllOrigins bool
-
 	// AllowOrigins enables CORS and allows the list of origins in the
 	// HTTP request origins when set. Practically speaking, this
 	// results in the HTTP header "Access-Control-Allow-Origin".
@@ -181,27 +176,36 @@ type CORSConfig struct {
 
 // AggregatorConfig holds settings for the aggregator.
 type AggregatorConfig struct {
-	K8s K8sConfig
-
 	// WharfAPIURL is the URL used to connect to Wharf API.
 	//
 	// Added in v0.8.0.
 	WharfAPIURL string
+	// WorkerAPIExternalPort is the port used to connect to a Wharf worker.
+	//
+	// Added in v0.8.0.
+	WorkerAPIExternalPort string
+}
 
-	// WharfCmdProvisionerURL is the URL used to connect to the Wharf Cmd
+// WatchdogConfig holds settings for the watchdog.
+type WatchdogConfig struct {
+	// WharfAPIURL is the URL used to connect to Wharf API.
+	//
+	// Added in v0.8.0.
+	WharfAPIURL string
+	// ProvisionerURL is the URL used to connect to the Wharf Cmd
 	// provisioner.
 	//
 	// Added in v0.8.0.
-	WharfCmdProvisionerURL string
+	ProvisionerURL string
 }
 
 // DefaultConfig is the hard-coded default values for wharf-cmd's configs.
 var DefaultConfig = Config{
+	K8s: K8sConfig{
+		Context:   "",
+		Namespace: "",
+	},
 	Worker: WorkerConfig{
-		K8s: K8sConfig{
-			Context:   "",
-			Namespace: "default",
-		},
 		Steps: StepsConfig{
 			Docker: DockerStepConfig{
 				Image: "gcr.io/kaniko-project/executor:v1.7.0",
@@ -215,10 +219,6 @@ var DefaultConfig = Config{
 		},
 	},
 	Provisioner: ProvisionerConfig{
-		K8s: K8sConfig{
-			Context:   "",
-			Namespace: "",
-		},
 		HTTP: HTTPConfig{
 			CORS: CORSConfig{
 				AllowAllOrigins: false,
@@ -241,8 +241,12 @@ var DefaultConfig = Config{
 		},
 	},
 	Aggregator: AggregatorConfig{
-		WharfAPIURL:            "http://wharf-api:8080",
-		WharfCmdProvisionerURL: "http://wharf-cmd-provisioner:8080",
+		WharfAPIURL:           "http://wharf-api:8080",
+		WorkerAPIExternalPort: "5010",
+	},
+	Watchdog: WatchdogConfig{
+		WharfAPIURL:    "http://wharf-api:8080",
+		ProvisionerURL: "http://wharf-cmd-provisioner:8080",
 	},
 }
 
@@ -254,7 +258,7 @@ func LoadConfig() (Config, error) {
 	//  ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
 	//  $HOME/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
 	// And OS-specific config paths.
-	cfgBuilder.AddConfigYAMLFile("/etc/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
+	cfgBuilder.AddConfigYAMLFile("/etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
 	cfgBuilder.AddConfigYAMLFile(".wharf-cmd-config.yml")
 	if cfgFile, ok := os.LookupEnv("WHARF_CONFIG"); ok {
 		cfgBuilder.AddConfigYAMLFile(cfgFile)

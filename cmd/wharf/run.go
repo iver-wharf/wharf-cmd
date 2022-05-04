@@ -166,5 +166,5 @@ func init() {
 	addWharfYmlStageFlag(runCmd, &runFlags.stage)
 	addWharfYmlEnvFlag(runCmd, &runFlags.env)
 	addWharfYmlInputsFlag(runCmd, &runFlags.inputs)
-	addKubernetesFlags(runCmd.Flags(), rootConfig.Worker.K8s.Namespace)
+	addKubernetesFlags(runCmd.Flags(), &rootConfig.K8s.Namespace)
 }
