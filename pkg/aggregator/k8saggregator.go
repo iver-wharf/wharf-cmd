@@ -128,7 +128,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 				continue
 			}
 			if !inProgress.Add(pod.UID) {
-				// Failed to add => Already beeing processed
+				// Failed to add => Already being processed
 				continue
 			}
 			log.Debug().
