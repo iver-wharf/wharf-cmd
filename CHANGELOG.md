@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added provisioner commands: (#46, #59, #117, #129)
+- Added provisioner commands: (#46, #59, #117, #121, #129)
 
   - `wharf provisioner serve` that launches an HTTP REST api server with
     endpoints:

@@ -1,8 +1,11 @@
 package main
 
 import (
+	"os"
+
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/spf13/cobra"
 )
 
@@ -25,17 +28,28 @@ The <repo> argument is used by Git to clone the repository, such as:
   wharf provisioner create ssh://git@github.com/iver-wharf/wharf-cmd.git`,
 	Args: cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		varSource, err := parseVarSourcesExceptGit(currentDir, nil)
+		if err != nil {
+			return err
+		}
+
 		p, err := newProvisioner()
 		if err != nil {
 			return err
 		}
 
 		worker, err := p.CreateWorker(rootContext, provisioner.WorkerArgs{
-			GitCloneURL: args[0],
-			SubDir:      provisionerCreateFlags.subdir,
-			Inputs:      parseInputArgs(provisionerCreateFlags.inputs),
-			Environment: provisionerCreateFlags.env,
-			Stage:       provisionerCreateFlags.stage,
+			GitCloneURL:    args[0],
+			SubDir:         provisionerCreateFlags.subdir,
+			Inputs:         parseInputArgs(provisionerCreateFlags.inputs),
+			Environment:    provisionerCreateFlags.env,
+			Stage:          provisionerCreateFlags.stage,
+			AdditionalVars: mergeVarSources(varSource),
 		})
 		if err != nil {
 			return err
@@ -47,6 +61,19 @@ The <repo> argument is used by Git to clone the repository, such as:
 
 		return nil
 	},
+}
+
+func mergeVarSources(s varsub.Source) map[string]any {
+	m := make(map[string]any)
+	for _, v := range s.ListVars() {
+		_, ok := m[v.Key]
+		if !ok {
+			// Only use the first value found, to simulate the varsub.Substitute
+			// that uses the first value it finds.
+			m[v.Key] = v.Value
+		}
+	}
+	return m
 }
 
 func init() {

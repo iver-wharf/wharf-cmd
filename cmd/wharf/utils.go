@@ -44,10 +44,11 @@ func parseCurrentDir(dirArg string) (string, error) {
 	return abs, nil
 }
 
-func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
+func parseVarSourcesExceptGit(currentDir string, additionalSource varsub.Source) (varsub.SourceSlice, error) {
 	var varSources varsub.SourceSlice
-	if ymlArgs.VarSource != nil {
-		varSources = append(varSources, ymlArgs.VarSource)
+
+	if additionalSource != nil {
+		varSources = append(varSources, additionalSource)
 	}
 
 	varSources = append(varSources, varsub.NewOSEnvSource("WHARF_VAR_"))
@@ -55,9 +56,18 @@ func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.De
 	varFileSource, errs := wharfyml.ParseVarFiles(currentDir)
 	if len(errs) > 0 {
 		logParseErrors(errs, currentDir)
-		return wharfyml.Definition{}, errors.New("failed to parse variable files")
+		return nil, errors.New("failed to parse variable files")
 	}
 	varSources = append(varSources, varFileSource)
+
+	return varSources, nil
+}
+
+func parseVarSources(currentDir string, additionalSource varsub.Source) (varsub.Source, error) {
+	varSources, err := parseVarSourcesExceptGit(currentDir, additionalSource)
+	if err != nil {
+		return nil, err
+	}
 
 	gitStats, err := gitutil.StatsFromExec(currentDir)
 	if err != nil {
@@ -69,7 +79,16 @@ func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.De
 		varSources = append(varSources, gitStats)
 	}
 
-	ymlArgs.VarSource = varSources
+	return varSources, nil
+}
+
+func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
+	varSource, err := parseVarSources(currentDir, ymlArgs.VarSource)
+	if err != nil {
+		return wharfyml.Definition{}, err
+	}
+
+	ymlArgs.VarSource = varSource
 
 	ymlPath := filepath.Join(currentDir, ".wharf-ci.yml")
 	log.Debug().WithString("path", ymlPath).Message("Parsing .wharf-ci.yml file.")
