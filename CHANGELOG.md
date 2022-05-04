@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.8.0 (WIP)
 
-- Added provisioner commands: (#46, #59, #117)
+- Added provisioner commands: (#46, #59, #117, #129)
 
   - `wharf provisioner serve` that launches an HTTP REST api server with
     endpoints:
@@ -43,7 +43,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   See [docs/provisioner-git-ssh-secret.md](docs/provisioner-git-ssh-secret.md)
   for more info. (#120)
 
-- Added watchdog commands: (#62)
+- Added watchdog commands: (#62, #129)
 
   - `wharf watchdog serve` checks stray builds from the wharf-api and
     wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort
