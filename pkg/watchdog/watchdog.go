@@ -160,16 +160,12 @@ func getBuildsToKill(builds []response.Build, workers []provisioner.Worker, safe
 	workersMap := mapWorkersOnID(workers)
 	var toKill []response.Build
 	for _, b := range builds {
-		if b.WorkerID == "" {
-			continue
-		}
-		if _, ok := workersMap[b.WorkerID]; ok {
-			continue
-		}
-		if !b.ScheduledOn.Valid {
-			continue
-		}
-		if b.ScheduledOn.Time.After(safeAfter) {
+		reason := getReasonToNotKillBuild(b, workersMap, safeAfter)
+		if reason != "" {
+			log.Debug().
+				WithString("reason", reason).
+				WithUint("buildId", b.BuildID).
+				Messagef("Skip killing build.")
 			continue
 		}
 		toKill = append(toKill, b)
@@ -177,19 +173,47 @@ func getBuildsToKill(builds []response.Build, workers []provisioner.Worker, safe
 	return toKill
 }
 
+func getReasonToNotKillBuild(b response.Build, workersMap map[string]provisioner.Worker, safeAfter time.Time) string {
+	if b.WorkerID == "" {
+		return "build.workerId is empty"
+	}
+	if _, ok := workersMap[b.WorkerID]; ok {
+		return "the build's worker is still running"
+	}
+	if !b.ScheduledOn.Valid {
+		return "build.scheduledOn is not valid"
+	}
+	if b.ScheduledOn.Time.After(safeAfter) {
+		return "build.scheduledOn is not old enough"
+	}
+	return ""
+}
+
 func getWorkersToKill(builds []response.Build, workers []provisioner.Worker, safeAfter time.Time) []provisioner.Worker {
 	buildsMap := mapBuildsOnWorkerID(builds)
 	var toKill []provisioner.Worker
 	for _, w := range workers {
-		if _, ok := buildsMap[w.WorkerID]; ok {
-			continue
-		}
-		if w.CreatedAt.After(safeAfter) {
+		reason := getReasonNotToKillWorker(w, buildsMap, safeAfter)
+		if reason != "" {
+			log.Debug().
+				WithString("reason", reason).
+				WithString("workerId", w.WorkerID).
+				Messagef("Skip killing worker.")
 			continue
 		}
 		toKill = append(toKill, w)
 	}
 	return toKill
+}
+
+func getReasonNotToKillWorker(w provisioner.Worker, buildsMap map[string]response.Build, safeAfter time.Time) string {
+	if _, ok := buildsMap[w.WorkerID]; ok {
+		return "the worker's build is still running"
+	}
+	if w.CreatedAt.After(safeAfter) {
+		return "worker.createdAt is not old enough"
+	}
+	return ""
 }
 
 func mapBuildsOnWorkerID(builds []response.Build) map[string]response.Build {
