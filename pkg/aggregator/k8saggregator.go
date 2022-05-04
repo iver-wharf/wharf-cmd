@@ -7,13 +7,12 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"gopkg.in/typ.v4/maps"
+	"gopkg.in/typ.v4/sync2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -97,8 +96,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 	// a worker while its server wasn't running.
 	k8sruntime.ErrorHandlers = []func(error){}
 
-	var mutex sync.Mutex
-	inProgress := make(maps.Set[types.UID])
+	var inProgress sync2.Set[types.UID]
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
@@ -116,7 +114,6 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			time.Sleep(pollDelay)
 			continue
 		}
-		mutex.Lock()
 		for _, pod := range pods {
 			if pod.Status.Phase != v1.PodRunning {
 				continue
@@ -128,10 +125,10 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 					Message("Failed to parse worker's build ID.")
 				continue
 			}
-			if inProgress.Has(pod.UID) {
+			if !inProgress.Add(pod.UID) {
+				// Failed to add => Already beeing processed
 				continue
 			}
-			inProgress.Add(pod.UID)
 			log.Debug().
 				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 				Message("Pod found.")
@@ -142,12 +139,9 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 						WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 						Message("Relay error.")
 				}
-				mutex.Lock()
 				inProgress.Remove(pod.UID)
-				mutex.Unlock()
 			}(pod)
 		}
-		mutex.Unlock()
 		time.Sleep(pollDelay)
 	}
 }
