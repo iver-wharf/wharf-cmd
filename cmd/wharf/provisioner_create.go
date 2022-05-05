@@ -81,7 +81,10 @@ func init() {
 
 	provisionerCreateCmd.Flags().StringVar(&provisionerCreateFlags.subdir, "subdir", "", "Subdirectory of repository where .wharf-ci.yml file is found.")
 
-	addWharfYmlStageFlag(provisionerCreateCmd, &provisionerCreateFlags.stage)
-	addWharfYmlEnvFlag(provisionerCreateCmd, &provisionerCreateFlags.env)
-	addWharfYmlInputsFlag(provisionerCreateCmd, &provisionerCreateFlags.inputs)
+	addWharfYmlStageFlag(provisionerCreateCmd, provisionerCreateCmd.Flags(),
+		&provisionerCreateFlags.stage)
+	addWharfYmlEnvFlag(provisionerCreateCmd, provisionerCreateCmd.Flags(),
+		&provisionerCreateFlags.env)
+	addWharfYmlInputsFlag(provisionerCreateCmd, provisionerCreateCmd.Flags(),
+		&provisionerCreateFlags.inputs)
 }
