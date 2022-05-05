@@ -28,7 +28,7 @@ type k8sProvisioner struct {
 
 // NewK8sProvisioner returns a new Provisioner implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sProvisioner(config config.Config, restConfig *rest.Config) (Provisioner, error) {
+func NewK8sProvisioner(config *config.Config, restConfig *rest.Config) (Provisioner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err

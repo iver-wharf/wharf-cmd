@@ -10,7 +10,7 @@ func newProvisioner() (provisioner.Provisioner, error) {
 	if err != nil {
 		return nil, err
 	}
-	return provisioner.NewK8sProvisioner(rootConfig, restConfig)
+	return provisioner.NewK8sProvisioner(&rootConfig, restConfig)
 }
 
 var provisionerCmd = &cobra.Command{

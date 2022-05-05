@@ -30,7 +30,7 @@ var log = logger.NewScoped("AGGREGATOR")
 
 // NewK8sAggregator returns a new Aggregator implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sAggregator(config config.Config, restConfig *rest.Config) (Aggregator, error) {
+func NewK8sAggregator(config *config.Config, restConfig *rest.Config) (Aggregator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
