@@ -194,6 +194,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added `--version`, `-v` flag to show the version of wharf-cmd. (#76)
 
+- Added Git to `quay.io/iver-wharf/wharf-cmd` Docker image. (#138)
+
 - Added dependencies:
 
   - `github.com/alta/protopatch` v0.5.0 (#51)
