@@ -114,8 +114,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added ability to configure values, and wharf looks for it in multiple files in
   the following order, where former files take precedence over latter files on a
-  per-variable basis: (#116)
- 
+  per-variable basis: (#116, #133)
+
   - Environment variables, prefixed with `WHARF_`
   - File from environment variable: `WHARF_CONFIG`
   - File: `./wharf-cmd-config.yml`
