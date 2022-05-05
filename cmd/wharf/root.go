@@ -152,20 +152,6 @@ func initLogging() {
 	isLoggingInitialized = true
 }
 
-func callParentPersistentPreRuns(cmd *cobra.Command, args []string) error {
-	for {
-		cmd = cmd.Parent()
-		if cmd == nil {
-			return nil
-		}
-		// Call first one we find.
-		// It'll be responsible for calling its parent PersistentPreRunE
-		if cmd.PersistentPreRunE != nil {
-			return cmd.PersistentPreRunE(cmd, args)
-		}
-	}
-}
-
 func handleCancelSignals(cancel context.CancelFunc) {
 	ch := newCancelSignalChan()
 	<-ch
