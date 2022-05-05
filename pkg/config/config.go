@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/iver-wharf/wharf-core/pkg/config"
@@ -267,11 +268,11 @@ var DefaultConfig = Config{
 // Config object.
 func LoadConfig() (Config, error) {
 	cfgBuilder := config.NewBuilder(DefaultConfig)
-	// TODO: Also add config file relative to home, e.g.:
-	//  ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
-	//  $HOME/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
-	// And OS-specific config paths.
+
 	cfgBuilder.AddConfigYAMLFile("/etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
+	if confDir, err := os.UserConfigDir(); err == nil {
+		cfgBuilder.AddConfigYAMLFile(filepath.Join(confDir, "iver-wharf/wharf-cmd/wharf-cmd-config.yml"))
+	}
 	cfgBuilder.AddConfigYAMLFile(".wharf-cmd-config.yml")
 	if cfgFile, ok := os.LookupEnv("WHARF_CONFIG"); ok {
 		cfgBuilder.AddConfigYAMLFile(cfgFile)
