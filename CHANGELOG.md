@@ -112,6 +112,17 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     CHART_REPO: http://harbor.example.com
   ```
 
+- Added ability to configure values, and wharf looks for it in multiple files in
+  the following order, where former files take precedence over latter files on a
+  per-variable basis: (#116)
+ 
+  - Environment variables, prefixed with `WHARF_`
+  - File from environment variable: `WHARF_CONFIG`
+  - File: `./wharf-cmd-config.yml`
+  - File: `/etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml`
+
+  Read more [here](https://pkg.go.dev/github.com/iver-wharf/wharf-cmd/pkg/config).
+
 - Added support for using OS environment variables prefixed with `WHARF_VAR_`
   in variable substitution, where `WHARF_VAR_REG_URL` would set the `REG_URL`
   Wharf variable. (#96)
