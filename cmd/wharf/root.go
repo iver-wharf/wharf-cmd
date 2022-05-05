@@ -43,12 +43,14 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-var rootContext, rootCancel = context.WithCancel(context.Background())
-var rootConfig config.Config
+var (
+	rootContext, rootCancel = context.WithCancel(context.Background())
 
-var k8sOverridesFlags clientcmd.ConfigOverrides
+	k8sOverridesFlags clientcmd.ConfigOverrides
 
-var runAfterConfig []func()
+	rootConfig     config.Config
+	runAfterConfig []func()
+)
 
 func addKubernetesFlags(flagSet *pflag.FlagSet, namespace *string) {
 	runAfterConfig = append(runAfterConfig, func() {
@@ -59,7 +61,6 @@ func addKubernetesFlags(flagSet *pflag.FlagSet, namespace *string) {
 }
 
 func loadKubeconfig() (*rest.Config, string, error) {
-	log.Debug().WithString("k8sOverridesFlags.Context.Namespace", k8sOverridesFlags.Context.Namespace).Message("loadKubeconfig")
 	loader := clientcmd.NewDefaultClientConfigLoadingRules()
 	clientConf := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, &k8sOverridesFlags)
 	restConf, err := clientConf.ClientConfig()
