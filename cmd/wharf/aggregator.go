@@ -19,13 +19,6 @@ var aggregatorCmd = &cobra.Command{
 	Long: `Streams build results from workers to the Wharf API through gRPC.
 After streaming from a worker is done, the aggregator will kill it using the
 kill endpoint.`,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if err := callParentPersistentPreRuns(cmd, args); err != nil {
-			return err
-		}
-
-		return nil
-	},
 }
 
 func init() {
