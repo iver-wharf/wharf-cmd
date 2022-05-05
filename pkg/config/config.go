@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/iver-wharf/wharf-core/pkg/config"
@@ -14,6 +15,13 @@ import (
 // The config is read in the following order:
 //
 // 1. File: /etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+//
+// 2. File: (config home)/iver-wharf/wharf-cmd/wharf-cmd-config.yml, depending
+// on OS:
+//
+//  - Linux:       ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+//  - Darwin/OS X: ~/Library/Application Support/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+//  - Windows:     %APPDATA%\iver-wharf\wharf-cmd\wharf-cmd-config.yml
 //
 // 2. File: ./wharf-cmd-config.yml
 //
@@ -277,11 +285,11 @@ var DefaultConfig = Config{
 // Config object.
 func LoadConfig() (Config, error) {
 	cfgBuilder := config.NewBuilder(DefaultConfig)
-	// TODO: Also add config file relative to home, e.g.:
-	//  ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
-	//  $HOME/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
-	// And OS-specific config paths.
+
 	cfgBuilder.AddConfigYAMLFile("/etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml")
+	if confDir, err := os.UserConfigDir(); err == nil {
+		cfgBuilder.AddConfigYAMLFile(filepath.Join(confDir, "iver-wharf/wharf-cmd/wharf-cmd-config.yml"))
+	}
 	cfgBuilder.AddConfigYAMLFile(".wharf-cmd-config.yml")
 	if cfgFile, ok := os.LookupEnv("WHARF_CONFIG"); ok {
 		cfgBuilder.AddConfigYAMLFile(cfgFile)
