@@ -58,6 +58,8 @@ type StepsConfig struct {
 	Docker  DockerStepConfig
 	Kubectl KubectlStepConfig
 	Helm    HelmStepConfig
+
+	// TODO: Add configs for other step types.
 }
 
 // DockerStepConfig holds settings for the docker step type.
@@ -98,13 +100,18 @@ type HelmStepConfig struct {
 
 // ProvisionerConfig holds settings for the provisioner.
 type ProvisionerConfig struct {
-	HTTP   HTTPConfig
-	Worker ProvisionerWorkerConfig
+	HTTP HTTPConfig
+	K8s  ProvisionerK8sConfig
 }
 
-// ProvisionerWorkerConfig holds settings for worker pods that are created by the
+// ProvisionerK8sConfig holds kubernetes specific settings for the provisioner.
+type ProvisionerK8sConfig struct {
+	Worker ProvisionerK8sWorkerConfig
+}
+
+// ProvisionerK8sWorkerConfig holds settings for worker pods that are created by the
 // provisioner.
-type ProvisionerWorkerConfig struct {
+type ProvisionerK8sWorkerConfig struct {
 	// ServiceAccountName is the service account name to use for the pod.
 	//
 	// Added in v0.8.0.
@@ -226,17 +233,19 @@ var DefaultConfig = Config{
 			},
 			BindAddress: "0.0.0.0:5009",
 		},
-		Worker: ProvisionerWorkerConfig{
-			ServiceAccountName: "wharf-cmd",
-			InitContainer: K8sContainerConfig{
-				Image:           "bitnami/git",
-				ImageTag:        "2-debian-10",
-				ImagePullPolicy: v1.PullIfNotPresent,
-			},
-			Container: K8sContainerConfig{
-				Image:           "quay.io/iver-wharf/wharf-cmd",
-				ImageTag:        "latest",
-				ImagePullPolicy: v1.PullAlways,
+		K8s: ProvisionerK8sConfig{
+			Worker: ProvisionerK8sWorkerConfig{
+				ServiceAccountName: "wharf-cmd",
+				InitContainer: K8sContainerConfig{
+					Image:           "bitnami/git",
+					ImageTag:        "2-debian-10",
+					ImagePullPolicy: v1.PullIfNotPresent,
+				},
+				Container: K8sContainerConfig{
+					Image:           "quay.io/iver-wharf/wharf-cmd",
+					ImageTag:        "latest",
+					ImagePullPolicy: v1.PullAlways,
+				},
 			},
 		},
 	},
@@ -246,7 +255,7 @@ var DefaultConfig = Config{
 	},
 	Watchdog: WatchdogConfig{
 		WharfAPIURL:    "http://localhost:5001",
-		ProvisionerURL: "http://wharf-cmd-provisioner:5009",
+		ProvisionerURL: "http://localhost:5009",
 	},
 }
 
