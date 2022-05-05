@@ -170,6 +170,6 @@ func handleCancelSignals(cancel context.CancelFunc) {
 
 func newCancelSignalChan() <-chan os.Signal {
 	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, os.Kill, syscall.SIGTERM, syscall.SIGHUP)
+	signal.Notify(ch, os.Interrupt, syscall.SIGTERM, syscall.SIGHUP)
 	return ch
 }
