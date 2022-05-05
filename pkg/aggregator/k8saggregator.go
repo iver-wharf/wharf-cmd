@@ -7,14 +7,13 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"gopkg.in/typ.v4/maps"
+	"gopkg.in/typ.v4/sync2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -29,16 +28,9 @@ import (
 
 var log = logger.NewScoped("AGGREGATOR")
 
-// Copied from pkg/provisioner/k8sprovisioner.go
-var listOptionsMatchLabels = metav1.ListOptions{
-	LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
-		"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-		"wharf.iver.com/instance=prod",
-}
-
 // NewK8sAggregator returns a new Aggregator implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sAggregator(config config.AggregatorConfig, namespace string, restConfig *rest.Config) (Aggregator, error) {
+func NewK8sAggregator(instanceID, namespace string, config config.AggregatorConfig, restConfig *rest.Config) (Aggregator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -62,6 +54,13 @@ func NewK8sAggregator(config config.AggregatorConfig, namespace string, restConf
 
 		upgrader:   upgrader,
 		httpClient: httpClient,
+		instanceID: instanceID,
+		listOptionsMatchLabels: metav1.ListOptions{
+			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
+				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
+				"wharf.iver.com/instance=" + instanceID,
+		},
+
 		wharfapi: wharfapi.Client{
 			APIURL: config.WharfAPIURL,
 		},
@@ -75,9 +74,11 @@ type k8sAggr struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 
-	restConfig *rest.Config
-	upgrader   spdy.Upgrader
-	httpClient *http.Client
+	restConfig             *rest.Config
+	upgrader               spdy.Upgrader
+	httpClient             *http.Client
+	instanceID             string
+	listOptionsMatchLabels metav1.ListOptions
 
 	wharfapi wharfapi.Client
 }
@@ -94,8 +95,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 	// a worker while its server wasn't running.
 	k8sruntime.ErrorHandlers = []func(error){}
 
-	var mutex sync.Mutex
-	inProgress := make(maps.Set[types.UID])
+	var inProgress sync2.Set[types.UID]
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
@@ -113,7 +113,6 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			time.Sleep(pollDelay)
 			continue
 		}
-		mutex.Lock()
 		for _, pod := range pods {
 			if pod.Status.Phase != v1.PodRunning {
 				continue
@@ -125,10 +124,10 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 					Message("Failed to parse worker's build ID.")
 				continue
 			}
-			if inProgress.Has(pod.UID) {
+			if !inProgress.Add(pod.UID) {
+				// Failed to add => Already being processed
 				continue
 			}
-			inProgress.Add(pod.UID)
 			log.Debug().
 				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 				Message("Pod found.")
@@ -139,12 +138,9 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 						WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 						Message("Relay error.")
 				}
-				mutex.Lock()
 				inProgress.Remove(pod.UID)
-				mutex.Unlock()
 			}(pod)
 		}
-		mutex.Unlock()
 		time.Sleep(pollDelay)
 	}
 }
@@ -162,7 +158,7 @@ func parsePodBuildID(podMeta metav1.ObjectMeta) (uint, error) {
 }
 
 func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
-	list, err := a.pods.List(ctx, listOptionsMatchLabels)
+	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
 	if err != nil {
 		return nil, err
 	}

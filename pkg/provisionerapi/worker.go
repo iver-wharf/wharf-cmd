@@ -74,7 +74,7 @@ func (m workerModule) createWorkerHandler(c *gin.Context) {
 		WharfInstance  string `form:"WHARF_INSTANCE"`
 		WharfProjectID uint   `form:"WHARF_PROJECT_ID"`
 	}{}
-	if err := c.ShouldBindQuery(params); err != nil {
+	if err := c.ShouldBindQuery(&params); err != nil {
 		ginutil.WriteInvalidBindError(c, err, "One or more parameters failed to parse when reading query parameters.")
 		return
 	}

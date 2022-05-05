@@ -38,8 +38,8 @@ func TestGetBuildsToKill(t *testing.T) {
 				{BuildID: 4, WorkerID: "jkl", ScheduledOn: null.TimeFrom(testTimeOld)},
 			},
 			workers: []provisioner.Worker{
-				{ID: "abc"},
-				{ID: "ghi"},
+				{WorkerID: "abc"},
+				{WorkerID: "ghi"},
 			},
 			want: []uint{2, 4},
 		},
@@ -52,7 +52,7 @@ func TestGetBuildsToKill(t *testing.T) {
 				{BuildID: 4, WorkerID: "jkl", ScheduledOn: null.TimeFrom(testTimeNow)},
 			},
 			workers: []provisioner.Worker{
-				{ID: "abc"},
+				{WorkerID: "abc"},
 			},
 			want: []uint{3},
 		},
@@ -106,10 +106,10 @@ func TestGetWorkersToKill(t *testing.T) {
 				{BuildID: 3, WorkerID: "ghi"},
 			},
 			workers: []provisioner.Worker{
-				{ID: "abc", CreatedAt: testTimeOld},
-				{ID: "def", CreatedAt: testTimeOld},
-				{ID: "ghi", CreatedAt: testTimeOld},
-				{ID: "jkl", CreatedAt: testTimeOld},
+				{WorkerID: "abc", CreatedAt: testTimeOld},
+				{WorkerID: "def", CreatedAt: testTimeOld},
+				{WorkerID: "ghi", CreatedAt: testTimeOld},
+				{WorkerID: "jkl", CreatedAt: testTimeOld},
 			},
 			want: []string{"abc", "jkl"},
 		},
@@ -119,10 +119,10 @@ func TestGetWorkersToKill(t *testing.T) {
 				{BuildID: 1, WorkerID: "abc"},
 			},
 			workers: []provisioner.Worker{
-				{ID: "abc", CreatedAt: testTimeNow},
-				{ID: "def", CreatedAt: testTimeNow},
-				{ID: "ghi", CreatedAt: testTimeOld},
-				{ID: "jkl", CreatedAt: testTimeNow},
+				{WorkerID: "abc", CreatedAt: testTimeNow},
+				{WorkerID: "def", CreatedAt: testTimeNow},
+				{WorkerID: "ghi", CreatedAt: testTimeOld},
+				{WorkerID: "jkl", CreatedAt: testTimeNow},
 			},
 			want: []string{"ghi"},
 		},
@@ -142,7 +142,7 @@ func TestGetWorkersToKill(t *testing.T) {
 func getWorkerIDs(workers []provisioner.Worker) []string {
 	ids := make([]string, len(workers))
 	for i, w := range workers {
-		ids[i] = w.ID
+		ids[i] = w.WorkerID
 	}
 	return ids
 }

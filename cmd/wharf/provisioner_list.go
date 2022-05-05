@@ -25,7 +25,7 @@ that are either scheduling, running, or completed.`,
 		log.Info().WithInt("count", len(workers)).Message("Fetched workers with matching labels.")
 		for i, worker := range workers {
 			log.Info().WithInt("index", i).
-				WithString("workerID", string(worker.ID)).
+				WithString("workerID", string(worker.WorkerID)).
 				WithString("name", worker.Name).
 				WithStringer("status", worker.Status).
 				Message("")

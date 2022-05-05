@@ -7,7 +7,11 @@ import (
 
 var aggregatorFlags = struct {
 	restConfig *rest.Config
-}{}
+
+	instanceID string
+}{
+	instanceID: "local",
+}
 
 var aggregatorCmd = &cobra.Command{
 	Use:   "aggregator",
@@ -33,5 +37,6 @@ kill endpoint.`,
 func init() {
 	rootCmd.AddCommand(aggregatorCmd)
 
+	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
 	addKubernetesFlags(aggregatorCmd.PersistentFlags(), &rootConfig.K8s.Namespace)
 }
