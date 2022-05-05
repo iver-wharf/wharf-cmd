@@ -5,22 +5,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var provisionerFlags = struct {
-	instanceID string
-}{
-	instanceID: "local",
-}
-
 func newProvisioner() (provisioner.Provisioner, error) {
 	restConfig, err := loadKubeconfig()
 	if err != nil {
 		return nil, err
 	}
-	return provisioner.NewK8sProvisioner(
-		provisionerFlags.instanceID,
-		rootConfig.Provisioner.K8s,
-		rootConfig.K8s.Namespace,
-		restConfig)
+	return provisioner.NewK8sProvisioner(&rootConfig, restConfig)
 }
 
 var provisionerCmd = &cobra.Command{
@@ -38,6 +28,5 @@ orchestration is handled inside the Kubernetes cluster, in comparison to the
 func init() {
 	rootCmd.AddCommand(provisionerCmd)
 
-	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
 	addKubernetesFlags(provisionerCmd.PersistentFlags())
 }

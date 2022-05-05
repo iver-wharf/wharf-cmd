@@ -30,7 +30,12 @@ const (
 )
 
 var isLoggingInitialized bool
-var loglevel flagtypes.LogLevel = flagtypes.LogLevel(logger.LevelInfo)
+
+var rootFlags = struct {
+	loglevel flagtypes.LogLevel
+}{
+	loglevel: flagtypes.LogLevel(logger.LevelInfo),
+}
 
 var rootCmd = &cobra.Command{
 	SilenceErrors: true,
@@ -123,8 +128,11 @@ func versionString(v app.Version) string {
 func init() {
 	cobra.OnInitialize(initLogging)
 	rootCmd.InitDefaultVersionFlag()
-	rootCmd.PersistentFlags().VarP(&loglevel, "loglevel", "l", "Show debug information")
+	rootCmd.PersistentFlags().VarP(&rootFlags.loglevel, "loglevel", "l", "Show debug information")
 	rootCmd.RegisterFlagCompletionFunc("loglevel", flagtypes.CompleteLogLevel)
+	runAfterConfig = append(runAfterConfig, func() {
+		rootCmd.PersistentFlags().StringVar(&rootConfig.InstanceID, "instance", rootConfig.InstanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
+	})
 }
 
 func initLoggingIfNeeded() {
@@ -135,27 +143,13 @@ func initLoggingIfNeeded() {
 
 func initLogging() {
 	logConfig := consolepretty.DefaultConfig
-	if loglevel.Level() != logger.LevelDebug {
+	if rootFlags.loglevel.Level() != logger.LevelDebug {
 		logConfig.DisableCaller = true
 		logConfig.DisableDate = true
 		logConfig.ScopeMinLengthAuto = false
 	}
-	logger.AddOutput(loglevel.Level(), consolepretty.New(logConfig))
+	logger.AddOutput(rootFlags.loglevel.Level(), consolepretty.New(logConfig))
 	isLoggingInitialized = true
-}
-
-func callParentPersistentPreRuns(cmd *cobra.Command, args []string) error {
-	for {
-		cmd = cmd.Parent()
-		if cmd == nil {
-			return nil
-		}
-		// Call first one we find.
-		// It'll be responsible for calling its parent PersistentPreRunE
-		if cmd.PersistentPreRunE != nil {
-			return cmd.PersistentPreRunE(cmd, args)
-		}
-	}
 }
 
 func handleCancelSignals(cancel context.CancelFunc) {

@@ -30,7 +30,7 @@ var (
 	nugetPackageScript string
 )
 
-func getStepPodSpec(ctx context.Context, config config.StepsConfig, step wharfyml.Step) (v1.Pod, error) {
+func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456",
 		"wharf.iver.com/stage-id":   "789",
@@ -51,7 +51,7 @@ func getStepPodSpec(ctx context.Context, config config.StepsConfig, step wharfym
 				"app.kubernetes.io/managed-by": "wharf-cmd-worker",
 				"app.kubernetes.io/created-by": "wharf-cmd-worker",
 
-				"wharf.iver.com/instance":   "prod",
+				"wharf.iver.com/instance":   f.Config.InstanceID,
 				"wharf.iver.com/build-ref":  "123",
 				"wharf.iver.com/project-id": "456",
 				"wharf.iver.com/stage-id":   "789",
@@ -87,7 +87,7 @@ func getStepPodSpec(ctx context.Context, config config.StepsConfig, step wharfym
 		},
 	}
 
-	if err := applyStep(config, &pod, step); err != nil {
+	if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
 		return v1.Pod{}, err
 	}
 
