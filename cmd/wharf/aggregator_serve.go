@@ -12,7 +12,7 @@ var aggregatorServeCmd = &cobra.Command{
 the Wharf API through gRPC, killing the worker upon completion.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		k8sAggregator, err := aggregator.NewK8sAggregator(
-			aggregatorFlags.instanceID,
+			rootFlags.instanceID,
 			aggregatorFlags.namespace,
 			aggregatorFlags.restConfig,
 		)

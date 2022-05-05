@@ -12,15 +12,11 @@ var provisionerFlags = struct {
 
 	restConfig *rest.Config
 	namespace  string
-
-	instanceID string
-}{
-	instanceID: "local",
-}
+}{}
 
 func newProvisioner() (provisioner.Provisioner, error) {
 	return provisioner.NewK8sProvisioner(
-		provisionerFlags.instanceID,
+		rootFlags.instanceID,
 		provisionerFlags.namespace,
 		provisionerFlags.restConfig)
 }
@@ -53,6 +49,5 @@ orchestration is handled inside the Kubernetes cluster, in comparison to the
 func init() {
 	rootCmd.AddCommand(provisionerCmd)
 
-	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
 	addKubernetesFlags(provisionerCmd.PersistentFlags(), &provisionerFlags.k8sOverrides)
 }
