@@ -46,7 +46,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		kubeconfig, _, err := loadKubeconfig()
+		kubeconfig, err := loadKubeconfig()
 		if err != nil {
 			return err
 		}

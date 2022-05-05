@@ -12,7 +12,7 @@ var provisionerFlags = struct {
 }
 
 func newProvisioner() (provisioner.Provisioner, error) {
-	restConfig, _, err := loadKubeconfig()
+	restConfig, err := loadKubeconfig()
 	if err != nil {
 		return nil, err
 	}

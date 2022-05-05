@@ -60,23 +60,22 @@ func addKubernetesFlags(flagSet *pflag.FlagSet) {
 	})
 }
 
-func loadKubeconfig() (*rest.Config, string, error) {
+func loadKubeconfig() (*rest.Config, error) {
 	loader := clientcmd.NewDefaultClientConfigLoadingRules()
 	clientConf := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, &k8sOverridesFlags)
 	restConf, err := clientConf.ClientConfig()
 	if err != nil {
-		return nil, "", fmt.Errorf("load kubeconfig: %w", err)
+		return nil, fmt.Errorf("load kubeconfig: %w", err)
 	}
-	ns, _, err := clientConf.Namespace()
+	rootConfig.K8s.Namespace, _, err = clientConf.Namespace()
 	if err != nil {
-		return nil, "", fmt.Errorf("get namespace to use: %w", err)
+		return nil, fmt.Errorf("get namespace to use: %w", err)
 	}
-	rootConfig.K8s.Namespace = ns
 	log.Debug().
-		WithString("namespace", ns).
+		WithString("namespace", rootConfig.K8s.Namespace).
 		WithString("host", restConf.Host).
 		Message("Loaded kube-config")
-	return restConf, ns, nil
+	return restConf, nil
 }
 
 func execute(version app.Version) {
