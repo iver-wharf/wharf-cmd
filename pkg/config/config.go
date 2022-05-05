@@ -16,6 +16,13 @@ import (
 //
 // 1. File: /etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml
 //
+// 2. File: (config home)/iver-wharf/wharf-cmd/wharf-cmd-config.yml, depending
+// on OS:
+//
+//  - Linux:       ~/.config/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+//  - Darwin/OS X: ~/Library/Application Support/iver-wharf/wharf-cmd/wharf-cmd-config.yml
+//  - Windows:     %APPDATA%\iver-wharf\wharf-cmd\wharf-cmd-config.yml
+//
 // 2. File: ./wharf-cmd-config.yml
 //
 // 3. File from environment variable: WHARF_CONFIG
