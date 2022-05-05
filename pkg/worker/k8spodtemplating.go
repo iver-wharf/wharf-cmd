@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/env"
 	"gopkg.in/typ.v4/slices"
@@ -29,7 +30,7 @@ var (
 	nugetPackageScript string
 )
 
-func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
+func getStepPodSpec(ctx context.Context, config config.StepsConfig, step wharfyml.Step) (v1.Pod, error) {
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456",
 		"wharf.iver.com/stage-id":   "789",
@@ -86,7 +87,7 @@ func getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 		},
 	}
 
-	if err := applyStep(&pod, step); err != nil {
+	if err := applyStep(config, &pod, step); err != nil {
 		return v1.Pod{}, err
 	}
 
@@ -177,18 +178,18 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 	}
 }
 
-func applyStep(pod *v1.Pod, step wharfyml.Step) error {
+func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
 	case wharfyml.StepContainer:
 		return applyStepContainer(pod, s)
 	case wharfyml.StepDocker:
-		return applyStepDocker(pod, s, step.Name)
+		return applyStepDocker(c.Docker, pod, s, step.Name)
 	case wharfyml.StepHelmPackage:
 		return applyStepHelmPackage(pod, s)
 	case wharfyml.StepHelm:
-		return applyStepHelm(pod, s)
+		return applyStepHelm(c.Helm, pod, s)
 	case wharfyml.StepKubectl:
-		return applyStepKubectl(pod, s)
+		return applyStepKubectl(c.Kubectl, pod, s)
 	case wharfyml.StepNuGetPackage:
 		return applyStepNuGetPackage(pod, s)
 	case nil:
@@ -257,11 +258,11 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 	return nil
 }
 
-func applyStepDocker(pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
+func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
 		Name:  commonContainerName,
-		Image: "gcr.io/kaniko-project/executor:v1.7.0",
+		Image: fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
 		// default entrypoint for image is "/kaniko/executor"
 		WorkingDir: repoDir,
 		VolumeMounts: []v1.VolumeMount{
@@ -408,10 +409,10 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 	return nil
 }
 
-func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
+func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      "wharfse/helm:" + step.HelmVersion,
+		Image:      fmt.Sprintf("%s:%s", config.Image, step.HelmVersion),
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
@@ -458,10 +459,10 @@ func applyStepHelm(pod *v1.Pod, step wharfyml.StepHelm) error {
 	return nil
 }
 
-func applyStepKubectl(pod *v1.Pod, step wharfyml.StepKubectl) error {
+func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfyml.StepKubectl) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      "wharfse/kubectl:v1.23.5",
+		Image:      fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,

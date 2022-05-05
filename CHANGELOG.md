@@ -112,6 +112,17 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     CHART_REPO: http://harbor.example.com
   ```
 
+- Added ability to configure values, and wharf looks for it in multiple files in
+  the following order, where former files take precedence over latter files on a
+  per-variable basis: (#116)
+ 
+  - Environment variables, prefixed with `WHARF_`
+  - File from environment variable: `WHARF_CONFIG`
+  - File: `./wharf-cmd-config.yml`
+  - File: `/etc/iver-wharf/wharf-cmd/wharf-cmd-config.yml`
+
+  Read more [here](https://pkg.go.dev/github.com/iver-wharf/wharf-cmd/pkg/config).
+
 - Added support for using OS environment variables prefixed with `WHARF_VAR_`
   in variable substitution, where `WHARF_VAR_REG_URL` would set the `REG_URL`
   Wharf variable. (#96)
@@ -194,8 +205,8 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
   - `github.com/swaggo/swag` v1.8.0 (#59)
-  - `google.golang.org/grpc` v1.44.0 (#51)
-  - `google.golang.org/protobuf` v1.27.1 (#51)
+  - `google.golang.org/grpc` v1.45.0 (#51, #116)
+  - `google.golang.org/protobuf` v1.28.0 (#51, #116)
   - `gopkg.in/guregu/null.v4` v4.0.0 (#62)
   - `gopkg.in/typ.v4` v4.0.0 (#75, #89, #127)
   - `gopkg.in/yaml.v3` v3.0.0 (#48)
@@ -212,6 +223,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
   - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
   - `github.com/spf13/cobra` v1.1.3 to v1.3.0 (#64)
+  - `github.com/stretchr/testify` v1.7.0 to v1.7.1 (#116)
   - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
   - `k8s.io/apimachinery` from v0.0.0 to v0.23.3 (#8)
   - `k8s.io/client-go` from v0.0.0 to v0.23.3 (#8)

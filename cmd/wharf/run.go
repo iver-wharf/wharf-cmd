@@ -15,16 +15,14 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
 	"github.com/spf13/cobra"
 	"gopkg.in/typ.v4/slices"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 var runFlags = struct {
-	stage        string
-	env          string
-	serve        bool
-	k8sOverrides clientcmd.ConfigOverrides
-	noGitIgnore  bool
-	inputs       flagtypes.KeyValueArray
+	stage       string
+	env         string
+	serve       bool
+	noGitIgnore bool
+	inputs      flagtypes.KeyValueArray
 }{}
 
 var runCmd = &cobra.Command{
@@ -48,7 +46,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		kubeconfig, ns, err := loadKubeconfig(runFlags.k8sOverrides)
+		kubeconfig, err := loadKubeconfig()
 		if err != nil {
 			return err
 		}
@@ -92,8 +90,9 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
+				WorkerConfig:  rootConfig.Worker,
+				K8sConfig:     rootConfig.K8s,
 				CurrentDir:    currentDir,
-				Namespace:     ns,
 				RestConfig:    kubeconfig,
 				ResultStore:   store,
 				SkipGitIgnore: runFlags.noGitIgnore,
@@ -167,5 +166,5 @@ func init() {
 	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
 	addWharfYmlEnvFlag(runCmd, runCmd.Flags(), &runFlags.env)
 	addWharfYmlInputsFlag(runCmd, runCmd.Flags(), &runFlags.inputs)
-	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
+	addKubernetesFlags(runCmd.Flags())
 }
