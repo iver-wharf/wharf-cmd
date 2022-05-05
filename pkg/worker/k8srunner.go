@@ -35,8 +35,8 @@ var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
 type K8sRunnerOptions struct {
 	BuildOptions
-	Config        config.Config
-	Namespace     string
+	WorkerConfig  config.WorkerConfig
+	K8sConfig     config.K8sConfig
 	RestConfig    *rest.Config
 	ResultStore   resultstore.Store
 	TarStore      tarstore.Store
@@ -88,7 +88,7 @@ type k8sStepRunnerFactory struct {
 func (f k8sStepRunnerFactory) NewStepRunner(
 	ctx context.Context, step wharfyml.Step, stepID uint64) (StepRunner, error) {
 	ctx = contextWithStepName(ctx, step.Name)
-	pod, err := getStepPodSpec(ctx, f.Config.Worker.Steps, step)
+	pod, err := getStepPodSpec(ctx, f.WorkerConfig.Steps, step)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 		step:             step,
 		pod:              &pod,
 		clientset:        f.clientset,
-		pods:             f.clientset.CoreV1().Pods(f.Namespace),
+		pods:             f.clientset.CoreV1().Pods(f.K8sConfig.Namespace),
 		stepID:           stepID,
 		repoTar:          tarball,
 	}
@@ -244,7 +244,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, "/mnt/repo", r.Namespace, newPod.Name, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, "/mnt/repo", r.K8sConfig.Namespace, newPod.Name, "init"); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
@@ -400,7 +400,7 @@ func (r k8sStepRunner) stopPodNow(ctx context.Context, stepName, podName string)
 }
 
 func (r k8sStepRunner) continueInitContainer(podName string) error {
-	exec, err := execInPodPipeStdout(r.RestConfig, r.Namespace, podName, "init", podInitContinueArgs)
+	exec, err := execInPodPipeStdout(r.RestConfig, r.K8sConfig.Namespace, podName, "init", podInitContinueArgs)
 	if err != nil {
 		return err
 	}

@@ -46,7 +46,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		kubeconfig, ns, err := loadKubeconfig()
+		kubeconfig, _, err := loadKubeconfig()
 		if err != nil {
 			return err
 		}
@@ -90,9 +90,9 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				BuildOptions: worker.BuildOptions{
 					StageFilter: runFlags.stage,
 				},
-				Config:        rootConfig,
+				WorkerConfig:  rootConfig.Worker,
+				K8sConfig:     rootConfig.K8s,
 				CurrentDir:    currentDir,
-				Namespace:     ns,
 				RestConfig:    kubeconfig,
 				ResultStore:   store,
 				SkipGitIgnore: runFlags.noGitIgnore,
