@@ -70,13 +70,11 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
 
 		go func() {
-			select {
-			case <-rootContext.Done():
-				if err := store.Close(); err != nil {
-					log.Warn().WithError(err).Message("Error closing store.")
-				} else {
-					log.Debug().Message("Successfully closed store.")
-				}
+			<-rootContext.Done()
+			if err := store.Close(); err != nil {
+				log.Warn().WithError(err).Message("Error closing store.")
+			} else {
+				log.Debug().Message("Successfully closed store.")
 			}
 		}()
 
