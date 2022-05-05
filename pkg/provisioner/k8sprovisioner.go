@@ -95,13 +95,14 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		repoVolumeMountPath = "/mnt/repo"
 		sshVolumeName       = "ssh"
 	)
+	workerInstanceID := typ.Coal(args.WharfInstanceID, p.instanceID)
 	labels := map[string]string{
 		"app":                          "wharf-cmd-worker",
 		"app.kubernetes.io/name":       "wharf-cmd-worker",
 		"app.kubernetes.io/part-of":    "wharf",
 		"app.kubernetes.io/managed-by": "wharf-cmd-provisioner",
 		"app.kubernetes.io/created-by": "wharf-cmd-provisioner",
-		"wharf.iver.com/instance":      typ.Coal(args.WharfInstanceID, p.instanceID),
+		"wharf.iver.com/instance":      workerInstanceID,
 		"wharf.iver.com/build-ref":     uitoa(args.BuildID),
 		"wharf.iver.com/project-id":    uitoa(args.ProjectID),
 	}
@@ -123,7 +124,12 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	}
 	gitArgs = append(gitArgs, repoVolumeMountPath)
 
-	wharfArgs := []string{"run", "--loglevel", "debug", "--serve"}
+	wharfArgs := []string{
+		"--loglevel", "debug",
+		"--instance", workerInstanceID,
+		"run",
+		"--serve",
+	}
 	if args.Environment != "" {
 		wharfArgs = append(wharfArgs, "--environment", args.Environment)
 	}
