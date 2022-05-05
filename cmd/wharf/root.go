@@ -71,6 +71,7 @@ func loadKubeconfig() (*rest.Config, string, error) {
 	if err != nil {
 		return nil, "", fmt.Errorf("get namespace to use: %w", err)
 	}
+	rootConfig.K8s.Namespace = ns
 	log.Debug().
 		WithString("namespace", ns).
 		WithString("host", restConf.Host).

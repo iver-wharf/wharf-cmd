@@ -12,11 +12,10 @@ var provisionerFlags = struct {
 }
 
 func newProvisioner() (provisioner.Provisioner, error) {
-	restConfig, ns, err := loadKubeconfig()
+	restConfig, _, err := loadKubeconfig()
 	if err != nil {
 		return nil, err
 	}
-	rootConfig.K8s.Namespace = ns
 	return provisioner.NewK8sProvisioner(
 		provisionerFlags.instanceID,
 		rootConfig.Provisioner.K8s,
