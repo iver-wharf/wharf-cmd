@@ -21,6 +21,10 @@ var (
 	colorVarOverriddenNote = color.New(color.FgHiBlack, color.Italic)
 )
 
+var varsListFlags = struct {
+	showAll bool
+}{}
+
 var varsListCmd = &cobra.Command{
 	Use:     "list [path]",
 	Aliases: []string{"ls"},
@@ -101,7 +105,7 @@ environment variables, such as:
 			var longestKeyLength int
 			var notUsedCount int
 			for _, v := range vars {
-				if !varsFlags.showAll && !v.isUsed {
+				if !varsListFlags.showAll && !v.isUsed {
 					notUsedCount++
 					continue
 				}
@@ -118,7 +122,7 @@ environment variables, such as:
 
 			longestSpaces := strings.Repeat(" ", longestKeyLength+2)
 			for _, v := range vars {
-				if !varsFlags.showAll && !v.isUsed {
+				if !varsListFlags.showAll && !v.isUsed {
 					continue
 				}
 				spacesCount := longestKeyLength - utf8.RuneCountInString(v.Key) + 2
@@ -134,7 +138,7 @@ environment variables, such as:
 				}
 			}
 
-			if !varsFlags.showAll && notUsedCount > 0 {
+			if !varsListFlags.showAll && notUsedCount > 0 {
 				sb.WriteString("  ")
 				colorVarOverriddenNote.Fprintf(&sb, "(hiding %d overridden variables)\n", notUsedCount)
 			}
@@ -148,4 +152,6 @@ environment variables, such as:
 
 func init() {
 	varsCmd.AddCommand(varsListCmd)
+
+	varsListCmd.PersistentFlags().BoolVarP(&varsListFlags.showAll, "all", "a", false, "Show overridden variables")
 }
