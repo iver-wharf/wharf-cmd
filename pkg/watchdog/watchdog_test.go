@@ -6,6 +6,7 @@ import (
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/response"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/guregu/null.v4"
 )
@@ -38,8 +39,8 @@ func TestGetBuildsToKill(t *testing.T) {
 				{BuildID: 4, WorkerID: "jkl", ScheduledOn: null.TimeFrom(testTimeOld)},
 			},
 			workers: []provisioner.Worker{
-				{WorkerID: "abc"},
-				{WorkerID: "ghi"},
+				{WorkerID: "abc", Status: workermodel.StatusRunning},
+				{WorkerID: "ghi", Status: workermodel.StatusRunning},
 			},
 			want: []uint{2, 4},
 		},
@@ -52,7 +53,7 @@ func TestGetBuildsToKill(t *testing.T) {
 				{BuildID: 4, WorkerID: "jkl", ScheduledOn: null.TimeFrom(testTimeNow)},
 			},
 			workers: []provisioner.Worker{
-				{WorkerID: "abc"},
+				{WorkerID: "abc", Status: workermodel.StatusRunning},
 			},
 			want: []uint{3},
 		},
