@@ -43,7 +43,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   See [docs/provisioner-git-ssh-secret.md](docs/provisioner-git-ssh-secret.md)
   for more info. (#120)
 
-- Added watchdog commands: (#62, #129)
+- Added watchdog commands: (#62, #129, #137)
 
   - `wharf watchdog serve` checks stray builds from the wharf-api and
     wharf-cmd-workers from the wharf-cmd-provisioner and kills them in an effort

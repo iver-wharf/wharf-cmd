@@ -84,7 +84,7 @@ func (wd *watchdog) performCheck(now time.Time) (checkResult, error) {
 	if err != nil {
 		return checkResult{}, fmt.Errorf("get running builds from wharf-api: %w", err)
 	}
-	workers, err := wd.getRunningWorkers()
+	workers, err := wd.prov.ListWorkers()
 	if err != nil {
 		return checkResult{}, fmt.Errorf("get running workers from wharf-cmd-provisioner: %w", err)
 	}
@@ -158,7 +158,7 @@ func (wd *watchdog) killWorkers(workersToKill []provisioner.Worker) error {
 }
 
 func getBuildsToKill(builds []response.Build, workers []provisioner.Worker, safeAfter time.Time) []response.Build {
-	workersMap := mapWorkersOnID(workers)
+	workersMap := mapRunningWorkersOnID(workers)
 	var toKill []response.Build
 	for _, b := range builds {
 		reason := getReasonToNotKillBuild(b, workersMap, safeAfter)
@@ -225,10 +225,16 @@ func mapBuildsOnWorkerID(builds []response.Build) map[string]response.Build {
 	return m
 }
 
-func mapWorkersOnID(workers []provisioner.Worker) map[string]provisioner.Worker {
+func mapRunningWorkersOnID(workers []provisioner.Worker) map[string]provisioner.Worker {
 	m := make(map[string]provisioner.Worker, len(workers))
 	for _, w := range workers {
-		m[w.WorkerID] = w
+		switch w.Status {
+		case workermodel.StatusInitializing,
+			workermodel.StatusScheduling,
+			workermodel.StatusRunning,
+			workermodel.StatusNone:
+			m[w.WorkerID] = w
+		}
 	}
 	return m
 }
@@ -246,22 +252,4 @@ func (wd *watchdog) getRunningBuilds() ([]response.Build, error) {
 		return nil, err
 	}
 	return page.List, nil
-}
-
-func (wd *watchdog) getRunningWorkers() ([]provisioner.Worker, error) {
-	allWorkers, err := wd.prov.ListWorkers()
-	if err != nil {
-		return nil, err
-	}
-	var runningWorkers []provisioner.Worker
-	for _, w := range allWorkers {
-		switch w.Status {
-		case workermodel.StatusInitializing,
-			workermodel.StatusScheduling,
-			workermodel.StatusRunning,
-			workermodel.StatusNone:
-			allWorkers = append(allWorkers, w)
-		}
-	}
-	return runningWorkers, nil
 }
