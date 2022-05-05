@@ -276,28 +276,29 @@ func LoadConfig() (Config, error) {
 	return cfg, nil
 }
 
-func (c Config) validate() error {
-	initContainerPullPolicy := c.Provisioner.Worker.InitContainer.ImagePullPolicy
-	if !parseImagePolicy(&initContainerPullPolicy) {
-		return fmt.Errorf("invalid pull policy: provisioner.worker.initContainer.imagePullPolicy=%s", initContainerPullPolicy)
+func (c *Config) validate() error {
+	var ok bool
+	c.Provisioner.Worker.InitContainer.ImagePullPolicy, ok = parseImagePolicy(c.Provisioner.Worker.InitContainer.ImagePullPolicy)
+	if !ok {
+		return fmt.Errorf("invalid pull policy: provisioner.worker.initContainer.imagePullPolicy=%s", c.Provisioner.Worker.InitContainer.ImagePullPolicy)
 	}
-	containerPullPolicy := c.Provisioner.Worker.Container.ImagePullPolicy
-	if !parseImagePolicy(&containerPullPolicy) {
-		return fmt.Errorf("invalid pull policy: provisioner.worker.container.imagePullPolicy=%s", containerPullPolicy)
+
+	c.Provisioner.Worker.Container.ImagePullPolicy, ok = parseImagePolicy(c.Provisioner.Worker.Container.ImagePullPolicy)
+	if !ok {
+		return fmt.Errorf("invalid pull policy: provisioner.worker.container.imagePullPolicy=%s", c.Provisioner.Worker.Container.ImagePullPolicy)
 	}
 	return nil
 }
 
-func parseImagePolicy(p *v1.PullPolicy) bool {
-	switch strings.ToLower(string(*p)) {
+func parseImagePolicy(p v1.PullPolicy) (v1.PullPolicy, bool) {
+	switch strings.ToLower(string(p)) {
 	case "always":
-		*p = v1.PullAlways
+		return v1.PullAlways, true
 	case "never":
-		*p = v1.PullNever
+		return v1.PullNever, true
 	case "ifnotpresent":
-		*p = v1.PullIfNotPresent
+		return v1.PullIfNotPresent, true
 	default:
-		return false
+		return v1.PullPolicy(""), false
 	}
-	return true
 }
