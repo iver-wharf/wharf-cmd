@@ -80,7 +80,7 @@ endif
 
 .PHONY: docker-run
 docker-run:
-	docker run --rm -it quay.io/iver-wharf/wharf-api:$(version)
+	docker run --rm -it quay.io/iver-wharf/wharf-cmd:$(version)
 
 .PHONY: clean-swag
 clean-swag:
