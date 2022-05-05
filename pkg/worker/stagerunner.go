@@ -73,8 +73,10 @@ type stageRun struct {
 	stepResults []StepResult
 	start       time.Time
 
-	wg    sync.WaitGroup
-	mutex sync.Mutex
+	wg sync.WaitGroup
+
+	stepResultsMutex sync.Mutex
+	statusMutex      sync.Mutex
 }
 
 func (r *stageRun) startRunStepGoroutine(ctx context.Context, stepRunner StepRunner) {
@@ -101,9 +103,9 @@ func (r *stageRun) waitForResult() StageResult {
 }
 
 func (r *stageRun) addStepResult(res StepResult) {
-	r.mutex.Lock()
+	r.stepResultsMutex.Lock()
 	r.stepResults = append(r.stepResults, res)
-	r.mutex.Unlock()
+	r.stepResultsMutex.Unlock()
 	atomic.AddInt32(&r.stepsDone, 1)
 }
 
@@ -111,7 +113,7 @@ func (r *stageRun) runStep(ctx context.Context, stepRunner StepRunner) {
 	defer r.wg.Done()
 	logFunc := func(ev logger.Event) logger.Event {
 		return ev.
-			WithStringf("steps", "%d/%d", r.stepsDone, r.stepCount).
+			WithStringf("steps", "%d/%d", atomic.LoadInt32(&r.stepsDone), r.stepCount).
 			WithString("stage", r.stage.Name).
 			WithString("step", stepRunner.Step().Name)
 	}
@@ -119,7 +121,9 @@ func (r *stageRun) runStep(ctx context.Context, stepRunner StepRunner) {
 	res := stepRunner.RunStep(ctx)
 	r.addStepResult(res)
 	dur := res.Duration.Truncate(time.Second)
+	r.statusMutex.Lock()
 	r.status = res.Status
+	r.statusMutex.Unlock()
 	if res.Status == workermodel.StatusCancelled {
 		log.Info().
 			WithFunc(logFunc).
