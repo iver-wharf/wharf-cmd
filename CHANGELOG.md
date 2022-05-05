@@ -51,7 +51,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added aggregator command `wharf aggregator serve` that looks for
   wharf-cmd-worker pods and pipes build results over to the wharf-api.
-  (#77, #126, #129)
+  (#77, #126, #129, #131)
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84, #107)
 
@@ -61,7 +61,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
     would be used in a `wharf run` invocation. (#93, #98, #102, #108, #110)
 
   - `wharf vars sub` that reads from STDIN or a file and performs variable
-    substitution, and then writes to STDOUT. (#110)
+    substitution, and then writes to STDOUT. (#110, #131)
 
 - Added support for `.gitignore` ignored files and directories when transferring
   repo in `wharf run`. Can be disabled via new `--no-gitignore` flag. (#85)
