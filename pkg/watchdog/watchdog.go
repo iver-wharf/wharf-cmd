@@ -10,7 +10,6 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisionerclient"
-	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 )
 
@@ -249,19 +248,5 @@ func (wd *watchdog) getRunningBuilds() ([]response.Build, error) {
 }
 
 func (wd *watchdog) getRunningWorkers() ([]provisioner.Worker, error) {
-	allWorkers, err := wd.prov.ListWorkers()
-	if err != nil {
-		return nil, err
-	}
-	var runningWorkers []provisioner.Worker
-	for _, w := range allWorkers {
-		switch w.Status {
-		case workermodel.StatusInitializing,
-			workermodel.StatusScheduling,
-			workermodel.StatusRunning,
-			workermodel.StatusNone:
-			allWorkers = append(allWorkers, w)
-		}
-	}
-	return runningWorkers, nil
+	return wd.prov.ListWorkers()
 }
