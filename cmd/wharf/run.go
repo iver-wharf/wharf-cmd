@@ -164,8 +164,8 @@ func init() {
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
 
-	addWharfYmlStageFlag(runCmd, &runFlags.stage)
-	addWharfYmlEnvFlag(runCmd, &runFlags.env)
-	addWharfYmlInputsFlag(runCmd, &runFlags.inputs)
+	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
+	addWharfYmlEnvFlag(runCmd, runCmd.Flags(), &runFlags.env)
+	addWharfYmlInputsFlag(runCmd, runCmd.Flags(), &runFlags.inputs)
 	addKubernetesFlags(runCmd.Flags(), &runFlags.k8sOverrides)
 }

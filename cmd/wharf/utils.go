@@ -12,6 +12,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"gopkg.in/typ.v4/slices"
 )
 
@@ -157,18 +158,18 @@ Sample file content:
 	}
 }
 
-func addWharfYmlStageFlag(cmd *cobra.Command, value *string) {
-	cmd.Flags().StringVarP(value, "stage", "s", "", "Stage to run (will run all stages if unset)")
+func addWharfYmlStageFlag(cmd *cobra.Command, flags *pflag.FlagSet, value *string) {
+	flags.StringVarP(value, "stage", "s", "", "Stage to run (will run all stages if unset)")
 	cmd.RegisterFlagCompletionFunc("stage", completeWharfYmlStage)
 }
 
-func addWharfYmlEnvFlag(cmd *cobra.Command, value *string) {
-	cmd.Flags().StringVarP(value, "environment", "e", "", "Environment selection")
+func addWharfYmlEnvFlag(cmd *cobra.Command, flags *pflag.FlagSet, value *string) {
+	flags.StringVarP(value, "environment", "e", "", "Environment selection")
 	cmd.RegisterFlagCompletionFunc("environment", completeWharfYmlEnv)
 }
 
-func addWharfYmlInputsFlag(cmd *cobra.Command, value *flagtypes.KeyValueArray) {
-	cmd.Flags().VarP(value, "input", "i", "Inputs (--input key=value), can be set multiple times")
+func addWharfYmlInputsFlag(cmd *cobra.Command, flags *pflag.FlagSet, value *flagtypes.KeyValueArray) {
+	flags.VarP(value, "input", "i", "Inputs (--input key=value), can be set multiple times")
 	cmd.RegisterFlagCompletionFunc("input", completeWharfYmlInputs)
 }
 

@@ -41,6 +41,6 @@ kill endpoint.`,
 func init() {
 	rootCmd.AddCommand(aggregatorCmd)
 
-	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
+	aggregatorCmd.Flags().StringVar(&aggregatorFlags.instanceID, "instance", aggregatorFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
 	addKubernetesFlags(aggregatorCmd.PersistentFlags(), &aggregatorFlags.k8sOverrides)
 }

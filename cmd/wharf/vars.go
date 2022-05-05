@@ -6,9 +6,8 @@ import (
 )
 
 var varsFlags = struct {
-	env     string
-	showAll bool
-	inputs  flagtypes.KeyValueArray
+	env    string
+	inputs flagtypes.KeyValueArray
 }{}
 
 var varsCmd = &cobra.Command{
@@ -23,8 +22,6 @@ var varsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(varsCmd)
 
-	varsCmd.PersistentFlags().BoolVarP(&varsFlags.showAll, "all", "a", false, "Show overridden variables")
-
-	addWharfYmlEnvFlag(varsCmd, &varsFlags.env)
-	addWharfYmlInputsFlag(varsCmd, &varsFlags.inputs)
+	addWharfYmlEnvFlag(varsCmd, varsCmd.PersistentFlags(), &varsFlags.env)
+	addWharfYmlInputsFlag(varsCmd, varsCmd.PersistentFlags(), &varsFlags.inputs)
 }
