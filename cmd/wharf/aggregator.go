@@ -10,11 +10,7 @@ func newAggregator() (aggregator.Aggregator, error) {
 	if err != nil {
 		return nil, err
 	}
-	return aggregator.NewK8sAggregator(
-		rootFlags.instanceID,
-		rootConfig.K8s.Namespace,
-		rootConfig.Aggregator,
-		restConfig)
+	return aggregator.NewK8sAggregator(rootConfig, restConfig)
 }
 
 var aggregatorCmd = &cobra.Command{

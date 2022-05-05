@@ -17,32 +17,32 @@ import (
 )
 
 type k8sProvisioner struct {
-	config     config.ProvisionerK8sWorkerConfig
-	clientset  *kubernetes.Clientset
-	pods       corev1.PodInterface
-	restConfig *rest.Config
-	instanceID string
+	k8sWorkerConf config.ProvisionerK8sWorkerConfig
+	clientset     *kubernetes.Clientset
+	pods          corev1.PodInterface
+	restConfig    *rest.Config
+	instanceID    string
 
 	listOptionsMatchLabels metav1.ListOptions
 }
 
 // NewK8sProvisioner returns a new Provisioner implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sProvisioner(instanceID string, config config.ProvisionerK8sConfig, namespace string, restConfig *rest.Config) (Provisioner, error) {
+func NewK8sProvisioner(config config.Config, restConfig *rest.Config) (Provisioner, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
 	}
 	return k8sProvisioner{
-		config:     config.Worker,
-		clientset:  clientset,
-		pods:       clientset.CoreV1().Pods(namespace),
-		restConfig: restConfig,
-		instanceID: instanceID,
+		k8sWorkerConf: config.Provisioner.K8s.Worker,
+		clientset:     clientset,
+		pods:          clientset.CoreV1().Pods(config.K8s.Namespace),
+		restConfig:    restConfig,
+		instanceID:    config.InstanceID,
 		listOptionsMatchLabels: metav1.ListOptions{
 			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
 				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-				"wharf.iver.com/instance=" + instanceID,
+				"wharf.iver.com/instance=" + config.InstanceID,
 		},
 	}, nil
 }
@@ -188,13 +188,13 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			Labels:       labels,
 		},
 		Spec: v1.PodSpec{
-			ServiceAccountName: p.config.ServiceAccountName,
+			ServiceAccountName: p.k8sWorkerConf.ServiceAccountName,
 			RestartPolicy:      v1.RestartPolicyNever,
 			InitContainers: []v1.Container{
 				{
 					Name:            "init",
-					Image:           fmt.Sprintf("%s:%s", p.config.InitContainer.Image, p.config.InitContainer.ImageTag),
-					ImagePullPolicy: p.config.InitContainer.ImagePullPolicy,
+					Image:           fmt.Sprintf("%s:%s", p.k8sWorkerConf.InitContainer.Image, p.k8sWorkerConf.InitContainer.ImageTag),
+					ImagePullPolicy: p.k8sWorkerConf.InitContainer.ImagePullPolicy,
 					Command:         gitArgs,
 					VolumeMounts:    gitVolumeMounts,
 				},
@@ -202,8 +202,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			Containers: []v1.Container{
 				{
 					Name:            "app",
-					Image:           fmt.Sprintf("%s:%s", p.config.Container.Image, p.config.Container.ImageTag),
-					ImagePullPolicy: p.config.Container.ImagePullPolicy,
+					Image:           fmt.Sprintf("%s:%s", p.k8sWorkerConf.Container.Image, p.k8sWorkerConf.Container.ImageTag),
+					ImagePullPolicy: p.k8sWorkerConf.Container.ImagePullPolicy,
 					Args:            wharfArgs,
 					WorkingDir:      repoVolumeMountPath,
 					VolumeMounts:    volumeMounts,

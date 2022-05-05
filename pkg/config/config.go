@@ -34,6 +34,15 @@ type Config struct {
 	Provisioner ProvisionerConfig
 	Aggregator  AggregatorConfig
 	Watchdog    WatchdogConfig
+
+	// InstanceID may be an arbitrary string that is used to identify different
+	// Wharf installations from each other. Needed when you use multiple Wharf
+	// installations in the same environment, such as the same Kubernetes
+	// namespace, to let Wharf know which builds belong to which Wharf
+	// installation.
+	//
+	// Added in v0.8.0.
+	InstanceID string
 }
 
 // K8sConfig holds settings for using kubernetes.
@@ -210,6 +219,7 @@ type WatchdogConfig struct {
 
 // DefaultConfig is the hard-coded default values for wharf-cmd's configs.
 var DefaultConfig = Config{
+	InstanceID: "local",
 	K8s: K8sConfig{
 		Context:   "",
 		Namespace: "",

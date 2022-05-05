@@ -30,7 +30,7 @@ var log = logger.NewScoped("AGGREGATOR")
 
 // NewK8sAggregator returns a new Aggregator implementation that targets
 // Kubernetes using a specific Kubernetes namespace and REST config.
-func NewK8sAggregator(instanceID, namespace string, config config.AggregatorConfig, restConfig *rest.Config) (Aggregator, error) {
+func NewK8sAggregator(config config.Config, restConfig *rest.Config) (Aggregator, error) {
 	clientset, err := kubernetes.NewForConfig(restConfig)
 	if err != nil {
 		return nil, err
@@ -46,29 +46,29 @@ func NewK8sAggregator(instanceID, namespace string, config config.AggregatorConf
 		return nil, err
 	}
 	return k8sAggr{
-		config:     config,
-		namespace:  namespace,
+		aggrConfig: config.Aggregator,
+		namespace:  config.K8s.Namespace,
 		clientset:  clientset,
-		pods:       clientset.CoreV1().Pods(namespace),
+		pods:       clientset.CoreV1().Pods(config.K8s.Namespace),
 		restConfig: restConfig,
 
 		upgrader:   upgrader,
 		httpClient: httpClient,
-		instanceID: instanceID,
+		instanceID: config.InstanceID,
 		listOptionsMatchLabels: metav1.ListOptions{
 			LabelSelector: "app.kubernetes.io/name=wharf-cmd-worker," +
 				"app.kubernetes.io/managed-by=wharf-cmd-provisioner," +
-				"wharf.iver.com/instance=" + instanceID,
+				"wharf.iver.com/instance=" + config.InstanceID,
 		},
 
 		wharfapi: wharfapi.Client{
-			APIURL: config.WharfAPIURL,
+			APIURL: config.Aggregator.WharfAPIURL,
 		},
 	}, nil
 }
 
 type k8sAggr struct {
-	config config.AggregatorConfig
+	aggrConfig config.AggregatorConfig
 
 	namespace string
 	clientset *kubernetes.Clientset
@@ -247,7 +247,7 @@ func (a k8sAggr) newPortForwarding(namespace, podName string) (portConnection, e
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
 	forwarder, err := portforward.New(dialer,
 		// From random unused local port (port 0) to the worker HTTP API port.
-		[]string{fmt.Sprintf("0:%d", a.config.WorkerAPIExternalPort)},
+		[]string{fmt.Sprintf("0:%d", a.aggrConfig.WorkerAPIExternalPort)},
 		stopCh, readyCh, nil, nil)
 	if err != nil {
 		return portConnection{}, err

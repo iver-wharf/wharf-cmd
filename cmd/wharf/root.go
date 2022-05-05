@@ -32,12 +32,9 @@ const (
 var isLoggingInitialized bool
 
 var rootFlags = struct {
-	loglevel   flagtypes.LogLevel
-	instanceID string
+	loglevel flagtypes.LogLevel
 }{
 	loglevel: flagtypes.LogLevel(logger.LevelInfo),
-	// TODO: Make this configurable as well (wharf.instanceId, $WHARF_INSTANCEID)
-	instanceID: "local",
 }
 
 var rootCmd = &cobra.Command{
@@ -133,7 +130,9 @@ func init() {
 	rootCmd.InitDefaultVersionFlag()
 	rootCmd.PersistentFlags().VarP(&rootFlags.loglevel, "loglevel", "l", "Show debug information")
 	rootCmd.RegisterFlagCompletionFunc("loglevel", flagtypes.CompleteLogLevel)
-	rootCmd.PersistentFlags().StringVar(&rootFlags.instanceID, "instance", rootFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
+	runAfterConfig = append(runAfterConfig, func() {
+		rootCmd.PersistentFlags().StringVar(&rootConfig.InstanceID, "instance", rootConfig.InstanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
+	})
 }
 
 func initLoggingIfNeeded() {
