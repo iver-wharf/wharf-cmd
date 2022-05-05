@@ -241,12 +241,12 @@ var DefaultConfig = Config{
 		},
 	},
 	Aggregator: AggregatorConfig{
-		WharfAPIURL:           "http://wharf-api:8080",
+		WharfAPIURL:           "http://localhost:5001",
 		WorkerAPIExternalPort: "5010",
 	},
 	Watchdog: WatchdogConfig{
-		WharfAPIURL:    "http://wharf-api:8080",
-		ProvisionerURL: "http://wharf-cmd-provisioner:8080",
+		WharfAPIURL:    "http://localhost:5001",
+		ProvisionerURL: "http://wharf-cmd-provisioner:5009",
 	},
 }
 

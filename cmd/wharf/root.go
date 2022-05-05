@@ -85,6 +85,8 @@ func execute(version app.Version) {
 		os.Exit(exitCodeLoadConfigError)
 	}
 
+	// Some code we want to run AFTER all init()'s and AFTER wharf-cmd-config.yml
+	// has been loaded; but BEFORE cobra starts parsing all arguments as flags.
 	for _, f := range runAfterConfig {
 		f()
 	}
