@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/aggregator"
 	"github.com/spf13/cobra"
 )
 
@@ -11,11 +10,7 @@ var aggregatorServeCmd = &cobra.Command{
 	Long: `The aggregator tool is used to stream build results from workers to
 the Wharf API through gRPC, killing the worker upon completion.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		k8sAggregator, err := aggregator.NewK8sAggregator(
-			aggregatorFlags.instanceID,
-			rootConfig.Aggregator,
-			rootConfig.K8s.Namespace,
-			aggregatorFlags.restConfig)
+		k8sAggregator, err := newAggregator()
 		if err != nil {
 			return err
 		}

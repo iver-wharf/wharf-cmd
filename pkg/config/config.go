@@ -59,7 +59,9 @@ type StepsConfig struct {
 	Kubectl KubectlStepConfig
 	Helm    HelmStepConfig
 
-	// TODO: Add configs for other step types.
+	// TODO: Add ContainerStepConfig, see pkg/worker/k8spodtemplating.go
+	// TODO: Add HelmPackageStepConfig, see pkg/worker/k8spodtemplating.go
+	// TODO: Add NuGetPackageStepConfig, see pkg/worker/k8spodtemplating.go
 }
 
 // DockerStepConfig holds settings for the docker step type.
@@ -190,7 +192,7 @@ type AggregatorConfig struct {
 	// WorkerAPIExternalPort is the port used to connect to a Wharf worker.
 	//
 	// Added in v0.8.0.
-	WorkerAPIExternalPort string
+	WorkerAPIExternalPort int16
 }
 
 // WatchdogConfig holds settings for the watchdog.
@@ -215,13 +217,15 @@ var DefaultConfig = Config{
 	Worker: WorkerConfig{
 		Steps: StepsConfig{
 			Docker: DockerStepConfig{
-				Image: "gcr.io/kaniko-project/executor:v1.7.0",
+				Image:    "gcr.io/kaniko-project/executor",
+				ImageTag: "v1.7.0",
 			},
 			Kubectl: KubectlStepConfig{
-				Image: "docker.io/wharfse/kubectl:v1.23.5",
+				Image:    "docker.io/wharfse/kubectl",
+				ImageTag: "v1.23.5",
 			},
 			Helm: HelmStepConfig{
-				Image: "docker.io/wharfse/helm:v3.8.1",
+				Image: "docker.io/wharfse/helm",
 			},
 		},
 	},
@@ -251,7 +255,7 @@ var DefaultConfig = Config{
 	},
 	Aggregator: AggregatorConfig{
 		WharfAPIURL:           "http://localhost:5001",
-		WorkerAPIExternalPort: "5010",
+		WorkerAPIExternalPort: 5010,
 	},
 	Watchdog: WatchdogConfig{
 		WharfAPIURL:    "http://localhost:5001",
@@ -286,15 +290,17 @@ func LoadConfig() (Config, error) {
 }
 
 func (c *Config) validate() error {
+	w := &c.Provisioner.K8s.Worker
 	var ok bool
-	c.Provisioner.Worker.InitContainer.ImagePullPolicy, ok = parseImagePolicy(c.Provisioner.Worker.InitContainer.ImagePullPolicy)
+
+	w.InitContainer.ImagePullPolicy, ok = parseImagePolicy(w.InitContainer.ImagePullPolicy)
 	if !ok {
-		return fmt.Errorf("invalid pull policy: provisioner.worker.initContainer.imagePullPolicy=%s", c.Provisioner.Worker.InitContainer.ImagePullPolicy)
+		return fmt.Errorf("invalid pull policy: provisioner.worker.initContainer.imagePullPolicy=%s", w.InitContainer.ImagePullPolicy)
 	}
 
-	c.Provisioner.Worker.Container.ImagePullPolicy, ok = parseImagePolicy(c.Provisioner.Worker.Container.ImagePullPolicy)
+	w.Container.ImagePullPolicy, ok = parseImagePolicy(w.Container.ImagePullPolicy)
 	if !ok {
-		return fmt.Errorf("invalid pull policy: provisioner.worker.container.imagePullPolicy=%s", c.Provisioner.Worker.Container.ImagePullPolicy)
+		return fmt.Errorf("invalid pull policy: provisioner.worker.container.imagePullPolicy=%s", w.Container.ImagePullPolicy)
 	}
 	return nil
 }

@@ -56,12 +56,14 @@ func TestValidateModifiesImagePullPolicyValue(t *testing.T) {
 func newConfigWithPullPolicies(initPullPolicy, pullPolicy string) Config {
 	return Config{
 		Provisioner: ProvisionerConfig{
-			Worker: ProvisionerWorkerConfig{
-				InitContainer: K8sContainerConfig{
-					ImagePullPolicy: v1.PullPolicy(initPullPolicy),
-				},
-				Container: K8sContainerConfig{
-					ImagePullPolicy: v1.PullPolicy(pullPolicy),
+			K8s: ProvisionerK8sConfig{
+				Worker: ProvisionerK8sWorkerConfig{
+					InitContainer: K8sContainerConfig{
+						ImagePullPolicy: v1.PullPolicy(initPullPolicy),
+					},
+					Container: K8sContainerConfig{
+						ImagePullPolicy: v1.PullPolicy(pullPolicy),
+					},
 				},
 			},
 		},

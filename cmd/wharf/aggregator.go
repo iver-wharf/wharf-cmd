@@ -1,13 +1,24 @@
 package main
 
 import (
+	"github.com/iver-wharf/wharf-cmd/pkg/aggregator"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
 )
 
-var aggregatorFlags = struct {
-	restConfig *rest.Config
+func newAggregator() (aggregator.Aggregator, error) {
+	restConfig, ns, err := loadKubeconfig()
+	if err != nil {
+		return nil, err
+	}
+	rootConfig.K8s.Namespace = ns
+	return aggregator.NewK8sAggregator(
+		aggregatorFlags.instanceID,
+		rootConfig.K8s.Namespace,
+		rootConfig.Aggregator,
+		restConfig)
+}
 
+var aggregatorFlags = struct {
 	instanceID string
 }{
 	instanceID: "local",
@@ -24,12 +35,6 @@ kill endpoint.`,
 			return err
 		}
 
-		restConfig, ns, err := loadKubeconfig()
-		if err != nil {
-			return err
-		}
-		aggregatorFlags.restConfig = restConfig
-		rootConfig.K8s.Namespace = ns
 		return nil
 	},
 }
@@ -37,6 +42,6 @@ kill endpoint.`,
 func init() {
 	rootCmd.AddCommand(aggregatorCmd)
 
-	provisionerCmd.Flags().StringVar(&provisionerFlags.instanceID, "instance", provisionerFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
-	addKubernetesFlags(aggregatorCmd.PersistentFlags(), &rootConfig.K8s.Namespace)
+	aggregatorCmd.Flags().StringVar(&aggregatorFlags.instanceID, "instance", aggregatorFlags.instanceID, "Wharf instance ID, used to avoid collisions in Pod ownership.")
+	addKubernetesFlags(aggregatorCmd.PersistentFlags())
 }

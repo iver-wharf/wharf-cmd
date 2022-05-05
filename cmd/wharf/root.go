@@ -52,10 +52,10 @@ var (
 	runAfterConfig []func()
 )
 
-func addKubernetesFlags(flagSet *pflag.FlagSet, namespace *string) {
+func addKubernetesFlags(flagSet *pflag.FlagSet) {
 	runAfterConfig = append(runAfterConfig, func() {
 		overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
-		overrideFlags.ContextOverrideFlags.Namespace.Default = *namespace
+		overrideFlags.ContextOverrideFlags.Namespace.Default = rootConfig.K8s.Namespace
 		clientcmd.BindOverrideFlags(&k8sOverridesFlags, flagSet, overrideFlags)
 	})
 }

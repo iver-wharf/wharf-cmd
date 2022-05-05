@@ -247,7 +247,7 @@ func (a k8sAggr) newPortForwarding(namespace, podName string) (portConnection, e
 	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
 	forwarder, err := portforward.New(dialer,
 		// From random unused local port (port 0) to the worker HTTP API port.
-		[]string{fmt.Sprintf("0:%s", a.config.WorkerAPIExternalPort)},
+		[]string{fmt.Sprintf("0:%d", a.config.WorkerAPIExternalPort)},
 		stopCh, readyCh, nil, nil)
 	if err != nil {
 		return portConnection{}, err
