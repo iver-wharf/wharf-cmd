@@ -260,10 +260,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   `resultstore`. (#71)
 
 - Added cancelling of builds via signals (once to shutdown with a grace period,
-  twice for a forceful shutdown): (#90, #104)
+  twice for a forceful shutdown): (#90, #104, #136)
 
   - `os.Interrupt`
-  - `os.Kill`
   - `syscall.SIGTERM`
   - `syscall.SIGHUP`
 
