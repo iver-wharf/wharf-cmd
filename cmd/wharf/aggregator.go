@@ -1,17 +1,21 @@
 package main
 
 import (
+	"github.com/iver-wharf/wharf-cmd/pkg/aggregator"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-var aggregatorFlags = struct {
-	k8sOverrides clientcmd.ConfigOverrides
-
-	restConfig *rest.Config
-	namespace  string
-}{}
+func newAggregator() (aggregator.Aggregator, error) {
+	restConfig, err := loadKubeconfig()
+	if err != nil {
+		return nil, err
+	}
+	return aggregator.NewK8sAggregator(
+		rootFlags.instanceID,
+		rootConfig.K8s.Namespace,
+		rootConfig.Aggregator,
+		restConfig)
+}
 
 var aggregatorCmd = &cobra.Command{
 	Use:   "aggregator",
@@ -24,12 +28,6 @@ kill endpoint.`,
 			return err
 		}
 
-		restConfig, ns, err := loadKubeconfig(aggregatorFlags.k8sOverrides)
-		if err != nil {
-			return err
-		}
-		aggregatorFlags.restConfig = restConfig
-		aggregatorFlags.namespace = ns
 		return nil
 	},
 }
@@ -37,5 +35,5 @@ kill endpoint.`,
 func init() {
 	rootCmd.AddCommand(aggregatorCmd)
 
-	addKubernetesFlags(aggregatorCmd.PersistentFlags(), &aggregatorFlags.k8sOverrides)
+	addKubernetesFlags(aggregatorCmd.PersistentFlags())
 }

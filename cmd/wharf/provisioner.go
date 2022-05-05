@@ -3,22 +3,18 @@ package main
 import (
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/spf13/cobra"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-var provisionerFlags = struct {
-	k8sOverrides clientcmd.ConfigOverrides
-
-	restConfig *rest.Config
-	namespace  string
-}{}
-
 func newProvisioner() (provisioner.Provisioner, error) {
+	restConfig, err := loadKubeconfig()
+	if err != nil {
+		return nil, err
+	}
 	return provisioner.NewK8sProvisioner(
 		rootFlags.instanceID,
-		provisionerFlags.namespace,
-		provisionerFlags.restConfig)
+		rootConfig.Provisioner.K8s,
+		rootConfig.K8s.Namespace,
+		restConfig)
 }
 
 var provisionerCmd = &cobra.Command{
@@ -31,23 +27,10 @@ The "wharf provisioner" act as a fire-and-forget, where the entire build
 orchestration is handled inside the Kubernetes cluster, in comparison to the
 "wharf run" command that uses your local machine to orchestrate the build.
 `,
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		if err := callParentPersistentPreRuns(cmd, args); err != nil {
-			return err
-		}
-
-		restConfig, ns, err := loadKubeconfig(provisionerFlags.k8sOverrides)
-		if err != nil {
-			return err
-		}
-		provisionerFlags.restConfig = restConfig
-		provisionerFlags.namespace = ns
-		return nil
-	},
 }
 
 func init() {
 	rootCmd.AddCommand(provisionerCmd)
 
-	addKubernetesFlags(provisionerCmd.PersistentFlags(), &provisionerFlags.k8sOverrides)
+	addKubernetesFlags(provisionerCmd.PersistentFlags())
 }

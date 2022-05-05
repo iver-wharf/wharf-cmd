@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-core/pkg/app"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
@@ -23,6 +24,7 @@ const (
 	exitCodeError           = 1
 	exitCodeCancelForceQuit = 2
 	exitCodeCancelTimeout   = 3
+	exitCodeLoadConfigError = 4
 
 	cancelGracePeriod = 10 * time.Second
 )
@@ -49,32 +51,55 @@ var rootCmd = &cobra.Command{
 	},
 }
 
-var rootContext, rootCancel = context.WithCancel(context.Background())
+var (
+	rootContext, rootCancel = context.WithCancel(context.Background())
 
-func addKubernetesFlags(flagSet *pflag.FlagSet, overrides *clientcmd.ConfigOverrides) {
-	overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
-	clientcmd.BindOverrideFlags(overrides, flagSet, overrideFlags)
+	k8sOverridesFlags clientcmd.ConfigOverrides
+
+	rootConfig     config.Config
+	runAfterConfig []func()
+)
+
+func addKubernetesFlags(flagSet *pflag.FlagSet) {
+	runAfterConfig = append(runAfterConfig, func() {
+		overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
+		overrideFlags.ContextOverrideFlags.Namespace.Default = rootConfig.K8s.Namespace
+		clientcmd.BindOverrideFlags(&k8sOverridesFlags, flagSet, overrideFlags)
+	})
 }
 
-func loadKubeconfig(overrides clientcmd.ConfigOverrides) (*rest.Config, string, error) {
+func loadKubeconfig() (*rest.Config, error) {
 	loader := clientcmd.NewDefaultClientConfigLoadingRules()
-	clientConf := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, &overrides)
+	clientConf := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(loader, &k8sOverridesFlags)
 	restConf, err := clientConf.ClientConfig()
 	if err != nil {
-		return nil, "", fmt.Errorf("load kubeconfig: %w", err)
+		return nil, fmt.Errorf("load kubeconfig: %w", err)
 	}
-	ns, _, err := clientConf.Namespace()
+	rootConfig.K8s.Namespace, _, err = clientConf.Namespace()
 	if err != nil {
-		return nil, "", fmt.Errorf("get namespace to use: %w", err)
+		return nil, fmt.Errorf("get namespace to use: %w", err)
 	}
 	log.Debug().
-		WithString("namespace", ns).
+		WithString("namespace", rootConfig.K8s.Namespace).
 		WithString("host", restConf.Host).
 		Message("Loaded kube-config")
-	return restConf, ns, nil
+	return restConf, nil
 }
 
 func execute(version app.Version) {
+	var err error
+	if rootConfig, err = config.LoadConfig(); err != nil {
+		initLoggingIfNeeded()
+		log.Error().Messagef("Config load: %s", err)
+		os.Exit(exitCodeLoadConfigError)
+	}
+
+	// Some code we want to run AFTER all init()'s and AFTER wharf-cmd-config.yml
+	// has been loaded; but BEFORE cobra starts parsing all arguments as flags.
+	for _, f := range runAfterConfig {
+		f()
+	}
+
 	rootCmd.Version = versionString(version)
 	if err := rootCmd.Execute(); err != nil {
 		initLoggingIfNeeded()

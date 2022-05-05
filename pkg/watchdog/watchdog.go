@@ -7,6 +7,7 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/response"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisionerclient"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
@@ -19,13 +20,13 @@ const interval = 5 * time.Minute
 const safeAfterDuration = -time.Minute
 
 // Watch will start the watchdog and wait.
-func Watch() error {
+func Watch(config config.WatchdogConfig) error {
 	wd := watchdog{
 		wharfapi: wharfapi.Client{
-			APIURL: "http://localhost:5001",
+			APIURL: config.WharfAPIURL,
 		},
 		prov: provisionerclient.Client{
-			APIURL: "http://localhost:5009",
+			APIURL: config.ProvisionerURL,
 		},
 	}
 	wd.startTicker()
