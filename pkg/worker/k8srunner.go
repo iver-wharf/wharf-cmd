@@ -265,8 +265,11 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 				return fmt.Errorf("transfer dockerfile: %w", err)
 			}
 			log.Debug().WithFunc(logFunc).Message("No Dockerfile found.")
+		} else {
+			log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
 		}
 	}
+
 	if err := r.continueInitContainer(newPod.Name); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
