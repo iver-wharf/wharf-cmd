@@ -439,7 +439,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, po
 }
 
 func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, destPath, namespace, podName, containerName string) error {
-	dockerfile, err := os.Open("Dockerfile")
+	dockerfile, err := os.Open(fmt.Sprintf("%s/Dockerfile", commonRepoVolumeMount.MountPath))
 	if err != nil {
 		return err
 	}
