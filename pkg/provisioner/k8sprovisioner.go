@@ -96,6 +96,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
 		sshVolumeName       = "ssh"
+		certVolumeName      = "cert"
+		certVolumeMountPath = "/mnt/cert"
 	)
 	workerInstanceID := typ.Coal(args.WharfInstanceID, p.instanceID)
 	labels := map[string]string{
@@ -118,6 +120,12 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		Name:      sshVolumeName,
 		ReadOnly:  true,
 		MountPath: "/root/.ssh",
+	})
+
+	gitVolumeMounts = append(gitVolumeMounts, v1.VolumeMount{
+		Name:      certVolumeName,
+		ReadOnly:  true,
+		MountPath: certVolumeMountPath,
 	})
 
 	gitArgs := []string{"git", "clone", args.GitCloneURL, "--single-branch"}
