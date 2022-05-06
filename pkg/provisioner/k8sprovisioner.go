@@ -226,6 +226,12 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					},
 				},
 				{
+					Name: certVolumeName,
+					VolumeSource: v1.VolumeSource{
+						EmptyDir: &v1.EmptyDirVolumeSource{},
+					},
+				},
+				{
 					Name: sshVolumeName,
 					VolumeSource: v1.VolumeSource{
 						Secret: &v1.SecretVolumeSource{
