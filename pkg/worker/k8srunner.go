@@ -33,8 +33,6 @@ import (
 )
 
 var (
-	errNoDockerfile = errors.New("no dockerfile")
-
 	podInitWaitArgs     = []string{"/bin/sh", "-c", "sleep infinite || true"}
 	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 )
@@ -261,13 +259,9 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	} else {
 		log.Debug().WithFunc(logFunc).Message("Transferring modified Dockerfile to init container.")
 		if err := r.copyDockerfileToPod(ctx, "/mnt/repo/Dockerfile", r.Config.K8s.Namespace, newPod.Name, "init"); err != nil {
-			if !errors.Is(err, errNoDockerfile) {
-				return fmt.Errorf("transfer dockerfile: %w", err)
-			}
-			log.Debug().WithFunc(logFunc).Message("No Dockerfile found.")
-		} else {
-			log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
+			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
+		log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
 	}
 
 	if err := r.continueInitContainer(newPod.Name); err != nil {
