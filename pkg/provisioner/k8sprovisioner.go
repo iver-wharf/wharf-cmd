@@ -115,17 +115,16 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			Name:      repoVolumeName,
 			MountPath: repoVolumeMountPath,
 		},
+		{
+			Name:      certVolumeName,
+			ReadOnly:  true,
+			MountPath: certVolumeMountPath,
+		},
 	}
 	gitVolumeMounts := append(volumeMounts, v1.VolumeMount{
 		Name:      sshVolumeName,
 		ReadOnly:  true,
 		MountPath: "/root/.ssh",
-	})
-
-	gitVolumeMounts = append(gitVolumeMounts, v1.VolumeMount{
-		Name:      certVolumeName,
-		ReadOnly:  true,
-		MountPath: certVolumeMountPath,
 	})
 
 	gitArgs := []string{"git", "clone", args.GitCloneURL, "--single-branch"}
@@ -221,6 +220,12 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			Volumes: []v1.Volume{
 				{
 					Name: repoVolumeName,
+					VolumeSource: v1.VolumeSource{
+						EmptyDir: &v1.EmptyDirVolumeSource{},
+					},
+				},
+				{
+					Name: certVolumeName,
 					VolumeSource: v1.VolumeSource{
 						EmptyDir: &v1.EmptyDirVolumeSource{},
 					},
