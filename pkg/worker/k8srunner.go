@@ -448,7 +448,7 @@ func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, destPath, namesp
 	defer dockerfile.Close()
 
 	var appendedDockerfile bytes.Buffer
-	if _, err = io.Copy(dockerfile, &appendedDockerfile); err != nil {
+	if _, err = io.Copy(&appendedDockerfile, dockerfile); err != nil {
 		return err
 	}
 
