@@ -253,15 +253,16 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
 
-	if _, err := os.Stat("Dockerfile"); errors.Is(err, fs.ErrNotExist) {
-		log.Debug().WithFunc(logFunc).Message("No Dockerfile found. This is OK if not using Docker step.")
-		// TODO: Error if this happens and docker step exists.
-	} else {
-		log.Debug().WithFunc(logFunc).Message("Transferring modified Dockerfile to init container.")
-		if err := r.copyDockerfileToPod(ctx, "/mnt/repo/Dockerfile", r.Config.K8s.Namespace, newPod.Name, "init"); err != nil {
-			return fmt.Errorf("transfer modified dockerfile: %w", err)
+	if r.step.Type.StepTypeName() == "docker" {
+		if _, err := os.Stat("Dockerfile"); errors.Is(err, fs.ErrNotExist) {
+			return fmt.Errorf("transfer modified dockerfile: Dockerfile does not exist")
+		} else {
+			log.Debug().WithFunc(logFunc).Message("Transferring modified Dockerfile to init container.")
+			if err := r.copyDockerfileToPod(ctx, "/mnt/repo/Dockerfile", r.Config.K8s.Namespace, newPod.Name, "init"); err != nil {
+				return fmt.Errorf("transfer modified dockerfile: %w", err)
+			}
+			log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
 		}
-		log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
 	}
 
 	if err := r.continueInitContainer(newPod.Name); err != nil {
