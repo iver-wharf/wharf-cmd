@@ -69,16 +69,13 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 					ImagePullPolicy: v1.PullIfNotPresent,
 					Command:         podInitWaitArgs,
 					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "repo",
-							MountPath: "/mnt/repo",
-						},
+						commonRepoVolumeMount,
 					},
 				},
 			},
 			Volumes: []v1.Volume{
 				{
-					Name: "repo",
+					Name: commonRepoVolumeMount.Name,
 					VolumeSource: v1.VolumeSource{
 						EmptyDir: &v1.EmptyDirVolumeSource{},
 					},
