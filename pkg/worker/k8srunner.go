@@ -2,10 +2,13 @@ package worker
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 	"strings"
 	"time"
 
@@ -29,8 +32,12 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 )
 
-var podInitWaitArgs = []string{"/bin/sh", "-c", "sleep infinite || true"}
-var podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
+var (
+	errNoDockerfile = errors.New("no dockerfile")
+
+	podInitWaitArgs     = []string{"/bin/sh", "-c", "sleep infinite || true"}
+	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
+)
 
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
 type K8sRunnerOptions struct {
@@ -247,6 +254,19 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
+
+	if _, err := os.Stat("Dockerfile"); errors.Is(err, fs.ErrNotExist) {
+		log.Debug().WithFunc(logFunc).Message("No Dockerfile found. This is OK if not using Docker step.")
+		// TODO: Error if this happens and docker step exists.
+	} else {
+		log.Debug().WithFunc(logFunc).Message("Transferring modified Dockerfile to init container.")
+		if err := r.copyDockerfileToPod(ctx, "/mnt/repo/Dockerfile", r.Config.K8s.Namespace, newPod.Name, "init"); err != nil {
+			if !errors.Is(err, errNoDockerfile) {
+				return fmt.Errorf("transfer dockerfile: %w", err)
+			}
+			log.Debug().WithFunc(logFunc).Message("No Dockerfile found.")
+		}
+	}
 	if err := r.continueInitContainer(newPod.Name); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
@@ -410,17 +430,46 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 }
 
 func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, podName, containerName string) error {
-	// Based on: https://stackoverflow.com/a/57952887
 	tarReader, err := r.repoTar.Open()
 	if err != nil {
 		return err
 	}
 	defer tarReader.Close()
 
+	args := []string{"tar", "-xf", "-", "-C", destPath}
+	return r.copyToPodStdin(ctx, tarReader, namespace, podName, containerName, args)
+}
+
+func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, destPath, namespace, podName, containerName string) error {
+	dockerfile, err := os.Open("Dockerfile")
+	if err != nil {
+		return err
+	}
+	defer dockerfile.Close()
+
+	var appendedDockerfile bytes.Buffer
+	if _, err = io.Copy(dockerfile, &appendedDockerfile); err != nil {
+		return err
+	}
+
+	_, err = appendedDockerfile.Write([]byte(`
+COPY ./root.crt /usr/local/share/ca-certificates/root.crt
+RUN mkdir -p /etc/ssl/certs/ \
+	&& touch /etc/ssl/certs/ca-certificates.crt \
+	&& cat /usr/local/share/ca-certificates/root.crt >> /etc/ssl/certs/ca-certificates.crt`))
+	if err != nil {
+		return err
+	}
+
+	args := []string{"tee", destPath}
+	return r.copyToPodStdin(ctx, &appendedDockerfile, namespace, podName, containerName, args)
+}
+
+func (r k8sStepRunner) copyToPodStdin(ctx context.Context, src io.Reader, namespace, podName, containerName string, args []string) error {
+	// Based on: https://stackoverflow.com/a/57952887
 	reader, writer := io.Pipe()
 	defer reader.Close()
 	defer writer.Close()
-	args := []string{"tar", "-xf", "-", "-C", destPath}
 	exec, err := execInPodPipedStdin(r.RestConfig, namespace, podName, containerName, args)
 	if err != nil {
 		return err
@@ -428,7 +477,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, po
 	writeErrCh := make(chan error, 1)
 	go func() {
 		defer writer.Close()
-		_, err := io.Copy(writer, tarReader)
+		_, err := io.Copy(writer, src)
 		writeErrCh <- err
 	}()
 	err = exec.Stream(remotecommand.StreamOptions{
