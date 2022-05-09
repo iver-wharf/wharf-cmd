@@ -253,7 +253,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
 
-	if r.step.Type.StepTypeName() == "docker" {
+	if _, ok := r.step.Type.(wharfyml.StepDocker); ok {
 		if _, err := os.Stat("Dockerfile"); errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("transfer modified dockerfile: Dockerfile does not exist")
 		} else {
