@@ -36,7 +36,7 @@ var (
 	podInitWaitArgs     = []string{"/bin/sh", "-c", "sleep infinite || true"}
 	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 
-	errParentDirAccessNotAllowed = errors.New("accessing parent directory of repo root is not allowed")
+	errIllegalParentDirAccess = errors.New("illegal parent directory access")
 )
 
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
@@ -443,8 +443,8 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
 	log.Debug().WithFunc(r.logFunc).Message("Transferring modified Dockerfile to init container.")
 	dockerfilePath := filepath.Join(r.CurrentDir, step.File)
-	if !validateNoParentDirAccess(dockerfilePath) {
-		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, dockerfilePath)
+	if isIllegalParentDirAccess(dockerfilePath) {
+		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, dockerfilePath)
 	}
 	if _, err := os.Stat(dockerfilePath); err != nil {
 		return err
@@ -463,8 +463,8 @@ func (r k8sStepRunner) transferCertToPod(ctx context.Context, step wharfyml.Step
 		return err
 	}
 	destPath := filepath.Join(commonRepoVolumeMount.MountPath, step.Context, "root.crt")
-	if !validateNoParentDirAccess(destPath) {
-		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, destPath)
+	if isIllegalParentDirAccess(destPath) {
+		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, destPath)
 	}
 	args := []string{"tee", destPath}
 	if err := r.copyToPodStdin(ctx, certFile, args); err != nil {
@@ -498,13 +498,13 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath string) error 
 
 func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
 	path := filepath.Join(r.CurrentDir, step.File)
-	if !validateNoParentDirAccess(path) {
-		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, path)
+	if isIllegalParentDirAccess(path) {
+		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, path)
 	}
 
 	destPath := filepath.Join(commonRepoVolumeMount.MountPath, step.File)
-	if !validateNoParentDirAccess(destPath) {
-		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, destPath)
+	if isIllegalParentDirAccess(destPath) {
+		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, destPath)
 	}
 
 	b, err := os.ReadFile(path)
@@ -585,7 +585,7 @@ func (r *k8sStepRunner) addStatusUpdate(status workermodel.Status) {
 	r.ResultStore.AddStatusUpdate(r.stepID, time.Now(), status)
 }
 
-func validateNoParentDirAccess(p string) bool {
+func isIllegalParentDirAccess(p string) bool {
 	parts := strings.Split(p, string(filepath.Separator))
 	level := 0
 	for _, v := range parts {
@@ -595,8 +595,8 @@ func validateNoParentDirAccess(p string) bool {
 			level++
 		}
 		if level < 0 {
-			return false
+			return true
 		}
 	}
-	return true
+	return false
 }

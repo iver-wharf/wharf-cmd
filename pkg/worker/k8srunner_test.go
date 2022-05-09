@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestValidatePath(t *testing.T) {
+func TestIllegalParentDirAccess(t *testing.T) {
 	testCases := []struct {
 		name   string
 		base   string
@@ -17,28 +17,28 @@ func TestValidatePath(t *testing.T) {
 		{
 			name:   "rel path not outside current dir - ok",
 			path:   filepath.Join(".", "my_path", "to", "file"),
-			wantOK: true,
+			wantOK: false,
 		},
 		{
 			name:   "rel path not outside current dir - ok",
 			path:   filepath.Join(".", "my_path", "..", "my_path_2", "to", "file"),
-			wantOK: true,
+			wantOK: false,
 		},
 		{
 			name:   "parent dir access - not ok",
 			path:   filepath.Join("..", "my_path", "to", "file"),
-			wantOK: false,
+			wantOK: true,
 		},
 		{
 			name:   "parent dir access, tricky - not ok",
 			path:   filepath.Join(".", "my_path", "..", "to", "..", "file", "..", "..", "or", "is", "it"),
-			wantOK: false,
+			wantOK: true,
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			ok := validateNoParentDirAccess(tc.path)
+			ok := isIllegalParentDirAccess(tc.path)
 			assert.Equal(t, tc.wantOK, ok)
 		})
 	}
