@@ -253,7 +253,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
 
-	if _, ok := r.step.Type.(wharfyml.StepDocker); ok {
+	if r.step.Type.StepTypeName() == "docker" {
 		if _, err := os.Stat("Dockerfile"); errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("transfer modified dockerfile: Dockerfile does not exist")
 		} else {
@@ -465,21 +465,21 @@ RUN mkdir -p /etc/ssl/certs/ \
 
 func (r k8sStepRunner) copyToPodStdin(ctx context.Context, reader io.Reader, namespace, podName, containerName string, args []string) error {
 	// Based on: https://stackoverflow.com/a/57952887
-	reader, writer := io.Pipe()
-	defer reader.Close()
-	defer writer.Close()
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+	defer pipeWriter.Close()
 	exec, err := execInPodPipedStdin(r.RestConfig, namespace, podName, containerName, args)
 	if err != nil {
 		return err
 	}
 	writeErrCh := make(chan error, 1)
 	go func() {
-		defer writer.Close()
-		_, err := io.Copy(writer, reader)
+		defer pipeWriter.Close()
+		_, err := io.Copy(pipeWriter, reader)
 		writeErrCh <- err
 	}()
 	err = exec.Stream(remotecommand.StreamOptions{
-		Stdin: reader,
+		Stdin: pipeReader,
 	})
 	if err != nil {
 		return err
