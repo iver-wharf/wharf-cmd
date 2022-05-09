@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -433,7 +434,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
 
-		if err := r.transferCertToPod(ctx, step); err != nil {
+		if err := r.copyCertToAppContainer(ctx, step); err != nil {
 			return fmt.Errorf("transfer cert: %w", err)
 		}
 	}
@@ -456,21 +457,19 @@ func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step
 	return nil
 }
 
-func (r k8sStepRunner) transferCertToPod(ctx context.Context, step wharfyml.StepDocker) error {
-	log.Debug().WithFunc(r.logFunc).Message("Transferring cert file to init container.")
-	certFile, err := os.Open("/mnt/cert/root.crt")
+func (r k8sStepRunner) copyCertToAppContainer(ctx context.Context, step wharfyml.StepDocker) error {
+	log.Debug().WithFunc(r.logFunc).Message("Copying cert file from init container to app container.")
+	exec, err := execInPodPipeStdout(
+		r.RestConfig,
+		r.target,
+		[]string{"cp", "-v", "/mnt/cert/root.crt", "/mnt/repo/root.crt"})
 	if err != nil {
 		return err
 	}
-	destPath := filepath.Join(commonRepoVolumeMount.MountPath, step.Context, "root.crt")
-	if isIllegalParentDirAccess(destPath) {
-		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, destPath)
-	}
-	args := []string{"tee", destPath}
-	if err := r.copyToPodStdin(ctx, certFile, args); err != nil {
-		return err
-	}
-	log.Debug().WithFunc(r.logFunc).Message("Transferred cert file to init container.")
+	exec.Stream(remotecommand.StreamOptions{
+		Stdout: nopWriter{},
+	})
+	log.Debug().WithFunc(r.logFunc).Message("Copied cert file from init container to app container.")
 	return nil
 }
 
@@ -497,17 +496,17 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath string) error 
 }
 
 func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
-	path := filepath.Join(r.CurrentDir, step.File)
-	if isIllegalParentDirAccess(path) {
-		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, path)
+	srcPath := filepath.Join(r.CurrentDir, step.File)
+	if isIllegalParentDirAccess(srcPath) {
+		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, srcPath)
 	}
 
-	destPath := filepath.Join(commonRepoVolumeMount.MountPath, step.File)
+	destPath := path.Join(commonRepoVolumeMount.MountPath, step.File)
 	if isIllegalParentDirAccess(destPath) {
 		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, destPath)
 	}
 
-	b, err := os.ReadFile(path)
+	b, err := os.ReadFile(srcPath)
 	if err != nil {
 		return err
 	}
