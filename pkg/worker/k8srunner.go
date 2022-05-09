@@ -119,6 +119,11 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 			container: "init",
 		},
 	}
+	r.logFunc = func(ev logger.Event) logger.Event {
+		return ev.
+			WithString("step", r.step.Name).
+			WithString("pod", r.target.name)
+	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
 	}
@@ -189,6 +194,7 @@ type k8sStepRunner struct {
 	stepID    uint64
 	repoTar   tarstore.Tarball
 	target    *target
+	logFunc   func(ev logger.Event) logger.Event
 }
 
 type target struct {
@@ -250,31 +256,26 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		return fmt.Errorf("create pod: %w", err)
 	}
 	r.target.name = newPod.Name
-	var logFunc = func(ev logger.Event) logger.Event {
-		return ev.
-			WithString("step", r.step.Name).
-			WithString("pod", newPod.Name)
-	}
 
-	log.Debug().WithFunc(logFunc).Message("Created pod.")
+	log.Debug().WithFunc(r.logFunc).Message("Created pod.")
 	defer r.stopPodNow(context.Background())
-	log.Debug().WithFunc(logFunc).Message("Waiting for init container to start.")
+	log.Debug().WithFunc(r.logFunc).Message("Waiting for init container to start.")
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 
-	log.Debug().WithFunc(logFunc).Message("Transferring data to pod.")
+	log.Debug().WithFunc(r.logFunc).Message("Transferring data to pod.")
 	if err := r.transferDataToPod(ctx); err != nil {
 		return err
 	}
-	log.Debug().WithFunc(logFunc).Message("Transferred data to pod.")
+	log.Debug().WithFunc(r.logFunc).Message("Transferred data to pod.")
 
 	if err := r.continueInitContainer(); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
 	r.addStatusUpdate(workermodel.StatusRunning)
 
-	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
+	log.Debug().WithFunc(r.logFunc).Message("Waiting for app container to start.")
 	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
 		if err := r.readLogs(ctx, &v1.PodLogOptions{}); err != nil {
 			log.Debug().WithError(err).
@@ -282,11 +283,11 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 		}
 		return fmt.Errorf("wait for app container: %w", err)
 	}
-	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
+	log.Debug().WithFunc(r.logFunc).Message("App container running. Streaming logs.")
 	if err := r.readLogs(ctx, &v1.PodLogOptions{Follow: true, Timestamps: true}); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
-	log.Debug().WithFunc(logFunc).Message("Logs ended. Waiting for termination.")
+	log.Debug().WithFunc(r.logFunc).Message("Logs ended. Waiting for termination.")
 	return r.waitForAppContainerDone(ctx, newPod.ObjectMeta)
 }
 
@@ -421,51 +422,55 @@ func (r k8sStepRunner) stopPodNow(ctx context.Context) {
 }
 
 func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
-	var logFunc = func(ev logger.Event) logger.Event {
-		return ev.
-			WithString("step", r.step.Name).
-			WithString("pod", r.target.name)
-	}
-
-	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
+	log.Debug().WithFunc(r.logFunc).Message("Transferring repo to init container.")
 	if err := r.copyDirToPod(ctx, commonRepoVolumeMount.MountPath); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
-	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
+	log.Debug().WithFunc(r.logFunc).Message("Transferred repo to init container.")
 
 	if step, ok := r.step.Type.(wharfyml.StepDocker); ok {
-		{
-			log.Debug().WithFunc(logFunc).Message("Transferring modified Dockerfile to init container.")
-			dockerfilePath := filepath.Join(r.CurrentDir, step.File)
-			if !validateNoParentDirAccess(dockerfilePath) {
-				return fmt.Errorf("transfer modified dockerfile: %w: %q", errParentDirAccessNotAllowed, dockerfilePath)
-			}
-			if _, err := os.Stat(dockerfilePath); err != nil {
-				return fmt.Errorf("transfer modified dockerfile: %w", err)
-			}
-			if err := r.copyDockerfileToPod(ctx, step); err != nil {
-				return fmt.Errorf("transfer modified dockerfile: %w", err)
-			}
-			log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
+		if err := r.transferModifiedDockerfileToPod(ctx, step); err != nil {
+			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
 
-		{
-			log.Debug().WithFunc(logFunc).Message("Transferring cert file to init container.")
-			certFile, err := os.Open("/mnt/cert/root.crt")
-			if err != nil {
-				return fmt.Errorf("transfer cert: %w", err)
-			}
-			destPath := filepath.Join(commonRepoVolumeMount.MountPath, step.Context, "root.crt")
-			if !validateNoParentDirAccess(destPath) {
-				return fmt.Errorf("transfer cert: %w: %q", errParentDirAccessNotAllowed, destPath)
-			}
-			args := []string{"tee", destPath}
-			if err := r.copyToPodStdin(ctx, certFile, args); err != nil {
-				return fmt.Errorf("transfer cert: %w", err)
-			}
-			log.Debug().WithFunc(logFunc).Message("Transferred cert file to init container.")
+		if err := r.transferCertToPod(ctx, step); err != nil {
+			return fmt.Errorf("transfer cert: %w", err)
 		}
 	}
+	return nil
+}
+
+func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
+	log.Debug().WithFunc(r.logFunc).Message("Transferring modified Dockerfile to init container.")
+	dockerfilePath := filepath.Join(r.CurrentDir, step.File)
+	if !validateNoParentDirAccess(dockerfilePath) {
+		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, dockerfilePath)
+	}
+	if _, err := os.Stat(dockerfilePath); err != nil {
+		return err
+	}
+	if err := r.copyDockerfileToPod(ctx, step); err != nil {
+		return err
+	}
+	log.Debug().WithFunc(r.logFunc).Message("Transferred modified Dockerfile to init container.")
+	return nil
+}
+
+func (r k8sStepRunner) transferCertToPod(ctx context.Context, step wharfyml.StepDocker) error {
+	log.Debug().WithFunc(r.logFunc).Message("Transferring cert file to init container.")
+	certFile, err := os.Open("/mnt/cert/root.crt")
+	if err != nil {
+		return err
+	}
+	destPath := filepath.Join(commonRepoVolumeMount.MountPath, step.Context, "root.crt")
+	if !validateNoParentDirAccess(destPath) {
+		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, destPath)
+	}
+	args := []string{"tee", destPath}
+	if err := r.copyToPodStdin(ctx, certFile, args); err != nil {
+		return err
+	}
+	log.Debug().WithFunc(r.logFunc).Message("Transferred cert file to init container.")
 	return nil
 }
 
