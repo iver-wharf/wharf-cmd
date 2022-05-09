@@ -439,28 +439,18 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, po
 }
 
 func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, destPath, namespace, podName, containerName string) error {
-	dockerfile, err := os.Open(fmt.Sprintf("%s/Dockerfile", commonRepoVolumeMount.MountPath))
+	b, err := os.ReadFile(fmt.Sprintf("%s/Dockerfile", r.CurrentDir))
 	if err != nil {
 		return err
 	}
-	defer dockerfile.Close()
-
-	var appendedDockerfile bytes.Buffer
-	if _, err = io.Copy(&appendedDockerfile, dockerfile); err != nil {
-		return err
-	}
-
-	_, err = appendedDockerfile.Write([]byte(`
+	b = append(b, []byte(`
 COPY ./root.crt /usr/local/share/ca-certificates/root.crt
 RUN mkdir -p /etc/ssl/certs/ \
 	&& touch /etc/ssl/certs/ca-certificates.crt \
-	&& cat /usr/local/share/ca-certificates/root.crt >> /etc/ssl/certs/ca-certificates.crt`))
-	if err != nil {
-		return err
-	}
-
+	&& cat /usr/local/share/ca-certificates/root.crt >> /etc/ssl/certs/ca-certificates.crt`)...)
+	reader := bytes.NewReader(b)
 	args := []string{"tee", destPath}
-	return r.copyToPodStdin(ctx, &appendedDockerfile, namespace, podName, containerName, args)
+	return r.copyToPodStdin(ctx, reader, namespace, podName, containerName, args)
 }
 
 func (r k8sStepRunner) copyToPodStdin(ctx context.Context, reader io.Reader, namespace, podName, containerName string, args []string) error {
