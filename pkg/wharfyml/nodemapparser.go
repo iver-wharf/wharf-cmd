@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
-// Errors related to parsing map of nodes.
+// errutil.Slice related to parsing map of nodes.
 var (
 	ErrMissingRequired = errors.New("missing required field")
 )
@@ -44,7 +45,7 @@ func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 	p.positions[key] = newPosNode(node)
 	num, err := visitFloat64(node)
 	if err != nil {
-		return wrapPathError(err, key)
+		return errutil.Scope(err, key)
 	}
 	*target = num
 	return nil
@@ -58,13 +59,13 @@ func (p nodeMapParser) unmarshalString(key string, target *string) error {
 	p.positions[key] = newPosNode(node)
 	str, err := visitString(node)
 	if err != nil {
-		return wrapPathError(err, key)
+		return errutil.Scope(err, key)
 	}
 	*target = str
 	return nil
 }
 
-func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors {
+func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) errutil.Slice {
 	node, ok := p.nodes[key]
 	if !ok {
 		return nil
@@ -72,14 +73,14 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	p.positions[key] = newPosNode(node)
 	seq, err := visitSequence(node)
 	if err != nil {
-		return Errors{wrapPathError(err, key)}
+		return errutil.Slice{errutil.Scope(err, key)}
 	}
 	strs := make([]string, 0, len(seq))
-	var errSlice Errors
+	var errSlice errutil.Slice
 	for i, n := range seq {
 		str, err := visitString(n)
 		if err != nil {
-			errSlice.add(wrapPathError(err, fmt.Sprintf("%s[%d]", key, i)))
+			errSlice.Add(errutil.Scope(err, fmt.Sprintf("%s[%d]", key, i)))
 			continue
 		}
 		strs = append(strs, str)
@@ -88,21 +89,21 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) Errors
 	return errSlice
 }
 
-func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]string) Errors {
+func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]string) errutil.Slice {
 	node, ok := p.nodes[key]
 	if !ok {
 		return nil
 	}
 	p.positions[key] = newPosNode(node)
-	var errSlice Errors
+	var errSlice errutil.Slice
 	nodes, errs := visitMapSlice(node)
-	errSlice.add(wrapPathErrorSlice(errs, key)...)
+	errSlice.Add(errutil.ScopeSlice(errs, key)...)
 
 	strMap := make(map[string]string, len(nodes))
 	for _, n := range nodes {
 		val, err := visitString(n.value)
 		if err != nil {
-			errSlice.add(wrapPathError(err, fmt.Sprintf("%s.%s", key, n.key.value)))
+			errSlice.Add(errutil.Scope(err, fmt.Sprintf("%s.%s", key, n.key.value)))
 			continue
 		}
 		strMap[n.key.value] = val
@@ -141,7 +142,7 @@ func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 	p.positions[key] = newPosNode(node)
 	b, err := visitBool(node)
 	if err != nil {
-		return wrapPathError(err, key)
+		return errutil.Scope(err, key)
 	}
 	*target = b
 	return nil

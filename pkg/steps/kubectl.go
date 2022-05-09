@@ -1,6 +1,7 @@
-package wharfyml
+package steps
 
 import (
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 )
 
@@ -21,31 +22,31 @@ type StepKubectl struct {
 	Cluster   string
 }
 
-// StepTypeName returns the name of this step type.
-func (StepKubectl) StepTypeName() string { return "kubectl" }
+// Name returns the name of this step type.
+func (StepKubectl) Name() string { return "kubectl" }
 
-func (s StepKubectl) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, Errors) {
+func (s StepKubectl) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, errutil.Slice) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 
-	var errSlice Errors
+	var errSlice errutil.Slice
 
 	// Unmarshalling
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.unmarshalString("file", &s.File),
 		p.unmarshalString("namespace", &s.Namespace),
 		p.unmarshalString("action", &s.Action),
 		p.unmarshalBool("force", &s.Force),
 		p.unmarshalString("cluster", &s.Cluster),
 	)
-	errSlice.add(p.unmarshalStringSlice("files", &s.Files)...)
+	errSlice.Add(p.unmarshalStringSlice("files", &s.Files)...)
 
 	// Validation
 	if len(s.Files) == 0 {
 		// Only either file or files is required
-		errSlice.addNonNils(p.validateRequiredString("file"))
+		errSlice.Add(p.validateRequiredString("file"))
 	}
 	return s, errSlice
 }

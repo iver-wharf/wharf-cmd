@@ -1,8 +1,9 @@
-package wharfyml
+package steps
 
 import (
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 )
 
@@ -26,33 +27,33 @@ type StepHelm struct {
 	Cluster      string
 }
 
-// StepTypeName returns the name of this step type.
-func (StepHelm) StepTypeName() string { return "helm" }
+// Name returns the name of this step type.
+func (StepHelm) Name() string { return "helm" }
 
-func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 
-	var errSlice Errors
+	var errSlice errutil.Slice
 
 	if !p.hasNode("repo") {
 		var chartRepo string
 		var repoGroup string
-		var errs Errors
-		errs.addNonNils(
+		var errs errutil.Slice
+		errs.Add(
 			p.unmarshalStringFromVarSub("CHART_REPO", source, &chartRepo),
 			p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup),
 		)
 		for _, err := range errs {
-			errSlice.add(fmt.Errorf(`eval "repo" default: %w`, err))
+			errSlice.Add(fmt.Errorf(`eval "repo" default: %w`, err))
 		}
 		s.Repo = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
 	// Unmarshalling
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.unmarshalString("chart", &s.Chart),
 		p.unmarshalString("name", &s.Name),
 		p.unmarshalString("namespace", &s.Namespace),
@@ -61,14 +62,14 @@ func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source var
 		p.unmarshalString("helmVersion", &s.HelmVersion),
 		p.unmarshalString("cluster", &s.Cluster),
 	)
-	errSlice.add(p.unmarshalStringStringMap("set", &s.Set)...)
-	errSlice.add(p.unmarshalStringSlice("files", &s.Files)...)
+	errSlice.Add(p.unmarshalStringStringMap("set", &s.Set)...)
+	errSlice.Add(p.unmarshalStringSlice("files", &s.Files)...)
 	if s.Repo == "stage" {
 		s.Repo = "https://kubernetes-charts.storage.googleapis.com"
 	}
 
 	// Validation
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.validateRequiredString("chart"),
 		p.validateRequiredString("name"),
 		p.validateRequiredString("namespace"),

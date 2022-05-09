@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
@@ -23,10 +24,10 @@ type Args struct {
 
 // ParseFile will parse the file at the given path.
 // Multiple errors may be returned, one for each validation or parsing error.
-func ParseFile(path string, args Args) (Definition, Errors) {
+func ParseFile(path string, args Args) (Definition, errutil.Slice) {
 	file, err := os.Open(path)
 	if err != nil {
-		return Definition{}, Errors{err}
+		return Definition{}, errutil.Slice{err}
 	}
 	defer file.Close()
 	return Parse(file, args)
@@ -34,23 +35,23 @@ func ParseFile(path string, args Args) (Definition, Errors) {
 
 // Parse will parse the YAML content as a .wharf-ci.yml definition structure.
 // Multiple errors may be returned, one for each validation or parsing error.
-func Parse(reader io.Reader, args Args) (def Definition, errSlice Errors) {
+func Parse(reader io.Reader, args Args) (def Definition, errSlice errutil.Slice) {
 	def, errs := parse(reader, args)
-	sortErrorsByPosition(errs)
+	errutil.SortByPos(errs)
 	return def, errs
 }
 
-func parse(reader io.Reader, args Args) (def Definition, errSlice Errors) {
+func parse(reader io.Reader, args Args) (def Definition, errSlice errutil.Slice) {
 	doc, err := decodeFirstRootNode(reader)
 	if err != nil {
-		errSlice.add(err)
+		errSlice.Add(err)
 	}
 	if doc == nil {
 		return
 	}
-	var errs Errors
+	var errs errutil.Slice
 	def, errs = visitDefNode(doc, args)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 	return
 }
 

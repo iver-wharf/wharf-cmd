@@ -1,6 +1,9 @@
-package wharfyml
+package steps
 
-import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+import (
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
 
 // StepContainer represents a step type for running commands inside a Docker
 // container.
@@ -20,20 +23,20 @@ type StepContainer struct {
 	CertificatesMountPath string
 }
 
-// StepTypeName returns the name of this step type.
-func (StepContainer) StepTypeName() string { return "container" }
+// Name returns the name of this step type.
+func (StepContainer) Name() string { return "container" }
 
-func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, Errors) {
+func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, errutil.Slice) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
 
-	var errSlice Errors
+	var errSlice errutil.Slice
 
 	// Unmarshalling
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.unmarshalString("image", &s.Image),
 		p.unmarshalString("os", &s.OS),
 		p.unmarshalString("shell", &s.Shell),
@@ -41,10 +44,10 @@ func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, _ var
 		p.unmarshalString("serviceAccount", &s.ServiceAccount),
 		p.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
 	)
-	errSlice.add(p.unmarshalStringSlice("cmds", &s.Cmds)...)
+	errSlice.Add(p.unmarshalStringSlice("cmds", &s.Cmds)...)
 
 	// Validation
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.validateRequiredString("image"),
 		p.validateRequiredSlice("cmds"),
 	)

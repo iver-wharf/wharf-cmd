@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
-// Errors specific to parsing definitions.
+// errutil.Slice specific to parsing definitions.
 var (
 	ErrUseOfUndefinedEnv = errors.New("use of undefined environment")
 )
@@ -33,22 +34,22 @@ func (d *Definition) ListAllSteps() []Step {
 	return steps
 }
 
-func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) {
+func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice errutil.Slice) {
 	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 	envSourceNode := node
 
 	for _, n := range nodes {
 		switch n.key.value {
 		case propEnvironments:
-			var errs Errors
+			var errs errutil.Slice
 			def.Envs, errs = visitDocEnvironmentsNode(n.value)
-			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
+			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
 			envSourceNode = n.value
 		case propInputs:
-			var errs Errors
+			var errs errutil.Slice
 			def.Inputs, errs = visitInputsNode(n.value)
-			errSlice.add(wrapPathErrorSlice(errs, propInputs)...)
+			errSlice.Add(errutil.ScopeSlice(errs, propInputs)...)
 		}
 	}
 
@@ -56,7 +57,7 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 
 	inputsSource, errs := visitInputsArgs(def.Inputs, args.Inputs)
 	sources = append(sources, inputsSource)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 
 	sources = append(sources, def.Inputs.DefaultsVarSource())
 
@@ -64,8 +65,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)
 	if err != nil {
 		err = wrapPosErrorNode(err, envSourceNode)
-		err = wrapPathError(err, propEnvironments)
-		errSlice.add(err) // Non fatal error
+		err = errutil.Scope(err, propEnvironments)
+		errSlice.Add(err) // Non fatal error
 	} else if targetEnv != nil {
 		def.Env = targetEnv
 		sources = append(sources, targetEnv.VarSource())
@@ -77,8 +78,8 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 
 	stages, errs := visitDefStageNodes(nodes, sources)
 	def.Stages = stages
-	errSlice.add(errs...)
-	errSlice.add(validateDefEnvironmentUsage(def)...)
+	errSlice.Add(errs...)
+	errSlice.Add(validateDefEnvironmentUsage(def)...)
 	if !args.SkipStageFiltering {
 		// filtering intentionally performed after validation
 		def.Stages = filterStagesOnEnv(def.Stages, args.Env)
@@ -98,7 +99,7 @@ func getTargetEnv(envs map[string]Env, envName string) (*Env, error) {
 	return &env, nil
 }
 
-func visitDefStageNodes(nodes []mapItem, source varsub.Source) (stages []Stage, errSlice Errors) {
+func visitDefStageNodes(nodes []mapItem, source varsub.Source) (stages []Stage, errSlice errutil.Slice) {
 	for _, n := range nodes {
 		switch n.key.value {
 		case propEnvironments, propInputs:
@@ -107,25 +108,25 @@ func visitDefStageNodes(nodes []mapItem, source varsub.Source) (stages []Stage, 
 		}
 		stageNode, err := varSubNodeRec(n.value, source)
 		if err != nil {
-			errSlice.add(err)
+			errSlice.Add(err)
 			continue
 		}
 		stage, errs := visitStageNode(n.key, stageNode, source)
 		stages = append(stages, stage)
-		errSlice.add(wrapPathErrorSlice(errs, n.key.value)...)
+		errSlice.Add(errutil.ScopeSlice(errs, n.key.value)...)
 	}
 	return
 }
 
-func validateDefEnvironmentUsage(def Definition) Errors {
-	var errSlice Errors
+func validateDefEnvironmentUsage(def Definition) errutil.Slice {
+	var errSlice errutil.Slice
 	for _, stage := range def.Stages {
 		for _, env := range stage.Envs {
 			if _, ok := def.Envs[env.Name]; !ok {
 				err := fmt.Errorf("%w: %q", ErrUseOfUndefinedEnv, env.Name)
 				err = wrapPosError(err, env.Source)
-				err = wrapPathError(err, stage.Name, propEnvironments)
-				errSlice.add(err)
+				err = errutil.Scope(err, stage.Name, propEnvironments)
+				errSlice.Add(err)
 			}
 		}
 	}

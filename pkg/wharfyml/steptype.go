@@ -4,11 +4,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
-// Errors related to parsing step types.
+// errutil.Slice related to parsing step types.
 var (
 	ErrStepTypeUnknown   = errors.New("unknown step type")
 	ErrMissingBuiltinVar = errors.New("missing built-in var")
@@ -16,7 +17,7 @@ var (
 
 // StepType is an interface that is implemented by all step types.
 type StepType interface {
-	StepTypeName() string
+	Name() string
 }
 
 // StepTypeMeta contains metadata about a step type.
@@ -26,10 +27,10 @@ type StepTypeMeta struct {
 	FieldPos map[string]Pos
 }
 
-func visitStepTypeNode(stepName string, key strNode, node *yaml.Node, source varsub.Source) (StepType, Errors) {
+func visitStepTypeNode(stepName string, key strNode, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
 	visitor, err := visitStepTypeKeyNode(key)
 	if err != nil {
-		return nil, Errors{err}
+		return nil, errutil.Slice{err}
 	}
 	return visitor.visitStepTypeValueNode(stepName, node, source)
 }
@@ -60,17 +61,17 @@ func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
 
 type stepTypeVisitor struct {
 	keyNode   *yaml.Node
-	visitNode func(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors)
+	visitNode func(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice)
 }
 
-func (v stepTypeVisitor) visitStepTypeValueNode(stepName string, node *yaml.Node, source varsub.Source) (StepType, Errors) {
-	var errSlice Errors
+func (v stepTypeVisitor) visitStepTypeValueNode(stepName string, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
+	var errSlice errutil.Slice
 	m, errs := visitMap(node)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 
 	parser := newNodeMapParser(v.keyNode, m)
 	stepType, errs := v.visitNode(stepName, parser, source)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 
 	return stepType, errSlice
 }

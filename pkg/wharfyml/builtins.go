@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
@@ -36,7 +37,7 @@ const (
 // 	../.wharf-vars.yml
 // 	../../.wharf-vars.yml
 // 	../../..(etc)/.wharf-vars.yml
-func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
+func ParseVarFiles(currentDir string) (varsub.Source, errutil.Slice) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Warn().WithError(err).
@@ -45,13 +46,13 @@ func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	}
 
 	varFiles := ListPossibleVarsFiles(currentDir)
-	var errSlice Errors
+	var errSlice errutil.Slice
 	var filesSources varsub.SourceSlice
 	for _, varFile := range varFiles {
 		items, errs := tryReadVarsFileNodes(varFile.Path)
 		prettyPath := varFile.PrettyPath(workingDir)
 		errSlice = append(errSlice,
-			wrapPathErrorSlice(errs, prettyPath)...)
+			errutil.ScopeSlice(errs, prettyPath)...)
 		if len(items) == 0 {
 			continue
 		}
@@ -67,7 +68,7 @@ func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	return filesSources, errSlice
 }
 
-func tryReadVarsFileNodes(path string) ([]mapItem, Errors) {
+func tryReadVarsFileNodes(path string) ([]mapItem, errutil.Slice) {
 	file, err := os.Open(path)
 	if err != nil {
 		// Silently ignore. Could not exist, be a directory, or not readable.
@@ -78,23 +79,23 @@ func tryReadVarsFileNodes(path string) ([]mapItem, Errors) {
 	return parseVarsFileNodes(file)
 }
 
-func parseVarsFileNodes(reader io.Reader) ([]mapItem, Errors) {
+func parseVarsFileNodes(reader io.Reader) ([]mapItem, errutil.Slice) {
 	rootNodes, err := decodeRootNodes(reader)
 	if err != nil {
-		return nil, Errors{err}
+		return nil, errutil.Slice{err}
 	}
 	return visitVarsFileRootNodes(rootNodes)
 }
 
-func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
+func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, errutil.Slice) {
 	var allVars []mapItem
-	var errSlice Errors
+	var errSlice errutil.Slice
 	for i, root := range rootNodes {
 		docNodes, errs := visitMapSlice(root)
 		if len(rootNodes) > 1 {
-			errSlice.add(wrapPathErrorSlice(errs, fmt.Sprintf("doc#%d", i+1))...)
+			errSlice.Add(errutil.ScopeSlice(errs, fmt.Sprintf("doc#%d", i+1))...)
 		} else {
-			errSlice.add(errs...)
+			errSlice.Add(errs...)
 		}
 		for _, node := range docNodes {
 			if node.key.value != propVars {
@@ -102,7 +103,7 @@ func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
 				continue
 			}
 			vars, errs := visitMapSlice(node.value)
-			errSlice.add(wrapPathErrorSlice(errs, propVars)...)
+			errSlice.Add(errutil.ScopeSlice(errs, propVars)...)
 			allVars = append(allVars, vars...)
 		}
 	}

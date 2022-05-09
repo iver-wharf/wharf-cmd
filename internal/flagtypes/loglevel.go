@@ -61,7 +61,7 @@ func parseLevel(lvl string) (logger.Level, error) {
 	case "1", "p", "panic", "panics":
 		return logger.LevelPanic, nil
 	default:
-		// Errors shouldn't have mutliple lines, but as this is solely for
+		// errutil.Slice shouldn't have mutliple lines, but as this is solely for
 		// pflag.Value usage then this is an exception.
 		return logger.LevelDebug, errors.New(`invalid logging level, possible values:
 	5  d  debug  debugging

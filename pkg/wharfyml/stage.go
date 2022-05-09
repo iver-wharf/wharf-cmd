@@ -3,11 +3,12 @@ package wharfyml
 import (
 	"errors"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
-// Errors related to parsing stages.
+// errutil.Slice related to parsing stages.
 var (
 	ErrStageEmpty = errors.New("stage is missing steps")
 )
@@ -22,13 +23,13 @@ type Stage struct {
 	Steps   []Step
 }
 
-func visitStageNode(nameNode strNode, node *yaml.Node, source varsub.Source) (stage Stage, errSlice Errors) {
+func visitStageNode(nameNode strNode, node *yaml.Node, source varsub.Source) (stage Stage, errSlice errutil.Slice) {
 	stage.Pos = newPosNode(node)
 	stage.Name = nameNode.value
 	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode(ErrStageEmpty, node))
+		errSlice.Add(wrapPosErrorNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {
@@ -37,11 +38,11 @@ func visitStageNode(nameNode strNode, node *yaml.Node, source varsub.Source) (st
 			stage.EnvsPos = newPosNode(stepNode.value)
 			envs, errs := visitStageEnvironmentsNode(stepNode.value)
 			stage.Envs = envs
-			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
+			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
 		default:
 			step, errs := visitStepNode(stepNode.key, stepNode.value, source)
 			stage.Steps = append(stage.Steps, step)
-			errSlice.add(wrapPathErrorSlice(errs, stepNode.key.value)...)
+			errSlice.Add(errutil.ScopeSlice(errs, stepNode.key.value)...)
 		}
 	}
 	return

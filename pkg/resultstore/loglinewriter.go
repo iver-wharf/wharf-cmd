@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 )
 
-// Errors specific to the LogLineWriteCloser
+// errutil.Slice specific to the LogLineWriteCloser
 var (
 	ErrLogWriterAlreadyOpen = errors.New("log write handle is already open for this file")
 )

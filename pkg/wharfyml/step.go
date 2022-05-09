@@ -3,11 +3,12 @@ package wharfyml
 import (
 	"errors"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
 
-// Errors related to parsing steps.
+// errutil.Slice related to parsing steps.
 var (
 	ErrStepEmpty             = errors.New("missing a step type")
 	ErrStepMultipleStepTypes = errors.New("contains multiple step types")
@@ -20,17 +21,17 @@ type Step struct {
 	Type StepType
 }
 
-func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step Step, errSlice Errors) {
+func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step Step, errSlice errutil.Slice) {
 	step.Pos = newPosNode(node)
 	step.Name = name.value
 	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode(ErrStepEmpty, node))
+		errSlice.Add(wrapPosErrorNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.add(wrapPosErrorNode(ErrStepMultipleStepTypes, node))
+		errSlice.Add(wrapPosErrorNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
@@ -38,9 +39,9 @@ func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step St
 			name.value, stepTypeNode.key, stepTypeNode.value, source)
 		step.Type = stepType
 		if stepType != nil {
-			errSlice.add(wrapPathErrorSlice(errs, stepType.StepTypeName())...)
+			errSlice.Add(errutil.ScopeSlice(errs, stepType.Name())...)
 		} else {
-			errSlice.add(errs...)
+			errSlice.Add(errs...)
 		}
 	}
 	return

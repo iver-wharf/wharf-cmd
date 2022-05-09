@@ -1,9 +1,10 @@
-package wharfyml
+package steps
 
 import (
 	"fmt"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 )
 
@@ -30,28 +31,28 @@ type StepDocker struct {
 	SecretArgs  []string
 }
 
-// StepTypeName returns the name of this step type.
-func (StepDocker) StepTypeName() string { return "docker" }
+// Name returns the name of this step type.
+func (StepDocker) Name() string { return "docker" }
 
-func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
 	s.Name = stepName
 	s.Secret = "gitlab-registry"
 
-	var errSlice Errors
+	var errSlice errutil.Slice
 
 	if !p.hasNode("destination") {
 		var repoName string
-		var errs Errors
-		errs.addNonNils(
+		var errs errutil.Slice
+		errs.Add(
 			p.unmarshalStringWithVarSub("registry", "REG_URL", source, &s.Registry),
 			p.unmarshalStringWithVarSub("group", "REPO_GROUP", source, &s.Registry),
 			p.unmarshalStringFromVarSub("REPO_NAME", source, &repoName),
 			p.unmarshalString("name", &s.Name), // Already defaults to step name
 		)
 		for _, err := range errs {
-			errSlice.add(fmt.Errorf(`eval "destination" default: %w`, err))
+			errSlice.Add(fmt.Errorf(`eval "destination" default: %w`, err))
 		}
 		if repoName == s.Name {
 			s.Destination = fmt.Sprintf("%s/%s/%s",
@@ -66,7 +67,7 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 		var repoGroup string
 		err := p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup)
 		if err != nil {
-			errSlice.add(fmt.Errorf(`eval "append-cert" default: %w`, err))
+			errSlice.Add(fmt.Errorf(`eval "append-cert" default: %w`, err))
 		}
 		if strings.HasPrefix(strings.ToLower(s.Group), "default") {
 			s.AppendCert = true
@@ -74,7 +75,7 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 	}
 
 	// Unmarshalling
-	errSlice.addNonNils(
+	errSlice.AddNonNils(
 		p.unmarshalString("file", &s.File),
 		p.unmarshalString("tag", &s.Tag),
 		p.unmarshalString("destination", &s.Destination),
@@ -85,11 +86,11 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 		p.unmarshalBool("push", &s.Push),
 		p.unmarshalString("secretName", &s.SecretName),
 	)
-	errSlice.add(p.unmarshalStringSlice("args", &s.Args)...)
-	errSlice.add(p.unmarshalStringSlice("secretArgs", &s.SecretArgs)...)
+	errSlice.Add(p.unmarshalStringSlice("args", &s.Args)...)
+	errSlice.Add(p.unmarshalStringSlice("secretArgs", &s.SecretArgs)...)
 
 	// Validation
-	errSlice.addNonNils(
+	errSlice.AddNonNils(
 		p.validateRequiredString("file"),
 		p.validateRequiredString("tag"),
 	)

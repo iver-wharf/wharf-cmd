@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -101,7 +102,7 @@ func visitBool(node *yaml.Node) (bool, error) {
 	return b, nil
 }
 
-func visitMap(node *yaml.Node) (map[string]*yaml.Node, Errors) {
+func visitMap(node *yaml.Node) (map[string]*yaml.Node, errutil.Slice) {
 	pairs, errs := visitMapSlice(node)
 	m := make(map[string]*yaml.Node, len(pairs))
 	for _, pair := range pairs {
@@ -120,11 +121,11 @@ type strNode struct {
 	value string
 }
 
-func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
-	var errSlice Errors
+func visitMapSlice(node *yaml.Node) ([]mapItem, errutil.Slice) {
+	var errSlice errutil.Slice
 
 	if err := verifyKind(node, "map", yaml.MappingNode); err != nil {
-		errSlice.add(err)
+		errSlice.Add(err)
 		return nil, errSlice
 	}
 
@@ -136,21 +137,21 @@ func visitMapSlice(node *yaml.Node) ([]mapItem, Errors) {
 
 		if keyNode.Kind == yaml.ScalarNode && keyNode.ShortTag() == shortTagMerge {
 			merged, errs := visitMapSlice(valueNode)
-			errSlice.add(errs...)
+			errSlice.Add(errs...)
 			pairs = append(pairs, merged...)
 			continue
 		}
 
 		key, err := visitString(keyNode)
 		if err != nil {
-			errSlice.add(wrapPosErrorNode(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
+			errSlice.Add(wrapPosErrorNode(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
 			// non fatal error
 		} else if key == "" {
-			errSlice.add(wrapPosErrorNode(ErrKeyEmpty, keyNode))
+			errSlice.Add(wrapPosErrorNode(ErrKeyEmpty, keyNode))
 			// non fatal error
 		}
 		if _, ok := keys[key]; ok {
-			errSlice.add(wrapPathError(
+			errSlice.Add(errutil.Scope(
 				wrapPosErrorNode(ErrKeyCollision, keyNode),
 				key))
 			continue

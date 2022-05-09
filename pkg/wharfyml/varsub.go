@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// Errors specific to performing variable substitution on nodes.
+// errutil.Slice specific to performing variable substitution on nodes.
 var (
 	ErrUnsupportedVarSubType = errors.New("unsupported variable substitution value")
 )

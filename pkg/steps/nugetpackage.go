@@ -1,6 +1,9 @@
-package wharfyml
+package steps
 
-import "github.com/iver-wharf/wharf-cmd/pkg/varsub"
+import (
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+)
 
 // StepNuGetPackage represents a step type used for building .NET NuGet
 // packages.
@@ -18,16 +21,16 @@ type StepNuGetPackage struct {
 	CertificatesMountPath string
 }
 
-// StepTypeName returns the name of this step type.
-func (StepNuGetPackage) StepTypeName() string { return "nuget-package" }
+// Name returns the name of this step type.
+func (StepNuGetPackage) Name() string { return "nuget-package" }
 
-func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, Errors) {
+func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, errutil.Slice) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
-	var errSlice Errors
+	var errSlice errutil.Slice
 
 	// Unmarshalling
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.unmarshalString("version", &s.Version),
 		p.unmarshalString("project-path", &s.ProjectPath),
 		p.unmarshalString("repo", &s.Repo),
@@ -36,7 +39,7 @@ func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, _ 
 	)
 
 	// Validation
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.validateRequiredString("version"),
 		p.validateRequiredString("project-path"),
 		p.validateRequiredString("repo"),

@@ -1,8 +1,9 @@
-package wharfyml
+package steps
 
 import (
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 )
 
@@ -18,30 +19,30 @@ type StepHelmPackage struct {
 	Destination string
 }
 
-// StepTypeName returns the name of this step type.
-func (StepHelmPackage) StepTypeName() string { return "helm-package" }
+// Name returns the name of this step type.
+func (StepHelmPackage) Name() string { return "helm-package" }
 
-func (s StepHelmPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, Errors) {
+func (s StepHelmPackage) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice) {
 	s.Meta = getStepTypeMeta(p, stepName)
 
-	var errSlice Errors
+	var errSlice errutil.Slice
 
 	if !p.hasNode("destination") {
 		var chartRepo string
 		var repoGroup string
-		var errs Errors
-		errs.addNonNils(
+		var errs errutil.Slice
+		errs.Add(
 			p.unmarshalStringFromVarSub("CHART_REPO", source, &chartRepo),
 			p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup),
 		)
 		for _, err := range errs {
-			errSlice.add(fmt.Errorf(`eval "destination" default: %w`, err))
+			errSlice.Add(fmt.Errorf(`eval "destination" default: %w`, err))
 		}
 		s.Destination = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
 	// Unmarshalling
-	errSlice.addNonNils(
+	errSlice.Add(
 		p.unmarshalString("version", &s.Version),
 		p.unmarshalString("chart-path", &s.ChartPath),
 		p.unmarshalString("destination", &s.Destination),
