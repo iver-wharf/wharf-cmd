@@ -429,7 +429,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 	}
 	log.Debug().WithFunc(r.logFunc).Message("Transferred repo to init container.")
 
-	if step, ok := r.step.Type.(wharfyml.StepDocker); ok {
+	if step, ok := r.step.Type.(wharfyml.StepDocker); ok && step.AppendCert {
 		if err := r.transferModifiedDockerfileToPod(ctx, step); err != nil {
 			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}

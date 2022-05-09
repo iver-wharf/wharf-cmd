@@ -267,6 +267,21 @@ func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.
 		},
 	}
 
+	if step.AppendCert {
+		cont.VolumeMounts = append(cont.VolumeMounts,
+			v1.VolumeMount{
+				Name:      "cert",
+				ReadOnly:  true,
+				MountPath: "/mnt/cert",
+			})
+		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+			Name: "cert",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
+
 	// TODO: Load in certificates somehow
 
 	// TODO: Mount Docker secrets from REG_SECRET built-in var
