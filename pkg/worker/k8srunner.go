@@ -463,7 +463,7 @@ RUN mkdir -p /etc/ssl/certs/ \
 	return r.copyToPodStdin(ctx, &appendedDockerfile, namespace, podName, containerName, args)
 }
 
-func (r k8sStepRunner) copyToPodStdin(ctx context.Context, src io.Reader, namespace, podName, containerName string, args []string) error {
+func (r k8sStepRunner) copyToPodStdin(ctx context.Context, reader io.Reader, namespace, podName, containerName string, args []string) error {
 	// Based on: https://stackoverflow.com/a/57952887
 	reader, writer := io.Pipe()
 	defer reader.Close()
@@ -475,7 +475,7 @@ func (r k8sStepRunner) copyToPodStdin(ctx context.Context, src io.Reader, namesp
 	writeErrCh := make(chan error, 1)
 	go func() {
 		defer writer.Close()
-		_, err := io.Copy(writer, src)
+		_, err := io.Copy(writer, reader)
 		writeErrCh <- err
 	}()
 	err = exec.Stream(remotecommand.StreamOptions{
