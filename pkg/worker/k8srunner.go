@@ -113,6 +113,11 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 		pods:             f.clientset.CoreV1().Pods(f.Config.K8s.Namespace),
 		stepID:           stepID,
 		repoTar:          tarball,
+		target: &target{
+			namespace: f.Config.K8s.Namespace,
+			name:      "",
+			container: "init",
+		},
 	}
 	if err := r.dryRunStepError(ctx); err != nil {
 		return nil, fmt.Errorf("dry-run: %w", err)
@@ -183,6 +188,13 @@ type k8sStepRunner struct {
 	pods      corev1.PodInterface
 	stepID    uint64
 	repoTar   tarstore.Tarball
+	target    *target
+}
+
+type target struct {
+	namespace string
+	name      string
+	container string
 }
 
 func (r k8sStepRunner) Step() wharfyml.Step {
@@ -237,6 +249,7 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("create pod: %w", err)
 	}
+	r.target.name = newPod.Name
 	var logFunc = func(ev logger.Event) logger.Event {
 		return ev.
 			WithString("step", r.step.Name).
@@ -244,33 +257,33 @@ func (r k8sStepRunner) runStepError(ctx context.Context) error {
 	}
 
 	log.Debug().WithFunc(logFunc).Message("Created pod.")
-	defer r.stopPodNow(context.Background(), r.step.Name, newPod.Name)
+	defer r.stopPodNow(context.Background())
 	log.Debug().WithFunc(logFunc).Message("Waiting for init container to start.")
 	if err := r.waitForInitContainerRunning(ctx, newPod.ObjectMeta); err != nil {
 		return fmt.Errorf("wait for init container: %w", err)
 	}
 
 	log.Debug().WithFunc(logFunc).Message("Transferring data to pod.")
-	if err := r.transferDataToPod(ctx, r.Config.K8s.Namespace, newPod.Name, "init"); err != nil {
+	if err := r.transferDataToPod(ctx); err != nil {
 		return err
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred data to pod.")
 
-	if err := r.continueInitContainer(newPod.Name); err != nil {
+	if err := r.continueInitContainer(); err != nil {
 		return fmt.Errorf("continue init container: %w", err)
 	}
 	r.addStatusUpdate(workermodel.StatusRunning)
 
 	log.Debug().WithFunc(logFunc).Message("Waiting for app container to start.")
 	if err := r.waitForAppContainerRunningOrDone(ctx, newPod.ObjectMeta); err != nil {
-		if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{}); err != nil {
+		if err := r.readLogs(ctx, &v1.PodLogOptions{}); err != nil {
 			log.Debug().WithError(err).
 				Message("Failed to read logs from failed container.")
 		}
 		return fmt.Errorf("wait for app container: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("App container running. Streaming logs.")
-	if err := r.readLogs(ctx, newPod.Name, &v1.PodLogOptions{Follow: true, Timestamps: true}); err != nil {
+	if err := r.readLogs(ctx, &v1.PodLogOptions{Follow: true, Timestamps: true}); err != nil {
 		return fmt.Errorf("stream logs: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Logs ended. Waiting for termination.")
@@ -354,8 +367,8 @@ func (r k8sStepRunner) waitForPodModifiedFunc(ctx context.Context, podMeta metav
 	return fmt.Errorf("got no more events when watching pod: %v", podMeta.Name)
 }
 
-func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.PodLogOptions) error {
-	req := r.pods.GetLogs(podName, opts)
+func (r k8sStepRunner) readLogs(ctx context.Context, opts *v1.PodLogOptions) error {
+	req := r.pods.GetLogs(r.target.name, opts)
 	readCloser, err := req.Stream(ctx)
 	if err != nil {
 		return err
@@ -388,34 +401,34 @@ func (r k8sStepRunner) readLogs(ctx context.Context, podName string, opts *v1.Po
 	return scanner.Err()
 }
 
-func (r k8sStepRunner) stopPodNow(ctx context.Context, stepName, podName string) {
+func (r k8sStepRunner) stopPodNow(ctx context.Context) {
 	gracePeriod := int64(0) // 0=immediately
-	err := r.pods.Delete(ctx, podName, metav1.DeleteOptions{
+	err := r.pods.Delete(ctx, r.target.name, metav1.DeleteOptions{
 		GracePeriodSeconds: &gracePeriod,
 	})
 	if err != nil {
 		log.Warn().
 			WithError(err).
-			WithString("step", stepName).
-			WithString("pod", podName).
+			WithString("step", r.step.Name).
+			WithString("pod", r.target.name).
 			Message("Failed to delete pod.")
 	} else {
 		log.Debug().
-			WithString("step", stepName).
-			WithString("pod", podName).
+			WithString("step", r.step.Name).
+			WithString("pod", r.target.name).
 			Message("Deleted pod.")
 	}
 }
 
-func (r k8sStepRunner) transferDataToPod(ctx context.Context, namespace, podName, containerName string) error {
+func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 	var logFunc = func(ev logger.Event) logger.Event {
 		return ev.
 			WithString("step", r.step.Name).
-			WithString("pod", podName)
+			WithString("pod", r.target.name)
 	}
 
 	log.Debug().WithFunc(logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, commonRepoVolumeMount.MountPath, r.Config.K8s.Namespace, podName, "init"); err != nil {
+	if err := r.copyDirToPod(ctx, commonRepoVolumeMount.MountPath); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(logFunc).Message("Transferred repo to init container.")
@@ -430,7 +443,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context, namespace, podName
 			if _, err := os.Stat(dockerfilePath); err != nil {
 				return fmt.Errorf("transfer modified dockerfile: %w", err)
 			}
-			if err := r.copyDockerfileToPod(ctx, step, r.Config.K8s.Namespace, podName, "init"); err != nil {
+			if err := r.copyDockerfileToPod(ctx, step); err != nil {
 				return fmt.Errorf("transfer modified dockerfile: %w", err)
 			}
 			log.Debug().WithFunc(logFunc).Message("Transferred modified Dockerfile to init container.")
@@ -447,7 +460,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context, namespace, podName
 				return fmt.Errorf("transfer cert: %w: %q", errParentDirAccessNotAllowed, destPath)
 			}
 			args := []string{"tee", destPath}
-			if err := r.copyToPodStdin(ctx, certFile, r.Config.K8s.Namespace, podName, "init", args); err != nil {
+			if err := r.copyToPodStdin(ctx, certFile, args); err != nil {
 				return fmt.Errorf("transfer cert: %w", err)
 			}
 			log.Debug().WithFunc(logFunc).Message("Transferred cert file to init container.")
@@ -456,8 +469,8 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context, namespace, podName
 	return nil
 }
 
-func (r k8sStepRunner) continueInitContainer(podName string) error {
-	exec, err := execInPodPipeStdout(r.RestConfig, r.Config.K8s.Namespace, podName, "init", podInitContinueArgs)
+func (r k8sStepRunner) continueInitContainer() error {
+	exec, err := execInPodPipeStdout(r.RestConfig, r.target, podInitContinueArgs)
 	if err != nil {
 		return err
 	}
@@ -467,7 +480,7 @@ func (r k8sStepRunner) continueInitContainer(podName string) error {
 	return nil
 }
 
-func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, podName, containerName string) error {
+func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath string) error {
 	tarReader, err := r.repoTar.Open()
 	if err != nil {
 		return err
@@ -475,10 +488,10 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath, namespace, po
 	defer tarReader.Close()
 
 	args := []string{"tar", "-xf", "-", "-C", destPath}
-	return r.copyToPodStdin(ctx, tarReader, namespace, podName, containerName, args)
+	return r.copyToPodStdin(ctx, tarReader, args)
 }
 
-func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step wharfyml.StepDocker, namespace, podName, containerName string) error {
+func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
 	path := filepath.Join(r.CurrentDir, step.File)
 	if !validateNoParentDirAccess(path) {
 		return fmt.Errorf("%w: %q", errParentDirAccessNotAllowed, path)
@@ -500,15 +513,15 @@ RUN mkdir -p /etc/ssl/certs/ \
 	&& cat /usr/local/share/ca-certificates/root.crt >> /etc/ssl/certs/ca-certificates.crt`)...)
 	reader := bytes.NewReader(b)
 	args := []string{"tee"}
-	return r.copyToPodStdin(ctx, reader, namespace, podName, containerName, args)
+	return r.copyToPodStdin(ctx, reader, args)
 }
 
-func (r k8sStepRunner) copyToPodStdin(ctx context.Context, reader io.Reader, namespace, podName, containerName string, args []string) error {
+func (r k8sStepRunner) copyToPodStdin(ctx context.Context, reader io.Reader, args []string) error {
 	// Based on: https://stackoverflow.com/a/57952887
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeReader.Close()
 	defer pipeWriter.Close()
-	exec, err := execInPodPipedStdin(r.RestConfig, namespace, podName, containerName, args)
+	exec, err := execInPodPipedStdin(r.RestConfig, r.target, args)
 	if err != nil {
 		return err
 	}
@@ -532,17 +545,17 @@ func (r k8sStepRunner) copyToPodStdin(ctx context.Context, reader io.Reader, nam
 	}
 }
 
-func execInPodPipedStdin(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {
-	return execInPod(c, namespace, podName, &v1.PodExecOptions{
-		Container: containerName,
+func execInPodPipedStdin(c *rest.Config, t *target, args []string) (remotecommand.Executor, error) {
+	return execInPod(c, t.namespace, t.name, &v1.PodExecOptions{
+		Container: t.container,
 		Command:   args,
 		Stdin:     true,
 	})
 }
 
-func execInPodPipeStdout(c *rest.Config, namespace, podName, containerName string, args []string) (remotecommand.Executor, error) {
-	return execInPod(c, namespace, podName, &v1.PodExecOptions{
-		Container: containerName,
+func execInPodPipeStdout(c *rest.Config, t *target, args []string) (remotecommand.Executor, error) {
+	return execInPod(c, t.namespace, t.name, &v1.PodExecOptions{
+		Container: t.container,
 		Command:   args,
 		Stdout:    true,
 	})
