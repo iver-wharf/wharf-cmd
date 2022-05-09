@@ -3,7 +3,30 @@ package errutil
 import (
 	"errors"
 	"sort"
+
+	"gopkg.in/yaml.v3"
 )
+
+// NewPos wraps an error with a position. If added to an error that already has
+// a position, then that inner position is shadowed by this new position,
+// rendering it hidden/ignored.
+func NewPos(err error, line, column int) error {
+	return Pos{
+		Err:    err,
+		Line:   line,
+		Column: column,
+	}
+}
+
+// NewPosNode is a utility function that creates a new Pos error based on the
+// position info from a YAML node.
+func NewPosNode(err error, node *yaml.Node) error {
+	return Pos{
+		Err:    err,
+		Line:   node.Line,
+		Column: node.Column,
+	}
+}
 
 // Pos is a positioned error type that holds metadata about where the error
 // occurred (line and column).

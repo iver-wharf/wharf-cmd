@@ -6,6 +6,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,7 +28,7 @@ type StepTypeMeta struct {
 	FieldPos map[string]Pos
 }
 
-func visitStepTypeNode(stepName string, key strNode, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
+func visitStepTypeNode(stepName string, key visit.StringNode, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
 	visitor, err := visitStepTypeKeyNode(key)
 	if err != nil {
 		return nil, errutil.Slice{err}
@@ -35,11 +36,11 @@ func visitStepTypeNode(stepName string, key strNode, node *yaml.Node, source var
 	return visitor.visitStepTypeValueNode(stepName, node, source)
 }
 
-func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
+func visitStepTypeKeyNode(key visit.StringNode) (stepTypeVisitor, error) {
 	visitor := stepTypeVisitor{
-		keyNode: key.node,
+		keyNode: key.Node,
 	}
-	switch key.value {
+	switch key.Value {
 	case "container":
 		visitor.visitNode = StepContainer{}.visitStepTypeNode
 	case "docker":
@@ -53,8 +54,8 @@ func visitStepTypeKeyNode(key strNode) (stepTypeVisitor, error) {
 	case "nuget-package":
 		visitor.visitNode = StepNuGetPackage{}.visitStepTypeNode
 	default:
-		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, key.value)
-		return stepTypeVisitor{}, wrapPosErrorNode(err, key.node)
+		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, key.Value)
+		return stepTypeVisitor{}, wrapPosErrorNode(err, key.Node)
 	}
 	return visitor, nil
 }
@@ -66,7 +67,7 @@ type stepTypeVisitor struct {
 
 func (v stepTypeVisitor) visitStepTypeValueNode(stepName string, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
-	m, errs := visitMap(node)
+	m, errs := visit.Map(node)
 	errSlice.Add(errs...)
 
 	parser := newNodeMapParser(v.keyNode, m)

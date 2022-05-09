@@ -6,6 +6,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -43,7 +44,7 @@ func (p nodeMapParser) unmarshalNumber(key string, target *float64) error {
 		return nil
 	}
 	p.positions[key] = newPosNode(node)
-	num, err := visitFloat64(node)
+	num, err := visit.Float64(node)
 	if err != nil {
 		return errutil.Scope(err, key)
 	}
@@ -57,7 +58,7 @@ func (p nodeMapParser) unmarshalString(key string, target *string) error {
 		return nil
 	}
 	p.positions[key] = newPosNode(node)
-	str, err := visitString(node)
+	str, err := visit.String(node)
 	if err != nil {
 		return errutil.Scope(err, key)
 	}
@@ -71,14 +72,14 @@ func (p nodeMapParser) unmarshalStringSlice(key string, target *[]string) erruti
 		return nil
 	}
 	p.positions[key] = newPosNode(node)
-	seq, err := visitSequence(node)
+	seq, err := visit.Sequence(node)
 	if err != nil {
 		return errutil.Slice{errutil.Scope(err, key)}
 	}
 	strs := make([]string, 0, len(seq))
 	var errSlice errutil.Slice
 	for i, n := range seq {
-		str, err := visitString(n)
+		str, err := visit.String(n)
 		if err != nil {
 			errSlice.Add(errutil.Scope(err, fmt.Sprintf("%s[%d]", key, i)))
 			continue
@@ -96,17 +97,17 @@ func (p nodeMapParser) unmarshalStringStringMap(key string, target *map[string]s
 	}
 	p.positions[key] = newPosNode(node)
 	var errSlice errutil.Slice
-	nodes, errs := visitMapSlice(node)
+	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errutil.ScopeSlice(errs, key)...)
 
 	strMap := make(map[string]string, len(nodes))
 	for _, n := range nodes {
-		val, err := visitString(n.value)
+		val, err := visit.String(n.Value)
 		if err != nil {
-			errSlice.Add(errutil.Scope(err, fmt.Sprintf("%s.%s", key, n.key.value)))
+			errSlice.Add(errutil.Scope(err, fmt.Sprintf("%s.%s", key, n.Key.Value)))
 			continue
 		}
-		strMap[n.key.value] = val
+		strMap[n.Key.Value] = val
 	}
 	*target = strMap
 	return errSlice
@@ -140,7 +141,7 @@ func (p nodeMapParser) unmarshalBool(key string, target *bool) error {
 		return nil
 	}
 	p.positions[key] = newPosNode(node)
-	b, err := visitBool(node)
+	b, err := visit.Bool(node)
 	if err != nil {
 		return errutil.Scope(err, key)
 	}
@@ -153,7 +154,7 @@ func (p nodeMapParser) validateRequiredString(key string) error {
 	if !ok {
 		return p.newRequiredError(key)
 	}
-	isStr := node.Kind == yaml.ScalarNode && node.ShortTag() == shortTagString
+	isStr := node.Kind == yaml.ScalarNode && node.ShortTag() == visit.ShortTagString
 	if isStr && node.Value == "" {
 		return p.newRequiredError(key)
 	}

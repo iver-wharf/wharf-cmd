@@ -9,6 +9,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -58,8 +59,8 @@ func ParseVarFiles(currentDir string) (varsub.Source, errutil.Slice) {
 		}
 		source := make(varsub.SourceMap)
 		for _, item := range items {
-			source[item.key.value] = varsub.Val{
-				Value:  VarSubNode{item.value},
+			source[item.Key.Value] = varsub.Val{
+				Value:  VarSubNode{item.Value},
 				Source: prettyPath,
 			}
 		}
@@ -68,7 +69,7 @@ func ParseVarFiles(currentDir string) (varsub.Source, errutil.Slice) {
 	return filesSources, errSlice
 }
 
-func tryReadVarsFileNodes(path string) ([]mapItem, errutil.Slice) {
+func tryReadVarsFileNodes(path string) ([]visit.MapItem, errutil.Slice) {
 	file, err := os.Open(path)
 	if err != nil {
 		// Silently ignore. Could not exist, be a directory, or not readable.
@@ -79,30 +80,30 @@ func tryReadVarsFileNodes(path string) ([]mapItem, errutil.Slice) {
 	return parseVarsFileNodes(file)
 }
 
-func parseVarsFileNodes(reader io.Reader) ([]mapItem, errutil.Slice) {
-	rootNodes, err := decodeRootNodes(reader)
+func parseVarsFileNodes(reader io.Reader) ([]visit.MapItem, errutil.Slice) {
+	rootNodes, err := visit.DecodeRootNodes(reader)
 	if err != nil {
 		return nil, errutil.Slice{err}
 	}
 	return visitVarsFileRootNodes(rootNodes)
 }
 
-func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, errutil.Slice) {
-	var allVars []mapItem
+func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]visit.MapItem, errutil.Slice) {
+	var allVars []visit.MapItem
 	var errSlice errutil.Slice
 	for i, root := range rootNodes {
-		docNodes, errs := visitMapSlice(root)
+		docNodes, errs := visit.MapSlice(root)
 		if len(rootNodes) > 1 {
 			errSlice.Add(errutil.ScopeSlice(errs, fmt.Sprintf("doc#%d", i+1))...)
 		} else {
 			errSlice.Add(errs...)
 		}
 		for _, node := range docNodes {
-			if node.key.value != propVars {
+			if node.Key.Value != propVars {
 				// just silently ignore
 				continue
 			}
-			vars, errs := visitMapSlice(node.value)
+			vars, errs := visit.MapSlice(node.Value)
 			errSlice.Add(errutil.ScopeSlice(errs, propVars)...)
 			allVars = append(allVars, vars...)
 		}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -42,47 +43,47 @@ type EnvRef struct {
 }
 
 func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, errutil.Slice) {
-	nodes, errs := visitMapSlice(node)
+	nodes, errs := visit.MapSlice(node)
 	var errSlice errutil.Slice
 	errSlice.Add(errs...)
 	envs := make(map[string]Env, len(nodes))
 	for _, n := range nodes {
-		env, errs := visitEnvironmentNode(n.key, n.value)
-		envs[n.key.value] = env
-		errSlice.Add(errutil.ScopeSlice(errs, n.key.value)...)
+		env, errs := visitEnvironmentNode(n.Key, n.Value)
+		envs[n.Key.Value] = env
+		errSlice.Add(errutil.ScopeSlice(errs, n.Key.Value)...)
 	}
 	return envs, errSlice
 }
 
-func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice errutil.Slice) {
+func visitEnvironmentNode(nameNode visit.StringNode, node *yaml.Node) (env Env, errSlice errutil.Slice) {
 	env = Env{
-		Name:   nameNode.value,
+		Name:   nameNode.Value,
 		Vars:   make(map[string]VarSubNode),
 		Source: newPosNode(node),
 	}
-	nodes, errs := visitMapSlice(node)
+	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	for _, n := range nodes {
-		if err := verifyEnvironmentVariableNode(n.value); err != nil {
-			errSlice.Add(errutil.Scope(err, n.key.value))
+		if err := verifyEnvironmentVariableNode(n.Value); err != nil {
+			errSlice.Add(errutil.Scope(err, n.Key.Value))
 		}
-		env.Vars[n.key.value] = VarSubNode{n.value}
+		env.Vars[n.Key.Value] = VarSubNode{n.Value}
 	}
 	return
 }
 
 func verifyEnvironmentVariableNode(node *yaml.Node) error {
-	return verifyKind(node, "string, boolean, or number", yaml.ScalarNode)
+	return visit.VerifyKind(node, "string, boolean, or number", yaml.ScalarNode)
 }
 
 func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice errutil.Slice) {
-	nodes, err := visitSequence(node)
+	nodes, err := visit.Sequence(node)
 	if err != nil {
 		return nil, errutil.Slice{err}
 	}
 	envs = make([]EnvRef, 0, len(nodes))
 	for _, envNode := range nodes {
-		env, err := visitString(envNode)
+		env, err := visit.String(envNode)
 		if err != nil {
 			errSlice.Add(err)
 			continue

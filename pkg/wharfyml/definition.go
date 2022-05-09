@@ -6,6 +6,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -35,20 +36,20 @@ func (d *Definition) ListAllSteps() []Step {
 }
 
 func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice errutil.Slice) {
-	nodes, errs := visitMapSlice(node)
+	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	envSourceNode := node
 
 	for _, n := range nodes {
-		switch n.key.value {
+		switch n.Key.Value {
 		case propEnvironments:
 			var errs errutil.Slice
-			def.Envs, errs = visitDocEnvironmentsNode(n.value)
+			def.Envs, errs = visitDocEnvironmentsNode(n.Value)
 			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
-			envSourceNode = n.value
+			envSourceNode = n.Value
 		case propInputs:
 			var errs errutil.Slice
-			def.Inputs, errs = visitInputsNode(n.value)
+			def.Inputs, errs = visitInputsNode(n.Value)
 			errSlice.Add(errutil.ScopeSlice(errs, propInputs)...)
 		}
 	}
@@ -99,21 +100,21 @@ func getTargetEnv(envs map[string]Env, envName string) (*Env, error) {
 	return &env, nil
 }
 
-func visitDefStageNodes(nodes []mapItem, source varsub.Source) (stages []Stage, errSlice errutil.Slice) {
+func visitDefStageNodes(nodes []visit.MapItem, source varsub.Source) (stages []Stage, errSlice errutil.Slice) {
 	for _, n := range nodes {
-		switch n.key.value {
+		switch n.Key.Value {
 		case propEnvironments, propInputs:
 			// Do nothing, they've already been visited.
 			continue
 		}
-		stageNode, err := varSubNodeRec(n.value, source)
+		stageNode, err := varSubNodeRec(n.Value, source)
 		if err != nil {
 			errSlice.Add(err)
 			continue
 		}
-		stage, errs := visitStageNode(n.key, stageNode, source)
+		stage, errs := visitStageNode(n.Key, stageNode, source)
 		stages = append(stages, stage)
-		errSlice.Add(errutil.ScopeSlice(errs, n.key.value)...)
+		errSlice.Add(errutil.ScopeSlice(errs, n.Key.Value)...)
 	}
 	return
 }

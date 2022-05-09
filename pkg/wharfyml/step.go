@@ -5,6 +5,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -21,10 +22,10 @@ type Step struct {
 	Type StepType
 }
 
-func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step Step, errSlice errutil.Slice) {
+func visitStepNode(name visit.StringNode, node *yaml.Node, source varsub.Source) (step Step, errSlice errutil.Slice) {
 	step.Pos = newPosNode(node)
-	step.Name = name.value
-	nodes, errs := visitMapSlice(node)
+	step.Name = name.Value
+	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	if len(nodes) == 0 {
 		errSlice.Add(wrapPosErrorNode(ErrStepEmpty, node))
@@ -36,7 +37,7 @@ func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step St
 	}
 	for _, stepTypeNode := range nodes {
 		stepType, errs := visitStepTypeNode(
-			name.value, stepTypeNode.key, stepTypeNode.value, source)
+			name.Value, stepTypeNode.Key, stepTypeNode.Value, source)
 		step.Type = stepType
 		if stepType != nil {
 			errSlice.Add(errutil.ScopeSlice(errs, stepType.Name())...)

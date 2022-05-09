@@ -7,6 +7,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -44,7 +45,7 @@ type Input interface {
 }
 
 func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
-	nodes, err := visitSequence(node)
+	nodes, err := visit.Sequence(node)
 	if err != nil {
 		errSlice.Add(err)
 		return
@@ -69,7 +70,7 @@ func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
 }
 
 func visitInputTypeNode(node *yaml.Node) (input Input, errSlice errutil.Slice) {
-	nodeMap, errs := visitMap(node)
+	nodeMap, errs := visit.Map(node)
 	errSlice.Add(errs...)
 	p := newNodeMapParser(node, nodeMap)
 	var inputName string

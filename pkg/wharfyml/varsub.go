@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -30,10 +31,10 @@ func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 		return node, nil
 	}
 	if node.Kind == yaml.ScalarNode {
-		if node.Tag != shortTagString {
+		if node.Tag != visit.ShortTagString {
 			return node, nil
 		}
-		return varSubStringNode(strNode{node, node.Value}, source)
+		return varSubStringNode(visit.StringNode{node, node.Value}, source)
 	}
 	if len(node.Content) == 0 {
 		return node, nil
@@ -50,12 +51,12 @@ func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	return &clone, nil
 }
 
-func varSubStringNode(str strNode, source varsub.Source) (*yaml.Node, error) {
-	val, err := varsub.Substitute(str.value, source)
+func varSubStringNode(str visit.StringNode, source varsub.Source) (*yaml.Node, error) {
+	val, err := varsub.Substitute(str.Value, source)
 	if err != nil {
-		return nil, wrapPosErrorNode(err, str.node)
+		return nil, wrapPosErrorNode(err, str.Node)
 	}
-	return newNodeWithValue(str.node, val)
+	return newNodeWithValue(str.Node, val)
 }
 
 func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
@@ -63,20 +64,20 @@ func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 	clone.Kind = yaml.ScalarNode
 	switch val := val.(type) {
 	case nil:
-		clone.Tag = shortTagNull
+		clone.Tag = visit.ShortTagNull
 		clone.Value = ""
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
-		clone.Tag = shortTagInt
+		clone.Tag = visit.ShortTagInt
 		clone.Value = fmt.Sprint(val)
 	case float32, float64:
-		clone.Tag = shortTagFloat
+		clone.Tag = visit.ShortTagFloat
 		clone.Value = fmt.Sprint(val)
 	case time.Time:
-		clone.Tag = shortTagTimestamp
+		clone.Tag = visit.ShortTagTimestamp
 		clone.Value = val.Format(time.RFC3339Nano)
 	case bool:
-		clone.Tag = shortTagBool
+		clone.Tag = visit.ShortTagBool
 		if val {
 			clone.Value = "true"
 		} else {
