@@ -69,16 +69,13 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 					ImagePullPolicy: v1.PullIfNotPresent,
 					Command:         podInitWaitArgs,
 					VolumeMounts: []v1.VolumeMount{
-						{
-							Name:      "repo",
-							MountPath: "/mnt/repo",
-						},
+						commonRepoVolumeMount,
 					},
 				},
 			},
 			Volumes: []v1.Volume{
 				{
-					Name: "repo",
+					Name: commonRepoVolumeMount.Name,
 					VolumeSource: v1.VolumeSource{
 						EmptyDir: &v1.EmptyDirVolumeSource{},
 					},
@@ -270,7 +267,20 @@ func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.
 		},
 	}
 
-	// TODO: Load in certificates somehow
+	if step.AppendCert {
+		cont.VolumeMounts = append(cont.VolumeMounts,
+			v1.VolumeMount{
+				Name:      "cert",
+				ReadOnly:  true,
+				MountPath: "/mnt/cert",
+			})
+		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
+			Name: "cert",
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		})
+	}
 
 	// TODO: Mount Docker secrets from REG_SECRET built-in var
 

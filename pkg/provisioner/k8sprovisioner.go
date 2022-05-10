@@ -96,6 +96,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		repoVolumeName      = "repo"
 		repoVolumeMountPath = "/mnt/repo"
 		sshVolumeName       = "ssh"
+		certVolumeName      = "cert"
+		certVolumeMountPath = "/mnt/cert"
 	)
 	workerInstanceID := typ.Coal(args.WharfInstanceID, p.instanceID)
 	labels := map[string]string{
