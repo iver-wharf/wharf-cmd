@@ -282,8 +282,6 @@ func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.
 		})
 	}
 
-	// TODO: Load in certificates somehow
-
 	// TODO: Mount Docker secrets from REG_SECRET built-in var
 
 	// TODO: Add "--insecure" arg if REG_INSECURE
