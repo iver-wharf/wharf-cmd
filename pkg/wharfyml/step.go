@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// errutil.Slice related to parsing steps.
+// Errors related to parsing steps.
 var (
 	ErrStepEmpty             = errors.New("missing a step type")
 	ErrStepMultipleStepTypes = errors.New("contains multiple step types")

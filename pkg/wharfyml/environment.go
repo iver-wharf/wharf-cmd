@@ -10,7 +10,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// errutil.Slice related to parsing environments.
+// Errors related to parsing environments.
 var (
 	ErrStageEnvEmpty = errors.New("environment name cannot be empty")
 )

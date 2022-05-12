@@ -11,7 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// errutil.Slice related to parsing environments.
+// Errors related to parsing environments.
 var (
 	ErrInputNameCollision      = errors.New("input variable name is already used")
 	ErrInputUnknownType        = errors.New("unknown input type")

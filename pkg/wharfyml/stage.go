@@ -9,7 +9,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// errutil.Slice related to parsing stages.
+// Errors related to parsing stages.
 var (
 	ErrStageEmpty = errors.New("stage is missing steps")
 )
