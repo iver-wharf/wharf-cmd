@@ -18,6 +18,7 @@ var testVarSource = varsub.SourceMap{
 	"REPO_GROUP": varsub.Val{Value: "iver-wharf"},
 	"REPO_NAME":  varsub.Val{Value: "wharf-cmd"},
 	"REG_URL":    varsub.Val{Value: "http://harbor.example.com"},
+	"REG_SECRET": varsub.Val{Value: "docker-secret"},
 	"CHART_REPO": varsub.Val{Value: "http://charts.example.com"},
 }
 

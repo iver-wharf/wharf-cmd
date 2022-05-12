@@ -59,6 +59,7 @@ func (s Docker) PodSpec() *v1.PodSpec { return s.podSpec }
 func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Name = stepName
 	s.Secret = "gitlab-registry"
+	s.Push = true
 
 	var errSlice errutil.Slice
 
@@ -177,7 +178,41 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		})
 	}
 
-	// TODO: Mount Docker secrets from REG_SECRET built-in var
+	var regSecret string
+	if s.Push {
+		errSlice.Add(v.RequireStringFromVarSub("REG_SECRET", &regSecret))
+	} else {
+		errSlice.Add(v.LookupStringFromVarSub("REG_SECRET", &regSecret))
+	}
+	if regSecret != "" {
+		const volumeName = "docker-secrets"
+		podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
+			Name: volumeName,
+			VolumeSource: v1.VolumeSource{
+				Projected: &v1.ProjectedVolumeSource{
+					Sources: []v1.VolumeProjection{
+						{
+							Secret: &v1.SecretProjection{
+								LocalObjectReference: v1.LocalObjectReference{
+									Name: regSecret,
+								},
+								Items: []v1.KeyToPath{
+									{
+										Key:  ".dockerconfigjson",
+										Path: "config.json",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		})
+		cont.VolumeMounts = append(cont.VolumeMounts, v1.VolumeMount{
+			Name:      volumeName,
+			MountPath: "/kaniko/.docker",
+		})
+	}
 
 	args := []string{
 		// Not using path/filepath package because we know don't want to

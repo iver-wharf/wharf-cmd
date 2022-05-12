@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path"
 	"regexp"
 	"strings"
 
@@ -71,7 +70,7 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 		Spec: podSpec,
 	}
 
-	if podSpecPtr != nil {
+	if podSpecPtr == nil {
 		if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
 			return v1.Pod{}, err
 		}
@@ -168,8 +167,6 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
 	case steps.Container:
 		return applyStepContainer(pod, s)
-	case steps.Docker:
-		return applyStepDocker(c.Docker, pod, s, step.Name)
 	case steps.HelmPackage:
 		return applyStepHelmPackage(pod, s)
 	case steps.Helm:
@@ -242,142 +239,6 @@ func applyStepContainer(pod *v1.Pod, step steps.Container) error {
 	pod.Spec.ServiceAccountName = step.ServiceAccount
 	pod.Spec.Containers = append(pod.Spec.Containers, cont)
 	return nil
-}
-
-func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step steps.Docker, stepName string) error {
-	repoDir := commonRepoVolumeMount.MountPath
-	cont := v1.Container{
-		Name:  commonContainerName,
-		Image: fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
-		// default entrypoint for image is "/kaniko/executor"
-		WorkingDir: repoDir,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-		},
-	}
-
-	if step.AppendCert {
-		cont.VolumeMounts = append(cont.VolumeMounts,
-			v1.VolumeMount{
-				Name:      "cert",
-				ReadOnly:  true,
-				MountPath: "/mnt/cert",
-			})
-		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
-			Name: "cert",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	}
-
-	// TODO: Mount Docker secrets from REG_SECRET built-in var
-
-	// TODO: Add "--insecure" arg if REG_INSECURE
-
-	args := []string{
-		// Not using path/filepath package because we know don't want to
-		// suddenly use Windows directory separator when running from Windows.
-		"--dockerfile", path.Join(repoDir, step.File),
-		"--context", path.Join(repoDir, step.Context),
-		"--skip-tls-verify", // This is bad, but remains due to backward compatibility
-	}
-
-	for _, buildArg := range step.Args {
-		args = append(args, "--build-arg", buildArg)
-	}
-
-	destination := getDockerDestination(step, stepName)
-	anyTag := false
-	for _, tag := range strings.Split(step.Tag, ",") {
-		tag = strings.TrimSpace(tag)
-		if tag == "" {
-			continue
-		}
-		anyTag = true
-		args = append(args, "--destination",
-			fmt.Sprintf("%s:%s", destination, tag))
-	}
-	if !anyTag {
-		return errors.New("tags field resolved to zero tags")
-	}
-
-	if !step.Push {
-		args = append(args, "--no-push")
-	}
-
-	if step.SecretName != "" {
-		// In Docker & Kaniko, adding only `--build-arg MY_ARG` will make it
-		// pull the value from an environment variable instead of from a literal.
-		// This is used to not specify the secret values in the pod manifest.
-
-		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
-			"local", // TODO: Use Wharf instance ID
-			1,       // TODO: Use project ID
-			step.SecretName,
-		)
-		optional := true
-		for _, arg := range step.SecretArgs {
-			idx := strings.IndexByte(arg, '=')
-			if idx == -1 {
-				log.Warn().Message(
-					"Invalid secret arg format, missing '=', expected 'ARG=secret-key', skipping secret arg.")
-				continue
-			}
-			argName, secretKey := arg[:idx], arg[idx+1:]
-			if len(argName) == 0 {
-				log.Warn().Message(
-					"Invalid secret arg format, 'ARG', expected 'ARG=secret-key', skipping secret arg.")
-				continue
-			}
-			if len(secretKey) == 0 {
-				log.Warn().Message(
-					"Invalid secret arg format, 'secret-key', expected 'ARG=secret-key', skipping secret arg.")
-				continue
-			}
-			args = append(args, "--build-arg", argName)
-			cont.Env = append(cont.Env, v1.EnvVar{
-				Name: argName,
-				ValueFrom: &v1.EnvVarSource{
-					SecretKeyRef: &v1.SecretKeySelector{
-						LocalObjectReference: v1.LocalObjectReference{
-							Name: secretName,
-						},
-						Optional: &optional,
-					},
-				},
-			})
-		}
-	} else if len(step.SecretArgs) != 0 {
-		log.Warn().Message(
-			"Found secretArgs but is missing secretName, skipping secret args.")
-	}
-
-	log.Debug().WithString("args", quoteArgsForLogging(args)).
-		Message("Kaniko args.")
-
-	cont.Args = args
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	return nil
-}
-
-func getDockerDestination(step steps.Docker, stepName string) string {
-	if step.Destination != "" {
-		return strings.ToLower(step.Destination)
-	}
-	const repoName = "project-name" // TODO: replace with REPO_NAME built-in var
-	if step.Registry == "" {
-		step.Registry = "docker.io" // TODO: replace with REG_URL
-	}
-	if step.Group == "" {
-		step.Group = "iver-wharf" // TODO: replace with REPO_GROUP
-	}
-	if stepName == repoName {
-		return strings.ToLower(fmt.Sprintf("%s/%s/%s",
-			step.Registry, step.Group, repoName))
-	}
-	return strings.ToLower(fmt.Sprintf("%s/%s/%s/%s",
-		step.Registry, step.Group, repoName, stepName))
 }
 
 func applyStepHelmPackage(pod *v1.Pod, step steps.HelmPackage) error {
