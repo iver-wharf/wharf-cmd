@@ -96,6 +96,12 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 		}
 	}
 
+	if v.HasNode(dockerFieldSecret) {
+		errSlice.Add(v.VisitString(dockerFieldSecret, &s.Secret))
+	} else {
+		errSlice.Add(v.LookupStringFromVarSub("REG_SECRET", &s.Secret))
+	}
+
 	// Visitling
 	errSlice.Add(
 		v.VisitString(dockerFieldFile, &s.File),
@@ -103,7 +109,6 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 		v.VisitString(dockerFieldDestination, &s.Destination),
 		v.VisitString(dockerFieldName, &s.Name),
 		v.VisitString(dockerFieldContext, &s.Context),
-		v.VisitStringWithVarSub(dockerFieldSecret, "REG_SECRET", &s.Secret),
 		v.VisitBool(dockerFieldAppendCert, &s.AppendCert),
 		v.VisitBool(dockerFieldPush, &s.Push),
 		v.VisitString(dockerFieldSecretName, &s.SecretName),
