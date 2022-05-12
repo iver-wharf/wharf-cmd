@@ -80,7 +80,7 @@ func (f factory) NewStepType(stepTypeName, stepName string, v visit.MapVisitor) 
 	case "container":
 		step = Container{}
 	case "docker":
-		step = Docker{config: &f.config.Worker.Steps.Docker}
+		step = Docker{config: &f.config.Worker.Steps.Docker, instanceID: f.config.InstanceID}
 	case "helm":
 		step = Helm{config: &f.config.Worker.Steps.Helm}
 	case "helm-package":

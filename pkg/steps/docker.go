@@ -47,8 +47,9 @@ type Docker struct {
 	SecretName  string
 	SecretArgs  []string
 
-	config  *config.DockerStepConfig
-	podSpec *v1.PodSpec
+	instanceID string
+	config     *config.DockerStepConfig
+	podSpec    *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -256,8 +257,8 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		// This is used to not specify the secret values in the pod manifest.
 
 		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
-			"local", // TODO: Use Wharf instance ID
-			1,       // TODO: Use project ID
+			s.instanceID,
+			1, // TODO: Use project ID
 			s.SecretName,
 		)
 		optional := true
