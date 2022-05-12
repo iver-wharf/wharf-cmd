@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
@@ -31,7 +32,7 @@ type Docker struct {
 // StepTypeName returns the name of this step type.
 func (Docker) StepTypeName() string { return "docker" }
 
-func (s *Docker) init(stepName string, v visit.MapVisitor) errutil.Slice {
+func (s Docker) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	s.Name = stepName
 	s.Secret = "gitlab-registry"
 
@@ -89,5 +90,5 @@ func (s *Docker) init(stepName string, v visit.MapVisitor) errutil.Slice {
 		v.ValidateRequiredString("file"),
 		v.ValidateRequiredString("tag"),
 	)
-	return errSlice
+	return s, errSlice
 }

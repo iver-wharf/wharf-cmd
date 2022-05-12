@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
@@ -19,7 +20,7 @@ type HelmPackage struct {
 // StepTypeName returns the name of this step type.
 func (HelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s *HelmPackage) init(stepName string, v visit.MapVisitor) errutil.Slice {
+func (s HelmPackage) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 
 	if !v.HasNode("destination") {
@@ -43,5 +44,5 @@ func (s *HelmPackage) init(stepName string, v visit.MapVisitor) errutil.Slice {
 		v.VisitString("destination", &s.Destination),
 	)
 
-	return errSlice
+	return s, errSlice
 }

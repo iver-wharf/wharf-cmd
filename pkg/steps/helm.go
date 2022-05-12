@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
@@ -27,7 +28,7 @@ type Helm struct {
 // StepTypeName returns the name of this step type.
 func (Helm) StepTypeName() string { return "helm" }
 
-func (s *Helm) init(stepName string, v visit.MapVisitor) errutil.Slice {
+func (s Helm) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 
@@ -69,5 +70,5 @@ func (s *Helm) init(stepName string, v visit.MapVisitor) errutil.Slice {
 		v.ValidateRequiredString("name"),
 		v.ValidateRequiredString("namespace"),
 	)
-	return errSlice
+	return s, errSlice
 }

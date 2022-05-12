@@ -2,6 +2,7 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
@@ -21,7 +22,7 @@ type NuGetPackage struct {
 // StepTypeName returns the name of this step type.
 func (NuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s *NuGetPackage) init(stepName string, v visit.MapVisitor) errutil.Slice {
+func (s NuGetPackage) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 
 	// Visitling
@@ -39,5 +40,5 @@ func (s *NuGetPackage) init(stepName string, v visit.MapVisitor) errutil.Slice {
 		v.ValidateRequiredString("project-path"),
 		v.ValidateRequiredString("repo"),
 	)
-	return errSlice
+	return s, errSlice
 }

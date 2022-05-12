@@ -12,6 +12,7 @@ import (
 // RequireContainsErr fails the test if any error in the slice Is the given
 // error.
 func RequireContainsErr(t *testing.T, errs errutil.Slice, err error) {
+	t.Helper()
 	for _, e := range errs {
 		if errors.Is(e, err) {
 			return
@@ -24,6 +25,7 @@ func RequireContainsErr(t *testing.T, errs errutil.Slice, err error) {
 // RequireNotContainsErr fails the test if no error in the slice Is the given
 // error.
 func RequireNotContainsErr(t *testing.T, errs errutil.Slice, err error) {
+	t.Helper()
 	for i, e := range errs {
 		if errors.Is(e, err) {
 			t.Fatalf("\nexpected not to contain error: %q\nfound at index=%d\nactual: (len=%d)\n%s",
@@ -35,6 +37,7 @@ func RequireNotContainsErr(t *testing.T, errs errutil.Slice, err error) {
 
 // RequireNoErr fails the test if the error slice is not empty.
 func RequireNoErr(t *testing.T, errs errutil.Slice) {
+	t.Helper()
 	if len(errs) == 0 {
 		return
 	}

@@ -2,6 +2,7 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
@@ -22,7 +23,7 @@ type Kubectl struct {
 // StepTypeName returns the name of this step type.
 func (Kubectl) StepTypeName() string { return "kubectl" }
 
-func (s *Kubectl) init(stepName string, v visit.MapVisitor) errutil.Slice {
+func (s Kubectl) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 
@@ -43,5 +44,5 @@ func (s *Kubectl) init(stepName string, v visit.MapVisitor) errutil.Slice {
 		// Only either file or files is required
 		errSlice.Add(v.ValidateRequiredString("file"))
 	}
-	return errSlice
+	return s, errSlice
 }

@@ -2,25 +2,14 @@ package wharfyml
 
 import (
 	"testing"
+
+	"github.com/iver-wharf/wharf-cmd/internal/errtestutil"
+	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
 func TestVisitStepType_ErrIfNotMap(t *testing.T) {
-	key, node := getKeyedNode(t, `container: 123`)
-	_, errs := visitStepTypeNode("", key, node, testVarSource)
-	requireContainsErr(t, errs, ErrInvalidFieldType)
-}
-
-func TestVisitStepType_ErrIfInvalidField(t *testing.T) {
-	key, node := getKeyedNode(t, `
-container:
-  image: [123]`)
-	_, errs := visitStepTypeNode("", key, node, testVarSource)
-	requireContainsErr(t, errs, ErrInvalidFieldType)
-}
-
-func TestVisitStepType_ErrIfMissingRequiredField(t *testing.T) {
-	// in "container" step, "cmds" and "image" are required
-	key, node := getKeyedNode(t, `container: {}`)
-	_, errs := visitStepTypeNode("", key, node, testVarSource)
-	requireContainsErr(t, errs, ErrMissingRequired)
+	key, node := yamltesting.NewKeyedNode(t, `container: 123`)
+	_, _, errs := visitStepTypeNode("", key, node, Args{}, testVarSource)
+	errtestutil.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }

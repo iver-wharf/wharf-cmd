@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
+	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/env"
 	"gopkg.in/typ.v4/slices"
@@ -163,9 +164,9 @@ func getOwnerReferences() []metav1.OwnerReference {
 
 func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 	switch s := step.Type.(type) {
-	case wharfyml.StepHelm:
+	case steps.Helm:
 		return s.Files, true
-	case wharfyml.StepKubectl:
+	case steps.Kubectl:
 		if s.File != "" {
 			return append(s.Files, s.File), true
 		}
@@ -177,17 +178,17 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case wharfyml.StepContainer:
+	case steps.Container:
 		return applyStepContainer(pod, s)
-	case wharfyml.StepDocker:
+	case steps.Docker:
 		return applyStepDocker(c.Docker, pod, s, step.Name)
-	case wharfyml.StepHelmPackage:
+	case steps.HelmPackage:
 		return applyStepHelmPackage(pod, s)
-	case wharfyml.StepHelm:
+	case steps.Helm:
 		return applyStepHelm(c.Helm, pod, s)
-	case wharfyml.StepKubectl:
+	case steps.Kubectl:
 		return applyStepKubectl(c.Kubectl, pod, s)
-	case wharfyml.StepNuGetPackage:
+	case steps.NuGetPackage:
 		return applyStepNuGetPackage(pod, s)
 	case nil:
 		return errors.New("nil step type")
@@ -196,7 +197,7 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	}
 }
 
-func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
+func applyStepContainer(pod *v1.Pod, step steps.Container) error {
 	var cmds []string
 	if step.OS == "windows" && step.Shell == "/bin/sh" {
 		cmds = []string{"powershell.exe", "-C"}
@@ -255,7 +256,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 	return nil
 }
 
-func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
+func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step steps.Docker, stepName string) error {
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
 		Name:  commonContainerName,
@@ -372,7 +373,7 @@ func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.
 	return nil
 }
 
-func getDockerDestination(step wharfyml.StepDocker, stepName string) string {
+func getDockerDestination(step steps.Docker, stepName string) string {
 	if step.Destination != "" {
 		return strings.ToLower(step.Destination)
 	}
@@ -391,7 +392,7 @@ func getDockerDestination(step wharfyml.StepDocker, stepName string) string {
 		step.Registry, step.Group, repoName, stepName))
 }
 
-func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
+func applyStepHelmPackage(pod *v1.Pod, step steps.HelmPackage) error {
 	destination := "https://harbor.local/chartrepo/my-group" // TODO: replace with CHART_REPO/REPO_GROUP
 	if step.Destination != "" {
 		destination = step.Destination
@@ -419,7 +420,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 	return nil
 }
 
-func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) error {
+func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step steps.Helm) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      fmt.Sprintf("%s:%s", config.Image, step.HelmVersion),
@@ -469,7 +470,7 @@ func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.Step
 	return nil
 }
 
-func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfyml.StepKubectl) error {
+func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step steps.Kubectl) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
@@ -520,7 +521,7 @@ func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfym
 	return nil
 }
 
-func applyStepNuGetPackage(pod *v1.Pod, step wharfyml.StepNuGetPackage) error {
+func applyStepNuGetPackage(pod *v1.Pod, step steps.NuGetPackage) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      "mcr.microsoft.com/dotnet/sdk:3.1-alpine",

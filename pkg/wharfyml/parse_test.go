@@ -1,18 +1,17 @@
 package wharfyml_test
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errtestutil"
+	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
 )
 
 var testVarSource = varsub.SourceMap{
@@ -20,6 +19,11 @@ var testVarSource = varsub.SourceMap{
 	"REPO_NAME":  varsub.Val{Value: "wharf-cmd"},
 	"REG_URL":    varsub.Val{Value: "http://harbor.example.com"},
 	"CHART_REPO": varsub.Val{Value: "http://charts.example.com"},
+}
+
+var testArgs = wharfyml.Args{
+	VarSource:       testVarSource,
+	StepTypeFactory: steps.Factory,
 }
 
 func TestParse_AcceptanceTest(t *testing.T) {
@@ -69,7 +73,7 @@ myStage2:
   myKubectlStep:
     kubectl:
       file: deploy/pod.yaml
-`), wharfyml.Args{Env: "myEnvA", VarSource: testVarSource})
+`), wharfyml.Args{Env: "myEnvA", VarSource: testVarSource, StepTypeFactory: steps.Factory})
 	errtestutil.RequireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
@@ -93,19 +97,19 @@ myStage2:
 
 	assert.Len(t, got.Envs, 2)
 	if myEnvA, ok := got.Envs["myEnvA"]; assert.True(t, ok, "myEnvA") {
-		assertVarSubNode(t, "foo bar", myEnvA.Vars["myString"], `myEnvA.Vars["myString"]`)
-		assertVarSubNode(t, 123, myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
-		assertVarSubNode(t, -123, myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
-		assertVarSubNode(t, 123.45, myEnvA.Vars["myFloat"], `myEnvA.Vars["myFloat"]`)
-		assertVarSubNode(t, true, myEnvA.Vars["myBool"], `myEnvA.Vars["myBool"]`)
+		yamltesting.AssertVarSubNode(t, "foo bar", myEnvA.Vars["myString"], `myEnvA.Vars["myString"]`)
+		yamltesting.AssertVarSubNode(t, 123, myEnvA.Vars["myUint"], `myEnvA.Vars["myUint"]`)
+		yamltesting.AssertVarSubNode(t, -123, myEnvA.Vars["myInt"], `myEnvA.Vars["myInt"]`)
+		yamltesting.AssertVarSubNode(t, 123.45, myEnvA.Vars["myFloat"], `myEnvA.Vars["myFloat"]`)
+		yamltesting.AssertVarSubNode(t, true, myEnvA.Vars["myBool"], `myEnvA.Vars["myBool"]`)
 	}
 
 	if myEnvB, ok := got.Envs["myEnvB"]; assert.True(t, ok, "myEnvB") {
-		assertVarSubNode(t, "foo bar", myEnvB.Vars["myString"], `myEnvB.Vars["myString"]`)
-		assertVarSubNode(t, 123, myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
-		assertVarSubNode(t, -123, myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
-		assertVarSubNode(t, 123.45, myEnvB.Vars["myFloat"], `myEnvB.Vars["myFloat"]`)
-		assertVarSubNode(t, true, myEnvB.Vars["myBool"], `myEnvB.Vars["myBool"]`)
+		yamltesting.AssertVarSubNode(t, "foo bar", myEnvB.Vars["myString"], `myEnvB.Vars["myString"]`)
+		yamltesting.AssertVarSubNode(t, 123, myEnvB.Vars["myUint"], `myEnvB.Vars["myUint"]`)
+		yamltesting.AssertVarSubNode(t, -123, myEnvB.Vars["myInt"], `myEnvB.Vars["myInt"]`)
+		yamltesting.AssertVarSubNode(t, 123.45, myEnvB.Vars["myFloat"], `myEnvB.Vars["myFloat"]`)
+		yamltesting.AssertVarSubNode(t, true, myEnvB.Vars["myBool"], `myEnvB.Vars["myBool"]`)
 	}
 
 	if assert.Len(t, got.Stages, 2) {
@@ -153,13 +157,13 @@ environments:
   myEnv:
     myStr: !!str 123
     myInt: !!int 123
-`), wharfyml.Args{VarSource: testVarSource})
+`), testArgs)
 	errtestutil.RequireNoErr(t, errs)
 	myEnv, ok := def.Envs["myEnv"]
 	require.True(t, ok, "myEnv environment exists")
 
-	assertVarSubNode(t, "123", myEnv.Vars["myStr"], "myStr env var")
-	assertVarSubNode(t, 123, myEnv.Vars["myInt"], "myInt env var")
+	yamltesting.AssertVarSubNode(t, "123", myEnv.Vars["myStr"], "myStr env var")
+	yamltesting.AssertVarSubNode(t, 123, myEnv.Vars["myInt"], "myInt env var")
 }
 
 func TestParse_SupportsAnchoringStages(t *testing.T) {
@@ -169,7 +173,7 @@ myStage1: &reused
     helm-package: {}
 
 myStage2: *reused
-`), wharfyml.Args{VarSource: testVarSource})
+`), testArgs)
 	errtestutil.RequireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -191,7 +195,7 @@ myStage2:
   <<: *reused
   myOtherStep:
     helm-package: {}
-`), wharfyml.Args{VarSource: testVarSource})
+`), testArgs)
 	errtestutil.RequireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
@@ -243,7 +247,7 @@ C:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := wharfyml.Parse(strings.NewReader(tc.input), wharfyml.Args{VarSource: testVarSource})
+			got, errs := wharfyml.Parse(strings.NewReader(tc.input), testArgs)
 			require.Empty(t, errs)
 			var gotOrder []string
 			for _, s := range got.Stages {
@@ -289,7 +293,7 @@ myStage:
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			got, errs := wharfyml.Parse(strings.NewReader(tc.input), wharfyml.Args{VarSource: testVarSource})
+			got, errs := wharfyml.Parse(strings.NewReader(tc.input), testArgs)
 			errtestutil.RequireNoErr(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
@@ -362,7 +366,7 @@ func TestParse_EnvVarSub(t *testing.T) {
 	}{
 		{
 			name:      "no env",
-			args:      wharfyml.Args{},
+			args:      wharfyml.Args{StepTypeFactory: steps.Factory},
 			wantImage: "${myImage}",
 			wantCmd:   "${myCmd}",
 			input: `
@@ -380,7 +384,7 @@ myStage:
 		},
 		{
 			name:      "with env",
-			args:      wharfyml.Args{Env: "myEnv"},
+			args:      wharfyml.Args{Env: "myEnv", StepTypeFactory: steps.Factory},
 			wantImage: "ubuntu:latest",
 			wantCmd:   "echo hello world",
 			input: `
@@ -411,46 +415,4 @@ myStage:
 			assert.Equal(t, []string{tc.wantCmd}, myStep.Cmds, "container.cmds")
 		})
 	}
-}
-
-func getKeyedNode(t *testing.T, content string) (visit.StringNode, *yaml.Node) {
-	node := getNode(t, content)
-	require.Equal(t, yaml.MappingNode, node.Kind, "keyed node")
-	require.Len(t, node.Content, 2, "keyed node")
-	require.Equal(t, yaml.ScalarNode, node.Content[0].Kind, "key node kind in keyed node")
-	require.Equal(t, visit.ShortTagString, node.Content[0].ShortTag(), "key node tag in keyed node")
-	return visit.StringNode{Node: node.Content[0], Value: node.Content[0].Value}, node.Content[1]
-}
-
-func getNode(t *testing.T, content string) *yaml.Node {
-	var doc yaml.Node
-	err := yaml.Unmarshal([]byte(content), &doc)
-	require.NoError(t, err, "parse node")
-	require.Equal(t, yaml.DocumentNode, doc.Kind, "document node")
-	require.Len(t, doc.Content, 1, "document node count")
-	return doc.Content[0]
-}
-
-func assertVarSubNode(t *testing.T, want any, actual visit.VarSubNode, messageAndArgs ...any) {
-	var value any
-	var err error
-	switch actual.Node.ShortTag() {
-	case visit.ShortTagBool:
-		value, err = visit.Bool(actual.Node)
-	case visit.ShortTagInt:
-		value, err = visit.Int(actual.Node)
-	case visit.ShortTagFloat:
-		value, err = visit.Float64(actual.Node)
-	case visit.ShortTagString:
-		value, err = visit.String(actual.Node)
-	default:
-		assert.Fail(t, fmt.Sprintf("expected string, boolean, or number, but found %s",
-			visit.PrettyNodeTypeName(actual.Node)), messageAndArgs...)
-		return
-	}
-	if err != nil {
-		assert.Fail(t, err.Error(), messageAndArgs...)
-		return
-	}
-	assert.Equal(t, want, value, messageAndArgs...)
 }

@@ -1,9 +1,15 @@
 package steps
 
 import (
+	"errors"
+
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+)
+
+var (
+	ErrStepTypeUnknown = errors.New("unknown step type")
 )
 
 // StepType is an interface that is implemented by all step types.
@@ -11,26 +17,29 @@ type StepType interface {
 	StepTypeName() string
 }
 
-type Factory struct{}
+var Factory wharfyml.StepTypeFactory = factory{}
 
-func (Factory) NewStepType(stepTypeName, stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
+type factory struct{}
+
+func (factory) NewStepType(stepTypeName, stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	var step interface {
-		wharfyml.StepType
-		init(stepName string, v visit.MapVisitor) errutil.Slice
+		init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice)
 	}
 	switch stepTypeName {
 	case "container":
-		step = &Container{}
+		step = Container{}
 	case "docker":
-		step = &Docker{}
+		step = Docker{}
 	case "helm":
-		step = &Helm{}
+		step = Helm{}
 	case "helm-package":
-		step = &HelmPackage{}
+		step = HelmPackage{}
 	case "kubectl":
-		step = &Kubectl{}
+		step = Kubectl{}
 	case "nuget-package":
-		step = &NuGetPackage{}
+		step = NuGetPackage{}
+	default:
+		return nil, errutil.Slice{ErrStepTypeUnknown}
 	}
-	return step, step.init(stepName, v)
+	return step.init(stepName, v)
 }

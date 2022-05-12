@@ -2,6 +2,7 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
@@ -23,7 +24,7 @@ type Container struct {
 // StepTypeName returns the name of this step type.
 func (Container) StepTypeName() string { return "container" }
 
-func (s *Container) init(stepName string, v visit.MapVisitor) errutil.Slice {
+func (s Container) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
@@ -46,5 +47,5 @@ func (s *Container) init(stepName string, v visit.MapVisitor) errutil.Slice {
 		v.ValidateRequiredString("image"),
 		v.ValidateRequiredSlice("cmds"),
 	)
-	return errSlice
+	return s, errSlice
 }
