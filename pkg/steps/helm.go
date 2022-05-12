@@ -4,15 +4,12 @@ import (
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
-// StepHelm represents a step type for installing a Helm chart into a Kubernetes
+// Helm represents a step type for installing a Helm chart into a Kubernetes
 // cluster.
-type StepHelm struct {
-	// Step type metadata
-	Meta StepTypeMeta
-
+type Helm struct {
 	// Required fields
 	Chart     string
 	Name      string
@@ -27,24 +24,22 @@ type StepHelm struct {
 	Cluster      string
 }
 
-// Name returns the name of this step type.
-func (StepHelm) Name() string { return "helm" }
+// StepTypeName returns the name of this step type.
+func (Helm) StepTypeName() string { return "helm" }
 
-func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice) {
-	s.Meta = getStepTypeMeta(p, stepName)
-
+func (s *Helm) init(stepName string, v visit.MapVisitor) errutil.Slice {
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 
 	var errSlice errutil.Slice
 
-	if !p.hasNode("repo") {
+	if !v.HasNode("repo") {
 		var chartRepo string
 		var repoGroup string
 		var errs errutil.Slice
 		errs.Add(
-			p.unmarshalStringFromVarSub("CHART_REPO", source, &chartRepo),
-			p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup),
+			v.VisitStringFromVarSub("CHART_REPO", &chartRepo),
+			v.VisitStringFromVarSub("REPO_GROUP", &repoGroup),
 		)
 		for _, err := range errs {
 			errSlice.Add(fmt.Errorf(`eval "repo" default: %w`, err))
@@ -52,27 +47,27 @@ func (s StepHelm) visitStepTypeNode(stepName string, p nodeMapParser, source var
 		s.Repo = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
-	// Unmarshalling
+	// Visitling
 	errSlice.Add(
-		p.unmarshalString("chart", &s.Chart),
-		p.unmarshalString("name", &s.Name),
-		p.unmarshalString("namespace", &s.Namespace),
-		p.unmarshalString("repo", &s.Repo),
-		p.unmarshalString("chartVersion", &s.ChartVersion),
-		p.unmarshalString("helmVersion", &s.HelmVersion),
-		p.unmarshalString("cluster", &s.Cluster),
+		v.VisitString("chart", &s.Chart),
+		v.VisitString("name", &s.Name),
+		v.VisitString("namespace", &s.Namespace),
+		v.VisitString("repo", &s.Repo),
+		v.VisitString("chartVersion", &s.ChartVersion),
+		v.VisitString("helmVersion", &s.HelmVersion),
+		v.VisitString("cluster", &s.Cluster),
 	)
-	errSlice.Add(p.unmarshalStringStringMap("set", &s.Set)...)
-	errSlice.Add(p.unmarshalStringSlice("files", &s.Files)...)
+	errSlice.Add(v.VisitStringStringMap("set", &s.Set)...)
+	errSlice.Add(v.VisitStringSlice("files", &s.Files)...)
 	if s.Repo == "stage" {
 		s.Repo = "https://kubernetes-charts.storage.googleapis.com"
 	}
 
 	// Validation
 	errSlice.Add(
-		p.validateRequiredString("chart"),
-		p.validateRequiredString("name"),
-		p.validateRequiredString("namespace"),
+		v.ValidateRequiredString("chart"),
+		v.ValidateRequiredString("name"),
+		v.ValidateRequiredString("namespace"),
 	)
-	return s, errSlice
+	return errSlice
 }

@@ -60,7 +60,7 @@ func ParseVarFiles(currentDir string) (varsub.Source, errutil.Slice) {
 		source := make(varsub.SourceMap)
 		for _, item := range items {
 			source[item.Key.Value] = varsub.Val{
-				Value:  VarSubNode{item.Value},
+				Value:  visit.VarSubNode{item.Value},
 				Source: prettyPath,
 			}
 		}

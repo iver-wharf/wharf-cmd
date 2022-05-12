@@ -41,7 +41,7 @@ type Input interface {
 	InputVarName() string
 	DefaultValue() any
 	ParseValue(value any) (any, error)
-	Pos() Pos
+	Pos() visit.Pos
 }
 
 func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
@@ -59,7 +59,7 @@ func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
 		if input != nil {
 			name := input.InputVarName()
 			if _, ok := inputs[name]; ok {
-				err := wrapPosErrorNode(
+				err := visit.WrapPosErrorNode(
 					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
 				errSlice.Add(errutil.Scope(err, strconv.Itoa(i)))
 			}
@@ -72,40 +72,40 @@ func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
 func visitInputTypeNode(node *yaml.Node) (input Input, errSlice errutil.Slice) {
 	nodeMap, errs := visit.Map(node)
 	errSlice.Add(errs...)
-	p := newNodeMapParser(node, nodeMap)
+	v := visit.NewMapVisitor(node, nodeMap, nil)
 	var inputName string
 	var inputType string
 	errSlice.Add(
-		p.unmarshalString("name", &inputName),
-		p.unmarshalString("type", &inputType),
-		p.validateRequiredString("name"),
-		p.validateRequiredString("type"),
+		v.VisitString("name", &inputName),
+		v.VisitString("type", &inputType),
+		v.ValidateRequiredString("name"),
+		v.ValidateRequiredString("type"),
 	)
-	pos := newPosNode(node)
+	pos := visit.NewPosNode(node)
 	switch inputType {
 	case "":
 		// validate required has already added error for it
 		return
 	case "string":
 		inputString := InputString{Name: inputName, Source: pos}
-		p.unmarshalString("default", &inputString.Default)
+		v.VisitString("default", &inputString.Default)
 		input = inputString
 	case "password":
 		inputPassword := InputPassword{Name: inputName, Source: pos}
-		p.unmarshalString("default", &inputPassword.Default)
+		v.VisitString("default", &inputPassword.Default)
 		input = inputPassword
 	case "number":
 		inputNumber := InputNumber{Name: inputName, Source: pos}
-		p.unmarshalNumber("default", &inputNumber.Default)
+		v.VisitNumber("default", &inputNumber.Default)
 		input = inputNumber
 	case "choice":
 		inputChoice := InputChoice{Name: inputName, Source: pos}
-		p.unmarshalString("default", &inputChoice.Default)
-		p.unmarshalStringSlice("values", &inputChoice.Values)
+		v.VisitString("default", &inputChoice.Default)
+		v.VisitStringSlice("values", &inputChoice.Values)
 		input = inputChoice
 		errSlice.Add(
-			p.validateRequiredString("default"),
-			p.validateRequiredSlice("values"),
+			v.ValidateRequiredString("default"),
+			v.ValidateRequiredSlice("values"),
 			inputChoice.validateDefault(),
 		)
 	default:
@@ -126,7 +126,7 @@ func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source,
 		}
 		value, err := input.ParseValue(argValue)
 		if err != nil {
-			err := wrapPosError(err, input.Pos())
+			err := visit.WrapPosError(err, input.Pos())
 			errSlice.Add(errutil.Scope(err, "inputs", k))
 			continue
 		}

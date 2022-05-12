@@ -2,15 +2,12 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
-// StepContainer represents a step type for running commands inside a Docker
+// Container represents a step type for running commands inside a Docker
 // container.
-type StepContainer struct {
-	// Step type metadata
-	Meta StepTypeMeta
-
+type Container struct {
 	// Required fields
 	Image string
 	Cmds  []string
@@ -23,33 +20,31 @@ type StepContainer struct {
 	CertificatesMountPath string
 }
 
-// Name returns the name of this step type.
-func (StepContainer) Name() string { return "container" }
+// StepTypeName returns the name of this step type.
+func (Container) StepTypeName() string { return "container" }
 
-func (s StepContainer) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, errutil.Slice) {
-	s.Meta = getStepTypeMeta(p, stepName)
-
+func (s *Container) init(stepName string, v visit.MapVisitor) errutil.Slice {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"
 
 	var errSlice errutil.Slice
 
-	// Unmarshalling
+	// Visitling
 	errSlice.Add(
-		p.unmarshalString("image", &s.Image),
-		p.unmarshalString("os", &s.OS),
-		p.unmarshalString("shell", &s.Shell),
-		p.unmarshalString("secretName", &s.SecretName),
-		p.unmarshalString("serviceAccount", &s.ServiceAccount),
-		p.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
+		v.VisitString("image", &s.Image),
+		v.VisitString("os", &s.OS),
+		v.VisitString("shell", &s.Shell),
+		v.VisitString("secretName", &s.SecretName),
+		v.VisitString("serviceAccount", &s.ServiceAccount),
+		v.VisitString("certificatesMountPath", &s.CertificatesMountPath),
 	)
-	errSlice.Add(p.unmarshalStringSlice("cmds", &s.Cmds)...)
+	errSlice.Add(v.VisitStringSlice("cmds", &s.Cmds)...)
 
 	// Validation
 	errSlice.Add(
-		p.validateRequiredString("image"),
-		p.validateRequiredSlice("cmds"),
+		v.ValidateRequiredString("image"),
+		v.ValidateRequiredSlice("cmds"),
 	)
-	return s, errSlice
+	return errSlice
 }

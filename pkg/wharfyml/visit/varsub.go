@@ -1,4 +1,4 @@
-package wharfyml
+package visit
 
 import (
 	"errors"
@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,15 +25,15 @@ func (v VarSubNode) String() string {
 	return v.Node.Value
 }
 
-func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
+func VarSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	if source == nil {
 		return node, nil
 	}
 	if node.Kind == yaml.ScalarNode {
-		if node.Tag != visit.ShortTagString {
+		if node.Tag != ShortTagString {
 			return node, nil
 		}
-		return varSubStringNode(visit.StringNode{node, node.Value}, source)
+		return VarSubStringNode(StringNode{node, node.Value}, source)
 	}
 	if len(node.Content) == 0 {
 		return node, nil
@@ -42,7 +41,7 @@ func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	clone := *node
 	clone.Content = make([]*yaml.Node, len(node.Content))
 	for i, child := range node.Content {
-		child, err := varSubNodeRec(child, source)
+		child, err := VarSubNodeRec(child, source)
 		if err != nil {
 			return nil, err
 		}
@@ -51,33 +50,33 @@ func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	return &clone, nil
 }
 
-func varSubStringNode(str visit.StringNode, source varsub.Source) (*yaml.Node, error) {
+func VarSubStringNode(str StringNode, source varsub.Source) (*yaml.Node, error) {
 	val, err := varsub.Substitute(str.Value, source)
 	if err != nil {
-		return nil, wrapPosErrorNode(err, str.Node)
+		return nil, WrapPosErrorNode(err, str.Node)
 	}
-	return newNodeWithValue(str.Node, val)
+	return NewNodeWithValue(str.Node, val)
 }
 
-func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
+func NewNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 	clone := *node
 	clone.Kind = yaml.ScalarNode
 	switch val := val.(type) {
 	case nil:
-		clone.Tag = visit.ShortTagNull
+		clone.Tag = ShortTagNull
 		clone.Value = ""
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
-		clone.Tag = visit.ShortTagInt
+		clone.Tag = ShortTagInt
 		clone.Value = fmt.Sprint(val)
 	case float32, float64:
-		clone.Tag = visit.ShortTagFloat
+		clone.Tag = ShortTagFloat
 		clone.Value = fmt.Sprint(val)
 	case time.Time:
-		clone.Tag = visit.ShortTagTimestamp
+		clone.Tag = ShortTagTimestamp
 		clone.Value = val.Format(time.RFC3339Nano)
 	case bool:
-		clone.Tag = visit.ShortTagBool
+		clone.Tag = ShortTagBool
 		if val {
 			clone.Value = "true"
 		} else {
@@ -93,7 +92,14 @@ func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 		clone.SetString(val.String())
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedVarSubType, val)
-		return nil, wrapPosErrorNode(err, node)
+		return nil, WrapPosErrorNode(err, node)
 	}
 	return &clone, nil
+}
+
+func safeLookupVar(source varsub.Source, name string) (varsub.Var, bool) {
+	if source == nil {
+		return varsub.Var{}, false
+	}
+	return source.Lookup(name)
 }

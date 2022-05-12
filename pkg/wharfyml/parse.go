@@ -16,6 +16,7 @@ type Args struct {
 	VarSource          varsub.Source
 	SkipStageFiltering bool
 	Inputs             map[string]any
+	StepTypeFactory    StepTypeFactory
 }
 
 // ParseFile will parse the file at the given path.

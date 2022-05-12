@@ -5,14 +5,11 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
-// StepDocker represents a step type for building and pushing Docker images.
-type StepDocker struct {
-	// Step type metadata
-	Meta StepTypeMeta
-
+// Docker represents a step type for building and pushing Docker images.
+type Docker struct {
 	// Required fields
 	File string
 	Tag  string
@@ -31,25 +28,23 @@ type StepDocker struct {
 	SecretArgs  []string
 }
 
-// Name returns the name of this step type.
-func (StepDocker) Name() string { return "docker" }
+// StepTypeName returns the name of this step type.
+func (Docker) StepTypeName() string { return "docker" }
 
-func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice) {
-	s.Meta = getStepTypeMeta(p, stepName)
-
+func (s *Docker) init(stepName string, v visit.MapVisitor) errutil.Slice {
 	s.Name = stepName
 	s.Secret = "gitlab-registry"
 
 	var errSlice errutil.Slice
 
-	if !p.hasNode("destination") {
+	if !v.HasNode("destination") {
 		var repoName string
 		var errs errutil.Slice
 		errs.Add(
-			p.unmarshalStringWithVarSub("registry", "REG_URL", source, &s.Registry),
-			p.unmarshalStringWithVarSub("group", "REPO_GROUP", source, &s.Registry),
-			p.unmarshalStringFromVarSub("REPO_NAME", source, &repoName),
-			p.unmarshalString("name", &s.Name), // Already defaults to step name
+			v.VisitStringWithVarSub("registry", "REG_URL", &s.Registry),
+			v.VisitStringWithVarSub("group", "REPO_GROUP", &s.Registry),
+			v.VisitStringFromVarSub("REPO_NAME", &repoName),
+			v.VisitString("name", &s.Name), // Already defaults to step name
 		)
 		for _, err := range errs {
 			errSlice.Add(fmt.Errorf(`eval "destination" default: %w`, err))
@@ -63,9 +58,9 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 		}
 	}
 
-	if !p.hasNode("append-cert") {
+	if !v.HasNode("append-cert") {
 		var repoGroup string
-		err := p.unmarshalStringFromVarSub("REPO_GROUP", source, &repoGroup)
+		err := v.VisitStringFromVarSub("REPO_GROUP", &repoGroup)
 		if err != nil {
 			errSlice.Add(fmt.Errorf(`eval "append-cert" default: %w`, err))
 		}
@@ -74,25 +69,25 @@ func (s StepDocker) visitStepTypeNode(stepName string, p nodeMapParser, source v
 		}
 	}
 
-	// Unmarshalling
-	errSlice.AddNonNils(
-		p.unmarshalString("file", &s.File),
-		p.unmarshalString("tag", &s.Tag),
-		p.unmarshalString("destination", &s.Destination),
-		p.unmarshalString("name", &s.Name),
-		p.unmarshalString("context", &s.Context),
-		p.unmarshalString("secret", &s.Secret),
-		p.unmarshalBool("append-cert", &s.AppendCert),
-		p.unmarshalBool("push", &s.Push),
-		p.unmarshalString("secretName", &s.SecretName),
+	// Visitling
+	errSlice.Add(
+		v.VisitString("file", &s.File),
+		v.VisitString("tag", &s.Tag),
+		v.VisitString("destination", &s.Destination),
+		v.VisitString("name", &s.Name),
+		v.VisitString("context", &s.Context),
+		v.VisitString("secret", &s.Secret),
+		v.VisitBool("append-cert", &s.AppendCert),
+		v.VisitBool("push", &s.Push),
+		v.VisitString("secretName", &s.SecretName),
 	)
-	errSlice.Add(p.unmarshalStringSlice("args", &s.Args)...)
-	errSlice.Add(p.unmarshalStringSlice("secretArgs", &s.SecretArgs)...)
+	errSlice.Add(v.VisitStringSlice("args", &s.Args)...)
+	errSlice.Add(v.VisitStringSlice("secretArgs", &s.SecretArgs)...)
 
 	// Validation
-	errSlice.AddNonNils(
-		p.validateRequiredString("file"),
-		p.validateRequiredString("tag"),
+	errSlice.Add(
+		v.ValidateRequiredString("file"),
+		v.ValidateRequiredString("tag"),
 	)
-	return s, errSlice
+	return errSlice
 }

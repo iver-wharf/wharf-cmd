@@ -2,7 +2,6 @@ package wharfyml
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
@@ -12,75 +11,44 @@ import (
 
 // errutil.Slice related to parsing step types.
 var (
-	ErrStepTypeUnknown   = errors.New("unknown step type")
-	ErrMissingBuiltinVar = errors.New("missing built-in var")
+	ErrNoStepTypesRegistered = errors.New("no step types registered")
+	ErrStepTypeUnknown       = errors.New("unknown step type")
 )
 
 // StepType is an interface that is implemented by all step types.
 type StepType interface {
-	Name() string
+	StepTypeName() string
 }
 
 // StepTypeMeta contains metadata about a step type.
 type StepTypeMeta struct {
 	StepName string
-	Source   Pos
-	FieldPos map[string]Pos
+	Source   visit.Pos
+	FieldPos map[string]visit.Pos
 }
 
-func visitStepTypeNode(stepName string, key visit.StringNode, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
-	visitor, err := visitStepTypeKeyNode(key)
-	if err != nil {
-		return nil, errutil.Slice{err}
+type StepTypeFactory interface {
+	NewStepType(stepTypeName, stepName string, v visit.MapVisitor) (StepType, errutil.Slice)
+}
+
+func visitStepTypeNode(stepName string, key visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (StepType, StepTypeMeta, errutil.Slice) {
+	if args.StepTypeFactory == nil {
+		return nil, StepTypeMeta{}, errutil.Slice{ErrNoStepTypesRegistered}
 	}
-	return visitor.visitStepTypeValueNode(stepName, node, source)
-}
-
-func visitStepTypeKeyNode(key visit.StringNode) (stepTypeVisitor, error) {
-	visitor := stepTypeVisitor{
-		keyNode: key.Node,
-	}
-	switch key.Value {
-	case "container":
-		visitor.visitNode = StepContainer{}.visitStepTypeNode
-	case "docker":
-		visitor.visitNode = StepDocker{}.visitStepTypeNode
-	case "helm":
-		visitor.visitNode = StepHelm{}.visitStepTypeNode
-	case "helm-package":
-		visitor.visitNode = StepHelmPackage{}.visitStepTypeNode
-	case "kubectl":
-		visitor.visitNode = StepKubectl{}.visitStepTypeNode
-	case "nuget-package":
-		visitor.visitNode = StepNuGetPackage{}.visitStepTypeNode
-	default:
-		err := fmt.Errorf("%w: %q", ErrStepTypeUnknown, key.Value)
-		return stepTypeVisitor{}, wrapPosErrorNode(err, key.Node)
-	}
-	return visitor, nil
-}
-
-type stepTypeVisitor struct {
-	keyNode   *yaml.Node
-	visitNode func(stepName string, p nodeMapParser, source varsub.Source) (StepType, errutil.Slice)
-}
-
-func (v stepTypeVisitor) visitStepTypeValueNode(stepName string, node *yaml.Node, source varsub.Source) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 	m, errs := visit.Map(node)
 	errSlice.Add(errs...)
 
-	parser := newNodeMapParser(v.keyNode, m)
-	stepType, errs := v.visitNode(stepName, parser, source)
+	v := visit.NewMapVisitor(key.Node, m, source)
+	stepType, errs := args.StepTypeFactory.NewStepType(key.Value, stepName, v)
 	errSlice.Add(errs...)
-
-	return stepType, errSlice
+	return stepType, getStepTypeMeta(v, stepName), errSlice
 }
 
-func getStepTypeMeta(p nodeMapParser, stepName string) StepTypeMeta {
+func getStepTypeMeta(v visit.MapVisitor, stepName string) StepTypeMeta {
 	return StepTypeMeta{
 		StepName: stepName,
-		Source:   p.parentPos(),
-		FieldPos: p.positions,
+		Source:   v.ParentPos(),
+		FieldPos: v.ReadNodesPos(),
 	}
 }

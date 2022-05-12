@@ -65,7 +65,7 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice errutil.
 	// Add environment varsub.Source first, as it should have priority
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)
 	if err != nil {
-		err = wrapPosErrorNode(err, envSourceNode)
+		err = visit.WrapPosErrorNode(err, envSourceNode)
 		err = errutil.Scope(err, propEnvironments)
 		errSlice.Add(err) // Non fatal error
 	} else if targetEnv != nil {
@@ -77,7 +77,7 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice errutil.
 		sources = append(sources, args.VarSource)
 	}
 
-	stages, errs := visitDefStageNodes(nodes, sources)
+	stages, errs := visitDefStageNodes(nodes, args, sources)
 	def.Stages = stages
 	errSlice.Add(errs...)
 	errSlice.Add(validateDefEnvironmentUsage(def)...)
@@ -100,19 +100,19 @@ func getTargetEnv(envs map[string]Env, envName string) (*Env, error) {
 	return &env, nil
 }
 
-func visitDefStageNodes(nodes []visit.MapItem, source varsub.Source) (stages []Stage, errSlice errutil.Slice) {
+func visitDefStageNodes(nodes []visit.MapItem, args Args, source varsub.Source) (stages []Stage, errSlice errutil.Slice) {
 	for _, n := range nodes {
 		switch n.Key.Value {
 		case propEnvironments, propInputs:
 			// Do nothing, they've already been visited.
 			continue
 		}
-		stageNode, err := varSubNodeRec(n.Value, source)
+		stageNode, err := visit.VarSubNodeRec(n.Value, source)
 		if err != nil {
 			errSlice.Add(err)
 			continue
 		}
-		stage, errs := visitStageNode(n.Key, stageNode, source)
+		stage, errs := visitStageNode(n.Key, stageNode, args, source)
 		stages = append(stages, stage)
 		errSlice.Add(errutil.ScopeSlice(errs, n.Key.Value)...)
 	}
@@ -125,7 +125,7 @@ func validateDefEnvironmentUsage(def Definition) errutil.Slice {
 		for _, env := range stage.Envs {
 			if _, ok := def.Envs[env.Name]; !ok {
 				err := fmt.Errorf("%w: %q", ErrUseOfUndefinedEnv, env.Name)
-				err = wrapPosError(err, env.Source)
+				err = visit.WrapPosError(err, env.Source)
 				err = errutil.Scope(err, stage.Name, propEnvironments)
 				errSlice.Add(err)
 			}

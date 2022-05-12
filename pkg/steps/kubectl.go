@@ -2,15 +2,12 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
-// StepKubectl represents a step type for running kubectl commands on some
+// Kubectl represents a step type for running kubectl commands on some
 // Kubernetes manifest files.
-type StepKubectl struct {
-	// Step type metadata
-	Meta StepTypeMeta
-
+type Kubectl struct {
 	// Required fields
 	File  string
 	Files []string
@@ -22,31 +19,29 @@ type StepKubectl struct {
 	Cluster   string
 }
 
-// Name returns the name of this step type.
-func (StepKubectl) Name() string { return "kubectl" }
+// StepTypeName returns the name of this step type.
+func (Kubectl) StepTypeName() string { return "kubectl" }
 
-func (s StepKubectl) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, errutil.Slice) {
-	s.Meta = getStepTypeMeta(p, stepName)
-
+func (s *Kubectl) init(stepName string, v visit.MapVisitor) errutil.Slice {
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 
 	var errSlice errutil.Slice
 
-	// Unmarshalling
+	// Visitling
 	errSlice.Add(
-		p.unmarshalString("file", &s.File),
-		p.unmarshalString("namespace", &s.Namespace),
-		p.unmarshalString("action", &s.Action),
-		p.unmarshalBool("force", &s.Force),
-		p.unmarshalString("cluster", &s.Cluster),
+		v.VisitString("file", &s.File),
+		v.VisitString("namespace", &s.Namespace),
+		v.VisitString("action", &s.Action),
+		v.VisitBool("force", &s.Force),
+		v.VisitString("cluster", &s.Cluster),
 	)
-	errSlice.Add(p.unmarshalStringSlice("files", &s.Files)...)
+	errSlice.Add(v.VisitStringSlice("files", &s.Files)...)
 
 	// Validation
 	if len(s.Files) == 0 {
 		// Only either file or files is required
-		errSlice.Add(p.validateRequiredString("file"))
+		errSlice.Add(v.ValidateRequiredString("file"))
 	}
-	return s, errSlice
+	return errSlice
 }

@@ -1,4 +1,4 @@
-package wharfyml
+package visit
 
 import (
 	"fmt"
@@ -20,14 +20,14 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
-func newPosNode(node *yaml.Node) Pos {
+func NewPosNode(node *yaml.Node) Pos {
 	return Pos{
 		Line:   node.Line,
 		Column: node.Column,
 	}
 }
 
-func wrapPosError(err error, pos Pos) error {
+func WrapPosError(err error, pos Pos) error {
 	return errutil.Pos{
 		Err:    err,
 		Line:   pos.Line,
@@ -35,6 +35,6 @@ func wrapPosError(err error, pos Pos) error {
 	}
 }
 
-func wrapPosErrorNode(err error, node *yaml.Node) error {
-	return wrapPosError(err, newPosNode(node))
+func WrapPosErrorNode(err error, node *yaml.Node) error {
+	return WrapPosError(err, NewPosNode(node))
 }

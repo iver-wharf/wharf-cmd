@@ -17,30 +17,32 @@ var (
 
 // Step holds the step type and name of this Wharf build step.
 type Step struct {
-	Pos  Pos
+	Pos  visit.Pos
 	Name string
 	Type StepType
+	Meta StepTypeMeta
 }
 
-func visitStepNode(name visit.StringNode, node *yaml.Node, source varsub.Source) (step Step, errSlice errutil.Slice) {
-	step.Pos = newPosNode(node)
+func visitStepNode(name visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (step Step, errSlice errutil.Slice) {
+	step.Pos = visit.NewPosNode(node)
 	step.Name = name.Value
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.Add(wrapPosErrorNode(ErrStepEmpty, node))
+		errSlice.Add(visit.WrapPosErrorNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.Add(wrapPosErrorNode(ErrStepMultipleStepTypes, node))
+		errSlice.Add(visit.WrapPosErrorNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
-		stepType, errs := visitStepTypeNode(
-			name.Value, stepTypeNode.Key, stepTypeNode.Value, source)
+		stepType, meta, errs := visitStepTypeNode(
+			name.Value, stepTypeNode.Key, stepTypeNode.Value, args, source)
 		step.Type = stepType
+		step.Meta = meta
 		if stepType != nil {
-			errSlice.Add(errutil.ScopeSlice(errs, stepType.Name())...)
+			errSlice.Add(errutil.ScopeSlice(errs, stepType.StepTypeName())...)
 		} else {
 			errSlice.Add(errs...)
 		}

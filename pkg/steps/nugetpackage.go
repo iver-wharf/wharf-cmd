@@ -2,15 +2,12 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
-// StepNuGetPackage represents a step type used for building .NET NuGet
+// NuGetPackage represents a step type used for building .NET NuGet
 // packages.
-type StepNuGetPackage struct {
-	// Step type metadata
-	Meta StepTypeMeta
-
+type NuGetPackage struct {
 	// Required fields
 	Version     string
 	ProjectPath string
@@ -21,28 +18,26 @@ type StepNuGetPackage struct {
 	CertificatesMountPath string
 }
 
-// Name returns the name of this step type.
-func (StepNuGetPackage) Name() string { return "nuget-package" }
+// StepTypeName returns the name of this step type.
+func (NuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s StepNuGetPackage) visitStepTypeNode(stepName string, p nodeMapParser, _ varsub.Source) (StepType, errutil.Slice) {
-	s.Meta = getStepTypeMeta(p, stepName)
-
+func (s *NuGetPackage) init(stepName string, v visit.MapVisitor) errutil.Slice {
 	var errSlice errutil.Slice
 
-	// Unmarshalling
+	// Visitling
 	errSlice.Add(
-		p.unmarshalString("version", &s.Version),
-		p.unmarshalString("project-path", &s.ProjectPath),
-		p.unmarshalString("repo", &s.Repo),
-		p.unmarshalBool("skip-duplicate", &s.SkipDuplicate),
-		p.unmarshalString("certificatesMountPath", &s.CertificatesMountPath),
+		v.VisitString("version", &s.Version),
+		v.VisitString("project-path", &s.ProjectPath),
+		v.VisitString("repo", &s.Repo),
+		v.VisitBool("skip-duplicate", &s.SkipDuplicate),
+		v.VisitString("certificatesMountPath", &s.CertificatesMountPath),
 	)
 
 	// Validation
 	errSlice.Add(
-		p.validateRequiredString("version"),
-		p.validateRequiredString("project-path"),
-		p.validateRequiredString("repo"),
+		v.ValidateRequiredString("version"),
+		v.ValidateRequiredString("project-path"),
+		v.ValidateRequiredString("repo"),
 	)
-	return s, errSlice
+	return errSlice
 }
