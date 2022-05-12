@@ -118,12 +118,16 @@ func parseInputArgs(inputs flagtypes.KeyValueArray) map[string]any {
 func logParseErrors(errs errutil.Slice, currentDir string) {
 	log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
 	for _, err := range errs {
+		scopePrefix := errutil.AsScope(err)
+		if scopePrefix != "" {
+			scopePrefix += ": "
+		}
 		var posErr errutil.Pos
 		if errors.As(err, &posErr) {
-			log.Warn().Messagef("%4d:%-4d%s",
-				posErr.Line, posErr.Column, err.Error())
+			log.Warn().Messagef("%4d:%-4d%s%s",
+				posErr.Line, posErr.Column, scopePrefix, err.Error())
 		} else {
-			log.Warn().Messagef("   -:-   %s", err.Error())
+			log.Warn().Messagef("   -:-   %s%s", scopePrefix, err.Error())
 		}
 	}
 

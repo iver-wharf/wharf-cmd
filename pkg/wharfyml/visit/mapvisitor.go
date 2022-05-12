@@ -208,3 +208,16 @@ func (p MapVisitor) lookupFromVarSub(varLookup string) (*yaml.Node, error) {
 	}
 	return newNode, nil
 }
+
+func (p MapVisitor) AddErrorFor(key string, errSlice *errutil.Slice, err error) {
+	node, ok := p.nodes[key]
+	if ok {
+		err = errutil.NewPosNode(err, node)
+	} else {
+		if p.parent != nil {
+			err = errutil.NewPosNode(err, p.parent)
+		}
+	}
+	err = errutil.Scope(err, key)
+	errSlice.Add(err)
+}

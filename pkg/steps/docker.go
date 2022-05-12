@@ -12,6 +12,22 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+const (
+	dockerFieldFile        string = "file"
+	dockerFieldTag         string = "tag"
+	dockerFieldDestination string = "destination"
+	dockerFieldName        string = "name"
+	dockerFieldGroup       string = "group"
+	dockerFieldContext     string = "context"
+	dockerFieldSecret      string = "secret"
+	dockerFieldRegistry    string = "registry"
+	dockerFieldAppendCert  string = "append-cert"
+	dockerFieldPush        string = "push"
+	dockerFieldArgs        string = "args"
+	dockerFieldSecretName  string = "secretName"
+	dockerFieldSecretArgs  string = "secretArgs"
+)
+
 // Docker represents a step type for building and pushing Docker images.
 type Docker struct {
 	// Required fields
@@ -46,17 +62,17 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 
 	var errSlice errutil.Slice
 
-	if !v.HasNode("destination") {
+	if !v.HasNode(dockerFieldDestination) {
 		var repoName string
 		var errs errutil.Slice
 		errs.Add(
-			v.VisitStringWithVarSub("registry", "REG_URL", &s.Registry),
-			v.VisitStringWithVarSub("group", "REPO_GROUP", &s.Registry),
+			v.VisitStringWithVarSub(dockerFieldRegistry, "REG_URL", &s.Registry),
+			v.VisitStringWithVarSub(dockerFieldGroup, "REPO_GROUP", &s.Registry),
 			v.VisitStringFromVarSub("REPO_NAME", &repoName),
-			v.VisitString("name", &s.Name), // Already defaults to step name
+			v.VisitString(dockerFieldName, &s.Name), // Already defaults to step name
 		)
 		for _, err := range errs {
-			errSlice.Add(fmt.Errorf(`eval "destination" default: %w`, err))
+			errSlice.Add(fmt.Errorf(`eval '%s' default: %w`, dockerFieldDestination, err))
 		}
 		if repoName == s.Name {
 			s.Destination = fmt.Sprintf("%s/%s/%s",
@@ -67,11 +83,11 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 		}
 	}
 
-	if !v.HasNode("append-cert") {
+	if !v.HasNode(dockerFieldAppendCert) {
 		var repoGroup string
 		err := v.VisitStringFromVarSub("REPO_GROUP", &repoGroup)
 		if err != nil {
-			errSlice.Add(fmt.Errorf(`eval "append-cert" default: %w`, err))
+			errSlice.Add(fmt.Errorf(`eval '%s' default: %w`, dockerFieldAppendCert, err))
 		}
 		if strings.HasPrefix(strings.ToLower(s.Group), "default") {
 			s.AppendCert = true
@@ -80,24 +96,49 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 
 	// Visitling
 	errSlice.Add(
-		v.VisitString("file", &s.File),
-		v.VisitString("tag", &s.Tag),
-		v.VisitString("destination", &s.Destination),
-		v.VisitString("name", &s.Name),
-		v.VisitString("context", &s.Context),
-		v.VisitString("secret", &s.Secret),
-		v.VisitBool("append-cert", &s.AppendCert),
-		v.VisitBool("push", &s.Push),
-		v.VisitString("secretName", &s.SecretName),
+		v.VisitString(dockerFieldFile, &s.File),
+		v.VisitString(dockerFieldTag, &s.Tag),
+		v.VisitString(dockerFieldDestination, &s.Destination),
+		v.VisitString(dockerFieldName, &s.Name),
+		v.VisitString(dockerFieldContext, &s.Context),
+		v.VisitString(dockerFieldSecret, &s.Secret),
+		v.VisitBool(dockerFieldAppendCert, &s.AppendCert),
+		v.VisitBool(dockerFieldPush, &s.Push),
+		v.VisitString(dockerFieldSecretName, &s.SecretName),
 	)
-	errSlice.Add(v.VisitStringSlice("args", &s.Args)...)
-	errSlice.Add(v.VisitStringSlice("secretArgs", &s.SecretArgs)...)
+	errSlice.Add(v.VisitStringSlice(dockerFieldArgs, &s.Args)...)
+	errSlice.Add(v.VisitStringSlice(dockerFieldSecretArgs, &s.SecretArgs)...)
 
 	// Validation
 	errSlice.Add(
-		v.ValidateRequiredString("file"),
-		v.ValidateRequiredString("tag"),
+		v.ValidateRequiredString(dockerFieldFile),
+		v.ValidateRequiredString(dockerFieldTag),
 	)
+
+	for _, arg := range s.SecretArgs {
+		argName, secretKey, hasCut := strings.Cut(arg, "=")
+		if !hasCut {
+			v.AddErrorFor(dockerFieldSecretArgs, &errSlice,
+				fmt.Errorf("invalid secret format: missing '=', expected 'ARG=secret-key': %q", arg))
+			continue
+		}
+		if len(argName) == 0 {
+			v.AddErrorFor(dockerFieldSecretArgs, &errSlice,
+				fmt.Errorf("invalid secret format: empty 'ARG', expected 'ARG=secret-key': %q", arg))
+			continue
+		}
+		if len(secretKey) == 0 {
+			v.AddErrorFor(dockerFieldSecretArgs, &errSlice,
+				fmt.Errorf("invalid secret format: empty 'secret-key', expected 'ARG=secret-key': %q", arg))
+		}
+	}
+	if len(s.SecretArgs) != 0 && s.SecretName == "" {
+		v.AddErrorFor(dockerFieldSecretArgs, &errSlice,
+			fmt.Errorf("found %s but is missing %s", dockerFieldSecretArgs, dockerFieldSecretName))
+	} else if len(s.SecretArgs) == 0 && s.SecretName != "" {
+		v.AddErrorFor(dockerFieldSecretName, &errSlice,
+			fmt.Errorf("found %s but is missing %s", dockerFieldSecretName, dockerFieldSecretArgs))
+	}
 
 	podSpec, errs := s.applyStepDocker(stepName, v)
 	s.podSpec = podSpec
@@ -184,16 +225,7 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		optional := true
 		for _, arg := range s.SecretArgs {
 			argName, secretKey, hasCut := strings.Cut(arg, "=")
-			if !hasCut {
-				errSlice.Add(errors.New("invalid secret format: missing '=', expected 'ARG=secret-key'"))
-				continue
-			}
-			if len(argName) == 0 {
-				errSlice.Add(errors.New("invalid secret format: empty 'ARG', expected 'ARG=secret-key'"))
-				continue
-			}
-			if len(secretKey) == 0 {
-				errSlice.Add(errors.New("invalid secret format: empty 'secret-key', expected 'ARG=secret-key'"))
+			if !hasCut || len(argName) == 0 || len(secretKey) == 0 {
 				continue
 			}
 			args = append(args, "--build-arg", argName)
@@ -209,8 +241,6 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 				},
 			})
 		}
-	} else if len(s.SecretArgs) != 0 {
-		errSlice.Add(errors.New("found secretArgs but is missing secretName"))
 	}
 
 	cont.Args = args
