@@ -179,14 +179,18 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 
 	// TODO: Mount Docker secrets from REG_SECRET built-in var
 
-	// TODO: Add "--insecure" arg if REG_INSECURE
-
 	args := []string{
 		// Not using path/filepath package because we know don't want to
 		// suddenly use Windows directory separator when running from Windows.
 		"--dockerfile", path.Join(repoDir, s.File),
 		"--context", path.Join(repoDir, s.Context),
 		"--skip-tls-verify", // This is bad, but remains due to backward compatibility
+	}
+
+	var registryInsecure bool
+	_ = v.VisitBoolFromVarSub("REG_INSECURE", &registryInsecure)
+	if registryInsecure {
+		args = append(args, "--insecure")
 	}
 
 	for _, buildArg := range s.Args {

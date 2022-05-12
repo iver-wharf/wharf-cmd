@@ -58,6 +58,10 @@ func (p MapVisitor) VisitNumber(key string, target *float64) error {
 	return nil
 }
 
+func (p MapVisitor) VisitNumberFromVarSub(varLookup string, target *float64) error {
+	return visitFromVarSub(p, varLookup, target, p.VisitNumber)
+}
+
 func (p MapVisitor) VisitString(key string, target *string) error {
 	node, ok := p.nodes[key]
 	if !ok {
@@ -128,16 +132,8 @@ func (p MapVisitor) VisitStringWithVarSub(nodeKey, varLookup string, target *str
 	return p.VisitString(nodeKey, target)
 }
 
-func (p MapVisitor) VisitStringFromVarSub(
-	varLookup string, target *string) error {
-	node, err := p.lookupFromVarSub(varLookup)
-	if err != nil {
-		return err
-	}
-	p.nodes["__tmp"] = node
-	err = p.VisitString("__tmp", target)
-	delete(p.nodes, "__tmp")
-	return err
+func (p MapVisitor) VisitStringFromVarSub(varLookup string, target *string) error {
+	return visitFromVarSub(p, varLookup, target, p.VisitString)
 }
 
 func (p MapVisitor) VisitBool(key string, target *bool) error {
@@ -152,6 +148,10 @@ func (p MapVisitor) VisitBool(key string, target *bool) error {
 	}
 	*target = b
 	return nil
+}
+
+func (p MapVisitor) VisitBoolFromVarSub(varLookup string, target *bool) error {
+	return visitFromVarSub(p, varLookup, target, p.VisitBool)
 }
 
 func (p MapVisitor) ValidateRequiredString(key string) error {
@@ -207,6 +207,17 @@ func (p MapVisitor) lookupFromVarSub(varLookup string) (*yaml.Node, error) {
 		return nil, WrapPosErrorNode(err, p.parent)
 	}
 	return newNode, nil
+}
+
+func visitFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(string, *T) error) error {
+	node, err := p.lookupFromVarSub(varLookup)
+	if err != nil {
+		return err
+	}
+	p.nodes["__tmp"] = node
+	err = f("__tmp", target)
+	delete(p.nodes, "__tmp")
+	return err
 }
 
 func (p MapVisitor) AddErrorFor(key string, errSlice *errutil.Slice, err error) {
