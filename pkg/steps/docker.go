@@ -103,7 +103,7 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 		v.VisitString(dockerFieldDestination, &s.Destination),
 		v.VisitString(dockerFieldName, &s.Name),
 		v.VisitString(dockerFieldContext, &s.Context),
-		v.VisitString(dockerFieldSecret, &s.Secret),
+		v.VisitStringWithVarSub(dockerFieldSecret, "REG_SECRET", &s.Secret),
 		v.VisitBool(dockerFieldAppendCert, &s.AppendCert),
 		v.VisitBool(dockerFieldPush, &s.Push),
 		v.VisitString(dockerFieldSecretName, &s.SecretName),
@@ -179,13 +179,7 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		})
 	}
 
-	var regSecret string
-	if s.Push {
-		errSlice.Add(v.RequireStringFromVarSub("REG_SECRET", &regSecret))
-	} else {
-		errSlice.Add(v.LookupStringFromVarSub("REG_SECRET", &regSecret))
-	}
-	if regSecret != "" {
+	if s.Secret != "" {
 		const volumeName = "docker-secrets"
 		podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
 			Name: volumeName,
@@ -195,7 +189,7 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 						{
 							Secret: &v1.SecretProjection{
 								LocalObjectReference: v1.LocalObjectReference{
-									Name: regSecret,
+									Name: s.Secret,
 								},
 								Items: []v1.KeyToPath{
 									{
