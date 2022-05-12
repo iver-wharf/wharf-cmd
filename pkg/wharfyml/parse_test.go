@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/iver-wharf/wharf-cmd/internal/errtestutil"
+	"github.com/iver-wharf/wharf-cmd/internal/errtesting"
 	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
@@ -74,7 +74,7 @@ myStage2:
     kubectl:
       file: deploy/pod.yaml
 `), wharfyml.Args{Env: "myEnvA", VarSource: testVarSource, StepTypeFactory: steps.Factory})
-	errtestutil.RequireNoErr(t, errs)
+	errtesting.RequireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
 	if assert.IsType(t, wharfyml.InputString{}, got.Inputs["myStringVar"], `Inputs["myStringVar"]`) {
@@ -158,7 +158,7 @@ environments:
     myStr: !!str 123
     myInt: !!int 123
 `), testArgs)
-	errtestutil.RequireNoErr(t, errs)
+	errtesting.RequireNoErr(t, errs)
 	myEnv, ok := def.Envs["myEnv"]
 	require.True(t, ok, "myEnv environment exists")
 
@@ -174,7 +174,7 @@ myStage1: &reused
 
 myStage2: *reused
 `), testArgs)
-	errtestutil.RequireNoErr(t, errs)
+	errtesting.RequireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
 	assert.Equal(t, "myStage2", def.Stages[1].Name, "stage 2 name")
@@ -196,7 +196,7 @@ myStage2:
   myOtherStep:
     helm-package: {}
 `), testArgs)
-	errtestutil.RequireNoErr(t, errs)
+	errtesting.RequireNoErr(t, errs)
 	require.Len(t, def.Stages, 2)
 	assert.Equal(t, "myStage1", def.Stages[0].Name, "stage 1 name")
 	assert.Equal(t, "myStage2", def.Stages[1].Name, "stage 2 name")
@@ -294,7 +294,7 @@ myStage:
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got, errs := wharfyml.Parse(strings.NewReader(tc.input), testArgs)
-			errtestutil.RequireNoErr(t, errs)
+			errtesting.RequireNoErr(t, errs)
 			require.Len(t, got.Stages, 1)
 			var gotOrder []string
 			for _, s := range got.Stages[0].Steps {
@@ -313,7 +313,7 @@ b: 2
 ---
 c: 3
 `), wharfyml.Args{})
-	errtestutil.RequireContainsErr(t, errs, visit.ErrTooManyDocs)
+	errtesting.RequireContainsErr(t, errs, visit.ErrTooManyDocs)
 }
 
 func TestParse_OneDocWithDocSeparator(t *testing.T) {
@@ -321,31 +321,31 @@ func TestParse_OneDocWithDocSeparator(t *testing.T) {
 ---
 c: 3
 `), wharfyml.Args{})
-	errtestutil.RequireNotContainsErr(t, errs, visit.ErrTooManyDocs)
+	errtesting.RequireNotContainsErr(t, errs, visit.ErrTooManyDocs)
 }
 
 func TestParse_MissingDoc(t *testing.T) {
 	_, errs := wharfyml.Parse(strings.NewReader(``), wharfyml.Args{})
-	errtestutil.RequireContainsErr(t, errs, visit.ErrMissingDoc)
+	errtesting.RequireContainsErr(t, errs, visit.ErrMissingDoc)
 }
 
 func TestParse_ErrIfDocNotMap(t *testing.T) {
 	_, errs := wharfyml.Parse(strings.NewReader(`123`), wharfyml.Args{})
-	errtestutil.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestParse_ErrIfNonStringKey(t *testing.T) {
 	_, errs := wharfyml.Parse(strings.NewReader(`
 123: {}
 `), wharfyml.Args{})
-	errtestutil.RequireContainsErr(t, errs, visit.ErrKeyNotString)
+	errtesting.RequireContainsErr(t, errs, visit.ErrKeyNotString)
 }
 
 func TestParse_ErrIfEmptyStageName(t *testing.T) {
 	_, errs := wharfyml.Parse(strings.NewReader(`
 "": {}
 `), wharfyml.Args{})
-	errtestutil.RequireContainsErr(t, errs, visit.ErrKeyEmpty)
+	errtesting.RequireContainsErr(t, errs, visit.ErrKeyEmpty)
 }
 
 func TestParse_ErrIfUseOfUnknownEnv(t *testing.T) {
@@ -353,7 +353,7 @@ func TestParse_ErrIfUseOfUnknownEnv(t *testing.T) {
 myStage:
   environments: [myEnv]
 `), wharfyml.Args{})
-	errtestutil.RequireContainsErr(t, errs, wharfyml.ErrUseOfUndefinedEnv)
+	errtesting.RequireContainsErr(t, errs, wharfyml.ErrUseOfUndefinedEnv)
 }
 
 func TestParse_EnvVarSub(t *testing.T) {

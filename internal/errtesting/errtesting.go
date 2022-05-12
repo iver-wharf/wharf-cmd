@@ -1,4 +1,4 @@
-package errtestutil
+package errtesting
 
 import (
 	"errors"

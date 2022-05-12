@@ -3,7 +3,7 @@ package wharfyml
 import (
 	"testing"
 
-	"github.com/iver-wharf/wharf-cmd/internal/errtestutil"
+	"github.com/iver-wharf/wharf-cmd/internal/errtesting"
 	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/stretchr/testify/assert"
@@ -12,13 +12,13 @@ import (
 func TestVisitStep_ErrIfNotMap(t *testing.T) {
 	key, node := yamltesting.NewKeyedNode(t, `myStep: 123`)
 	_, errs := visitStepNode(key, node, Args{}, nil)
-	errtestutil.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitStep_ErrIfEmpty(t *testing.T) {
 	key, node := yamltesting.NewKeyedNode(t, `myStep: {}`)
 	_, errs := visitStepNode(key, node, Args{}, nil)
-	errtestutil.RequireContainsErr(t, errs, ErrStepEmpty)
+	errtesting.RequireContainsErr(t, errs, ErrStepEmpty)
 }
 
 func TestVisitStep_ErrIfMultipleStepTypes(t *testing.T) {
@@ -28,7 +28,7 @@ myStep:
   docker: {}
 `)
 	_, errs := visitStepNode(key, node, Args{}, nil)
-	errtestutil.RequireContainsErr(t, errs, ErrStepMultipleStepTypes)
+	errtesting.RequireContainsErr(t, errs, ErrStepMultipleStepTypes)
 }
 
 func TestVisitStep_Name(t *testing.T) {

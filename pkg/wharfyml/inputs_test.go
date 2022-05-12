@@ -3,7 +3,7 @@ package wharfyml
 import (
 	"testing"
 
-	"github.com/iver-wharf/wharf-cmd/internal/errtestutil"
+	"github.com/iver-wharf/wharf-cmd/internal/errtesting"
 	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/stretchr/testify/assert"
@@ -11,7 +11,7 @@ import (
 
 func TestVisitDocInputs_ErrIfNotArray(t *testing.T) {
 	_, errs := visitInputsNode(yamltesting.NewNode(t, `123`))
-	errtestutil.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitDocInputs_ErrIfNameCollision(t *testing.T) {
@@ -21,7 +21,7 @@ func TestVisitDocInputs_ErrIfNameCollision(t *testing.T) {
 - name: myVar
   type: string
 `))
-	errtestutil.RequireContainsErr(t, errs, ErrInputNameCollision)
+	errtesting.RequireContainsErr(t, errs, ErrInputNameCollision)
 }
 
 func TestVisitInputType_ErrIfUnknownType(t *testing.T) {
@@ -30,7 +30,7 @@ name: myVar
 type: unvariable
 default: foo bar
 `))
-	errtestutil.RequireContainsErr(t, errs, ErrInputUnknownType)
+	errtesting.RequireContainsErr(t, errs, ErrInputUnknownType)
 }
 
 func TestVisitInputType_AllValid(t *testing.T) {
@@ -109,7 +109,7 @@ values: [optionA, optionB, optionC]`,
 			node := yamltesting.NewNode(t, tc.content)
 			got, errs := visitInputTypeNode(node)
 			assert.Equal(t, tc.want, got)
-			errtestutil.RequireNotContainsErr(t, errs, visit.ErrInvalidFieldType)
+			errtesting.RequireNotContainsErr(t, errs, visit.ErrInvalidFieldType)
 		})
 	}
 }
@@ -168,7 +168,7 @@ default: [hello there]`,
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			_, errs := visitInputTypeNode(yamltesting.NewNode(t, tc.content))
-			errtestutil.RequireContainsErr(t, errs, visit.ErrMissingRequired)
+			errtesting.RequireContainsErr(t, errs, visit.ErrMissingRequired)
 		})
 	}
 }
@@ -180,5 +180,5 @@ type: choice
 default: optionF
 values: [optionA, optionB, optionC]
 `))
-	errtestutil.RequireContainsErr(t, errs, ErrInputChoiceUnknownValue)
+	errtesting.RequireContainsErr(t, errs, ErrInputChoiceUnknownValue)
 }
