@@ -193,7 +193,6 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		args = append(args, "--build-arg", buildArg)
 	}
 
-	destination := s.getDockerDestination(stepName)
 	anyTag := false
 	for _, tag := range strings.Split(s.Tag, ",") {
 		tag = strings.TrimSpace(tag)
@@ -202,7 +201,7 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		}
 		anyTag = true
 		args = append(args, "--destination",
-			fmt.Sprintf("%s:%s", destination, tag))
+			fmt.Sprintf("%s:%s", s.Destination, tag))
 	}
 	if !anyTag {
 		errSlice.Add(errors.New("tags field resolved to zero tags"))
@@ -246,23 +245,4 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 	cont.Args = args
 	podSpec.Containers = append(podSpec.Containers, cont)
 	return &podSpec, errSlice
-}
-
-func (s Docker) getDockerDestination(stepName string) string {
-	if s.Destination != "" {
-		return strings.ToLower(s.Destination)
-	}
-	const repoName = "project-name" // TODO: replace with REPO_NAME built-in var
-	if s.Registry == "" {
-		s.Registry = "docker.io" // TODO: replace with REG_URL
-	}
-	if s.Group == "" {
-		s.Group = "iver-wharf" // TODO: replace with REPO_GROUP
-	}
-	if stepName == repoName {
-		return strings.ToLower(fmt.Sprintf("%s/%s/%s",
-			s.Registry, s.Group, repoName))
-	}
-	return strings.ToLower(fmt.Sprintf("%s/%s/%s/%s",
-		s.Registry, s.Group, repoName, stepName))
 }
