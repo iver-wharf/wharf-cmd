@@ -66,6 +66,28 @@ func (p MapVisitor) LookupNumberFromVarSub(varLookup string, target *float64) er
 	return lookupFromVarSub(p, varLookup, target, p.VisitNumber)
 }
 
+func (p MapVisitor) VisitInt(key string, target *int) error {
+	node, ok := p.nodes[key]
+	if !ok {
+		return nil
+	}
+	p.positions[key] = NewPosNode(node)
+	num, err := Int(node)
+	if err != nil {
+		return errutil.Scope(err, key)
+	}
+	*target = num
+	return nil
+}
+
+func (p MapVisitor) RequireIntFromVarSub(varLookup string, target *int) error {
+	return requireFromVarSub(p, varLookup, target, p.VisitInt)
+}
+
+func (p MapVisitor) LookupIntFromVarSub(varLookup string, target *int) error {
+	return lookupFromVarSub(p, varLookup, target, p.VisitInt)
+}
+
 func (p MapVisitor) VisitString(key string, target *string) error {
 	node, ok := p.nodes[key]
 	if !ok {
