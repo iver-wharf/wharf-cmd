@@ -9,6 +9,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/spf13/cobra"
@@ -84,6 +85,8 @@ func parseVarSources(currentDir string, additionalSource varsub.Source) (varsub.
 }
 
 func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
+	ymlArgs.StepTypeFactory = steps.Factory
+
 	varSource, err := parseVarSources(currentDir, ymlArgs.VarSource)
 	if err != nil {
 		return wharfyml.Definition{}, err
