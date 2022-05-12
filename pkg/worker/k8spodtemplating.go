@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	_ "embed"
 	"errors"
 	"fmt"
 	"regexp"
@@ -23,7 +24,10 @@ var (
 		Name:      "repo",
 		MountPath: "/mnt/repo",
 	}
-	helmPackageScript  string
+
+	//go:embed k8sscript-helm-package.sh
+	helmPackageScript string
+	//go:embed k8sscript-nuget-package.sh
 	nugetPackageScript string
 )
 

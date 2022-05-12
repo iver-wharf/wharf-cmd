@@ -8,11 +8,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
-var (
-	//go:embed k8sscript-nuget-package.sh
-	nugetPackageScript string
-)
-
 // NuGetPackage represents a step type used for building .NET NuGet
 // packages.
 type NuGetPackage struct {

@@ -1,17 +1,11 @@
 package steps
 
 import (
-	_ "embed"
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	v1 "k8s.io/api/core/v1"
-)
-
-var (
-	//go:embed k8sscript-helm-package.sh
-	helmPackageScript string
 )
 
 // HelmPackage represents a step type for building and uploading a Helm
