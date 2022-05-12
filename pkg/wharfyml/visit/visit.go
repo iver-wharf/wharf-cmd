@@ -184,7 +184,7 @@ func yamlShortTagName(tag string) string {
 	}
 }
 
-func prettyNodeTypeName(node *yaml.Node) string {
+func PrettyNodeTypeName(node *yaml.Node) string {
 	switch node.Kind {
 	case yaml.ScalarNode:
 		return yamlShortTagName(node.ShortTag())
