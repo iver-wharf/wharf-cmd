@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	_ "embed"
 	"errors"
 	"fmt"
 	"path"
@@ -25,13 +24,22 @@ var (
 		Name:      "repo",
 		MountPath: "/mnt/repo",
 	}
-	//go:embed k8sscript-helm-package.sh
-	helmPackageScript string
-	//go:embed k8sscript-nuget-package.sh
+	helmPackageScript  string
 	nugetPackageScript string
 )
 
 func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
+	podSpecer, ok := step.Type.(steps.PodSpecer)
+	if !ok {
+		return v1.Pod{}, errors.New("step type cannot produce a Kubernetes Pod specification")
+	}
+	podSpecPtr := podSpecer.PodSpec()
+	var podSpec v1.PodSpec
+	if podSpecPtr != nil {
+		// TODO: Return error if nil, as all steps should return valid pod spec.
+		podSpec = *podSpecPtr
+	}
+
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456",
 		"wharf.iver.com/stage-id":   "789",
@@ -60,33 +68,13 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 			},
 			OwnerReferences: getOwnerReferences(),
 		},
-		Spec: v1.PodSpec{
-			ServiceAccountName: "wharf-cmd",
-			RestartPolicy:      v1.RestartPolicyNever,
-			InitContainers: []v1.Container{
-				{
-					Name:            "init",
-					Image:           "alpine:3",
-					ImagePullPolicy: v1.PullIfNotPresent,
-					Command:         podInitWaitArgs,
-					VolumeMounts: []v1.VolumeMount{
-						commonRepoVolumeMount,
-					},
-				},
-			},
-			Volumes: []v1.Volume{
-				{
-					Name: commonRepoVolumeMount.Name,
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-			},
-		},
+		Spec: podSpec,
 	}
 
-	if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
-		return v1.Pod{}, err
+	if podSpecPtr != nil {
+		if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
+			return v1.Pod{}, err
+		}
 	}
 
 	if len(pod.Spec.Containers) == 0 {

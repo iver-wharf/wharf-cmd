@@ -2,8 +2,9 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Kubectl represents a step type for running kubectl commands on some
@@ -18,12 +19,17 @@ type Kubectl struct {
 	Action    string
 	Force     bool
 	Cluster   string
+
+	config  *config.KubectlStepConfig
+	podSpec *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
 func (Kubectl) StepTypeName() string { return "kubectl" }
 
-func (s Kubectl) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
+func (s Kubectl) PodSpec() *v1.PodSpec { return s.podSpec }
+
+func (s Kubectl) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 

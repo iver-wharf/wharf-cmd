@@ -2,8 +2,8 @@ package steps
 
 import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Container represents a step type for running commands inside a Docker
@@ -19,12 +19,16 @@ type Container struct {
 	SecretName            string
 	ServiceAccount        string
 	CertificatesMountPath string
+
+	podSpec *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
 func (Container) StepTypeName() string { return "container" }
 
-func (s Container) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
+func (s Container) PodSpec() *v1.PodSpec { return s.podSpec }
+
+func (s Container) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"

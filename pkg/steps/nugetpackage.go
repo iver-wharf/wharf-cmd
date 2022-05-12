@@ -1,9 +1,16 @@
 package steps
 
 import (
+	_ "embed"
+
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+	v1 "k8s.io/api/core/v1"
+)
+
+var (
+	//go:embed k8sscript-nuget-package.sh
+	nugetPackageScript string
 )
 
 // NuGetPackage represents a step type used for building .NET NuGet
@@ -17,12 +24,16 @@ type NuGetPackage struct {
 	// Optional fields
 	SkipDuplicate         bool
 	CertificatesMountPath string
+
+	podSpec *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
 func (NuGetPackage) StepTypeName() string { return "nuget-package" }
 
-func (s NuGetPackage) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
+func (s NuGetPackage) PodSpec() *v1.PodSpec { return s.podSpec }
+
+func (s NuGetPackage) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 
 	// Visitling

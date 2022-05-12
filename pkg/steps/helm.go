@@ -4,8 +4,9 @@ import (
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+	v1 "k8s.io/api/core/v1"
 )
 
 // Helm represents a step type for installing a Helm chart into a Kubernetes
@@ -23,12 +24,17 @@ type Helm struct {
 	ChartVersion string
 	HelmVersion  string
 	Cluster      string
+
+	config  *config.HelmStepConfig
+	podSpec *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
 func (Helm) StepTypeName() string { return "helm" }
 
-func (s Helm) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
+func (s Helm) PodSpec() *v1.PodSpec { return s.podSpec }
+
+func (s Helm) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 

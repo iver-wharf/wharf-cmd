@@ -87,7 +87,7 @@ func parseVarSources(currentDir string, additionalSource varsub.Source) (varsub.
 }
 
 func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
-	ymlArgs.StepTypeFactory = steps.Factory
+	ymlArgs.StepTypeFactory = steps.NewFactory(&rootConfig)
 
 	varSource, err := parseVarSources(currentDir, ymlArgs.VarSource)
 	if err != nil {

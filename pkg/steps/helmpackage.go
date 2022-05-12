@@ -1,11 +1,17 @@
 package steps
 
 import (
+	_ "embed"
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+	v1 "k8s.io/api/core/v1"
+)
+
+var (
+	//go:embed k8sscript-helm-package.sh
+	helmPackageScript string
 )
 
 // HelmPackage represents a step type for building and uploading a Helm
@@ -15,12 +21,16 @@ type HelmPackage struct {
 	Version     string
 	ChartPath   string
 	Destination string
+
+	podSpec *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
 func (HelmPackage) StepTypeName() string { return "helm-package" }
 
-func (s HelmPackage) init(stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
+func (s HelmPackage) PodSpec() *v1.PodSpec { return s.podSpec }
+
+func (s HelmPackage) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 
 	if !v.HasNode("destination") {
