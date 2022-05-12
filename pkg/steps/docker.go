@@ -67,8 +67,8 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 		var errs errutil.Slice
 		errs.Add(
 			v.VisitStringWithVarSub(dockerFieldRegistry, "REG_URL", &s.Registry),
-			v.VisitStringWithVarSub(dockerFieldGroup, "REPO_GROUP", &s.Registry),
-			v.VisitStringFromVarSub("REPO_NAME", &repoName),
+			v.VisitStringWithVarSub(dockerFieldGroup, "REPO_GROUP", &s.Group),
+			v.RequireStringFromVarSub("REPO_NAME", &repoName),
 			v.VisitString(dockerFieldName, &s.Name), // Already defaults to step name
 		)
 		for _, err := range errs {
@@ -85,7 +85,7 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 
 	if !v.HasNode(dockerFieldAppendCert) {
 		var repoGroup string
-		err := v.VisitStringFromVarSub("REPO_GROUP", &repoGroup)
+		err := v.LookupStringFromVarSub("REPO_GROUP", &repoGroup)
 		if err != nil {
 			errSlice.Add(fmt.Errorf(`eval '%s' default: %w`, dockerFieldAppendCert, err))
 		}
@@ -188,7 +188,7 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 	}
 
 	var registryInsecure bool
-	_ = v.VisitBoolFromVarSub("REG_INSECURE", &registryInsecure)
+	errSlice.Add(v.LookupBoolFromVarSub("REG_INSECURE", &registryInsecure))
 	if registryInsecure {
 		args = append(args, "--insecure")
 	}

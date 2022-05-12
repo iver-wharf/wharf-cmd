@@ -45,8 +45,8 @@ func (s Helm) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice
 		var repoGroup string
 		var errs errutil.Slice
 		errs.Add(
-			v.VisitStringFromVarSub("CHART_REPO", &chartRepo),
-			v.VisitStringFromVarSub("REPO_GROUP", &repoGroup),
+			v.RequireStringFromVarSub("CHART_REPO", &chartRepo),
+			v.RequireStringFromVarSub("REPO_GROUP", &repoGroup),
 		)
 		for _, err := range errs {
 			errSlice.Add(fmt.Errorf(`eval "repo" default: %w`, err))

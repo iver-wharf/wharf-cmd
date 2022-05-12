@@ -58,8 +58,12 @@ func (p MapVisitor) VisitNumber(key string, target *float64) error {
 	return nil
 }
 
-func (p MapVisitor) VisitNumberFromVarSub(varLookup string, target *float64) error {
-	return visitFromVarSub(p, varLookup, target, p.VisitNumber)
+func (p MapVisitor) RequireNumberFromVarSub(varLookup string, target *float64) error {
+	return requireFromVarSub(p, varLookup, target, p.VisitNumber)
+}
+
+func (p MapVisitor) LookupNumberFromVarSub(varLookup string, target *float64) error {
+	return lookupFromVarSub(p, varLookup, target, p.VisitNumber)
 }
 
 func (p MapVisitor) VisitString(key string, target *string) error {
@@ -124,7 +128,6 @@ func (p MapVisitor) VisitStringStringMap(key string, target *map[string]string) 
 }
 
 func (p MapVisitor) VisitStringWithVarSub(nodeKey, varLookup string, target *string) error {
-
 	err := p.loadFromVarSubIfUnset(nodeKey, varLookup)
 	if err != nil {
 		return err
@@ -132,8 +135,12 @@ func (p MapVisitor) VisitStringWithVarSub(nodeKey, varLookup string, target *str
 	return p.VisitString(nodeKey, target)
 }
 
-func (p MapVisitor) VisitStringFromVarSub(varLookup string, target *string) error {
-	return visitFromVarSub(p, varLookup, target, p.VisitString)
+func (p MapVisitor) RequireStringFromVarSub(varLookup string, target *string) error {
+	return requireFromVarSub(p, varLookup, target, p.VisitString)
+}
+
+func (p MapVisitor) LookupStringFromVarSub(varLookup string, target *string) error {
+	return lookupFromVarSub(p, varLookup, target, p.VisitString)
 }
 
 func (p MapVisitor) VisitBool(key string, target *bool) error {
@@ -150,8 +157,12 @@ func (p MapVisitor) VisitBool(key string, target *bool) error {
 	return nil
 }
 
-func (p MapVisitor) VisitBoolFromVarSub(varLookup string, target *bool) error {
-	return visitFromVarSub(p, varLookup, target, p.VisitBool)
+func (p MapVisitor) LookupBoolFromVarSub(varLookup string, target *bool) error {
+	return lookupFromVarSub(p, varLookup, target, p.VisitBool)
+}
+
+func (p MapVisitor) RequireBoolFromVarSub(varLookup string, target *bool) error {
+	return requireFromVarSub(p, varLookup, target, p.VisitBool)
 }
 
 func (p MapVisitor) ValidateRequiredString(key string) error {
@@ -209,7 +220,7 @@ func (p MapVisitor) lookupFromVarSub(varLookup string) (*yaml.Node, error) {
 	return newNode, nil
 }
 
-func visitFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(string, *T) error) error {
+func requireFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(string, *T) error) error {
 	node, err := p.lookupFromVarSub(varLookup)
 	if err != nil {
 		return err
@@ -217,6 +228,14 @@ func visitFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(st
 	p.nodes["__tmp"] = node
 	err = f("__tmp", target)
 	delete(p.nodes, "__tmp")
+	return err
+}
+
+func lookupFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(string, *T) error) error {
+	err := requireFromVarSub(p, varLookup, target, f)
+	if errors.Is(err, ErrMissingBuiltinVar) {
+		return nil
+	}
 	return err
 }
 
