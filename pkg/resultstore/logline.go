@@ -97,7 +97,7 @@ func (s *store) resolveLogPath(stepID uint64) string {
 	return filepath.Join(dirNameSteps, fmt.Sprint(stepID), fileNameLogs)
 }
 
-func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) {
+func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) LogLine {
 	tim, msg := parseLogLine(line)
 	logLine := LogLine{
 		StepID:    stepID,
@@ -110,19 +110,18 @@ func (s *store) parseAndPubLogLine(stepID uint64, logID uint64, line string) {
 	s.logSubMutex.RLock()
 	s.logPubSub.PubSync(logLine)
 	s.logSubMutex.RUnlock() // not deferring as it's performance critical
+	return logLine
 }
 
 func parseLogLine(line string) (time.Time, string) {
-	index := strings.IndexByte(line, ' ')
-	if index == -1 {
+	timeStr, message, hasCut := strings.Cut(line, " ")
+	if !hasCut {
 		return time.Time{}, line
 	}
-	timeStr := line[:index]
 	t, err := time.Parse(time.RFC3339Nano, timeStr)
 	if err != nil {
 		return time.Time{}, line
 	}
-	message := line[index+1:]
 	return t, message
 }
 
