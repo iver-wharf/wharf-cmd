@@ -9,7 +9,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 )
 
-// RequireContainsErr fails the test if any error in the slice Is the given
+// RequireContainsErr fails the test if no error in the slice Is the given
 // error.
 func RequireContainsErr(t *testing.T, errs errutil.Slice, err error) {
 	t.Helper()
@@ -22,7 +22,7 @@ func RequireContainsErr(t *testing.T, errs errutil.Slice, err error) {
 		err, len(errs), formatSlice("  - ", errs))
 }
 
-// RequireNotContainsErr fails the test if no error in the slice Is the given
+// RequireNotContainsErr fails the test if any error in the slice Is the given
 // error.
 func RequireNotContainsErr(t *testing.T, errs errutil.Slice, err error) {
 	t.Helper()

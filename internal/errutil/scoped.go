@@ -26,7 +26,7 @@ func Scope(err error, paths ...string) error {
 	}
 }
 
-// ScopeSlice adds a paths to all the errors in the slice.
+// ScopeSlice adds paths to all the errors in the slice.
 func ScopeSlice(errs Slice, paths ...string) Slice {
 	result := make(Slice, len(errs))
 	for i, err := range errs {
