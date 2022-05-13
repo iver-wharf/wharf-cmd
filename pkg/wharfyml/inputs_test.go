@@ -3,31 +3,34 @@ package wharfyml
 import (
 	"testing"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errtesting"
+	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestVisitDocInputs_ErrIfNotArray(t *testing.T) {
-	_, errs := visitInputsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrInvalidFieldType)
+	_, errs := visitInputsNode(yamltesting.NewNode(t, `123`))
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitDocInputs_ErrIfNameCollision(t *testing.T) {
-	_, errs := visitInputsNode(getNode(t, `
+	_, errs := visitInputsNode(yamltesting.NewNode(t, `
 - name: myVar
   type: string
 - name: myVar
   type: string
 `))
-	requireContainsErr(t, errs, ErrInputNameCollision)
+	errtesting.RequireContainsErr(t, errs, ErrInputNameCollision)
 }
 
 func TestVisitInputType_ErrIfUnknownType(t *testing.T) {
-	_, errs := visitInputTypeNode(getNode(t, `
+	_, errs := visitInputTypeNode(yamltesting.NewNode(t, `
 name: myVar
 type: unvariable
 default: foo bar
 `))
-	requireContainsErr(t, errs, ErrInputUnknownType)
+	errtesting.RequireContainsErr(t, errs, ErrInputUnknownType)
 }
 
 func TestVisitInputType_AllValid(t *testing.T) {
@@ -43,7 +46,7 @@ name: myVar
 type: string
 default: hello there`,
 			want: InputString{
-				Source:  Pos{2, 1},
+				Source:  visit.Pos{2, 1},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -55,7 +58,7 @@ name: myVar
 type: password
 default: hello there`,
 			want: InputPassword{
-				Source:  Pos{2, 1},
+				Source:  visit.Pos{2, 1},
 				Name:    "myVar",
 				Default: "hello there",
 			},
@@ -67,7 +70,7 @@ name: myVar
 type: number
 default: 12345`,
 			want: InputNumber{
-				Source:  Pos{2, 1},
+				Source:  visit.Pos{2, 1},
 				Name:    "myVar",
 				Default: 12345,
 			},
@@ -79,7 +82,7 @@ name: myVar
 type: number
 default: 123.45`,
 			want: InputNumber{
-				Source:  Pos{2, 1},
+				Source:  visit.Pos{2, 1},
 				Name:    "myVar",
 				Default: 123.45,
 			},
@@ -92,7 +95,7 @@ type: choice
 default: optionA
 values: [optionA, optionB, optionC]`,
 			want: InputChoice{
-				Source:  Pos{2, 1},
+				Source:  visit.Pos{2, 1},
 				Name:    "myVar",
 				Default: "optionA",
 				Values: []string{
@@ -103,10 +106,10 @@ values: [optionA, optionB, optionC]`,
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			node := getNode(t, tc.content)
+			node := yamltesting.NewNode(t, tc.content)
 			got, errs := visitInputTypeNode(node)
 			assert.Equal(t, tc.want, got)
-			requireNotContainsErr(t, errs, ErrInvalidFieldType)
+			errtesting.RequireNotContainsErr(t, errs, visit.ErrInvalidFieldType)
 		})
 	}
 }
@@ -164,18 +167,18 @@ default: [hello there]`,
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			_, errs := visitInputTypeNode(getNode(t, tc.content))
-			requireContainsErr(t, errs, ErrMissingRequired)
+			_, errs := visitInputTypeNode(yamltesting.NewNode(t, tc.content))
+			errtesting.RequireContainsErr(t, errs, visit.ErrMissingRequired)
 		})
 	}
 }
 
 func TestVisitInputChoice_ErrIfUndefinedDefaultValue(t *testing.T) {
-	_, errs := visitInputTypeNode(getNode(t, `
+	_, errs := visitInputTypeNode(yamltesting.NewNode(t, `
 name: myVar
 type: choice
 default: optionF
 values: [optionA, optionB, optionC]
 `))
-	requireContainsErr(t, errs, ErrInputChoiceUnknownValue)
+	errtesting.RequireContainsErr(t, errs, ErrInputChoiceUnknownValue)
 }

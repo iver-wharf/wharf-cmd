@@ -7,7 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -36,7 +38,7 @@ const (
 // 	../.wharf-vars.yml
 // 	../../.wharf-vars.yml
 // 	../../..(etc)/.wharf-vars.yml
-func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
+func ParseVarFiles(currentDir string) (varsub.Source, errutil.Slice) {
 	workingDir, err := os.Getwd()
 	if err != nil {
 		log.Warn().WithError(err).
@@ -45,20 +47,20 @@ func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	}
 
 	varFiles := ListPossibleVarsFiles(currentDir)
-	var errSlice Errors
+	var errSlice errutil.Slice
 	var filesSources varsub.SourceSlice
 	for _, varFile := range varFiles {
 		items, errs := tryReadVarsFileNodes(varFile.Path)
 		prettyPath := varFile.PrettyPath(workingDir)
 		errSlice = append(errSlice,
-			wrapPathErrorSlice(errs, prettyPath)...)
+			errutil.ScopeSlice(errs, prettyPath)...)
 		if len(items) == 0 {
 			continue
 		}
 		source := make(varsub.SourceMap)
 		for _, item := range items {
-			source[item.key.value] = varsub.Val{
-				Value:  VarSubNode{item.value},
+			source[item.Key.Value] = varsub.Val{
+				Value:  visit.VarSubNode{item.Value},
 				Source: prettyPath,
 			}
 		}
@@ -67,7 +69,7 @@ func ParseVarFiles(currentDir string) (varsub.Source, Errors) {
 	return filesSources, errSlice
 }
 
-func tryReadVarsFileNodes(path string) ([]mapItem, Errors) {
+func tryReadVarsFileNodes(path string) ([]visit.MapItem, errutil.Slice) {
 	file, err := os.Open(path)
 	if err != nil {
 		// Silently ignore. Could not exist, be a directory, or not readable.
@@ -78,31 +80,31 @@ func tryReadVarsFileNodes(path string) ([]mapItem, Errors) {
 	return parseVarsFileNodes(file)
 }
 
-func parseVarsFileNodes(reader io.Reader) ([]mapItem, Errors) {
-	rootNodes, err := decodeRootNodes(reader)
+func parseVarsFileNodes(reader io.Reader) ([]visit.MapItem, errutil.Slice) {
+	rootNodes, err := visit.DecodeRootNodes(reader)
 	if err != nil {
-		return nil, Errors{err}
+		return nil, errutil.Slice{err}
 	}
 	return visitVarsFileRootNodes(rootNodes)
 }
 
-func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]mapItem, Errors) {
-	var allVars []mapItem
-	var errSlice Errors
+func visitVarsFileRootNodes(rootNodes []*yaml.Node) ([]visit.MapItem, errutil.Slice) {
+	var allVars []visit.MapItem
+	var errSlice errutil.Slice
 	for i, root := range rootNodes {
-		docNodes, errs := visitMapSlice(root)
+		docNodes, errs := visit.MapSlice(root)
 		if len(rootNodes) > 1 {
-			errSlice.add(wrapPathErrorSlice(errs, fmt.Sprintf("doc#%d", i+1))...)
+			errSlice.Add(errutil.ScopeSlice(errs, fmt.Sprintf("doc#%d", i+1))...)
 		} else {
-			errSlice.add(errs...)
+			errSlice.Add(errs...)
 		}
 		for _, node := range docNodes {
-			if node.key.value != propVars {
+			if node.Key.Value != propVars {
 				// just silently ignore
 				continue
 			}
-			vars, errs := visitMapSlice(node.value)
-			errSlice.add(wrapPathErrorSlice(errs, propVars)...)
+			vars, errs := visit.MapSlice(node.Value)
+			errSlice.Add(errutil.ScopeSlice(errs, propVars)...)
 			allVars = append(allVars, vars...)
 		}
 	}

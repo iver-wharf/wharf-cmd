@@ -3,11 +3,13 @@ package wharfyml
 import (
 	"fmt"
 	"strconv"
+
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 )
 
 // InputString represents a string (text) input value.
 type InputString struct {
-	Source  Pos
+	Source  visit.Pos
 	Name    string
 	Default string
 }
@@ -28,7 +30,7 @@ func (i InputString) DefaultValue() any {
 }
 
 // Pos returns the position of where this variable was defined.
-func (i InputString) Pos() Pos {
+func (i InputString) Pos() visit.Pos {
 	return i.Source
 }
 
@@ -42,7 +44,7 @@ func (i InputString) ParseValue(value any) (any, error) {
 // InputPassword represents a string (text) input value, but where the value
 // should be concealed in user interfaces.
 type InputPassword struct {
-	Source  Pos
+	Source  visit.Pos
 	Name    string
 	Default string
 }
@@ -63,7 +65,7 @@ func (i InputPassword) DefaultValue() any {
 }
 
 // Pos returns the position of where this variable was defined.
-func (i InputPassword) Pos() Pos {
+func (i InputPassword) Pos() visit.Pos {
 	return i.Source
 }
 
@@ -76,7 +78,7 @@ func (i InputPassword) ParseValue(value any) (any, error) {
 
 // InputNumber represents a number (integer or float) input value.
 type InputNumber struct {
-	Source  Pos
+	Source  visit.Pos
 	Name    string
 	Default float64
 }
@@ -97,7 +99,7 @@ func (i InputNumber) DefaultValue() any {
 }
 
 // Pos returns the position of where this variable was defined.
-func (i InputNumber) Pos() Pos {
+func (i InputNumber) Pos() visit.Pos {
 	return i.Source
 }
 
@@ -121,7 +123,7 @@ func (i InputNumber) ParseValue(value any) (any, error) {
 
 // InputChoice represents a choice of multiple string inputs.
 type InputChoice struct {
-	Source  Pos
+	Source  visit.Pos
 	Name    string
 	Values  []string
 	Default string
@@ -154,7 +156,7 @@ func (i InputChoice) ParseValue(value any) (any, error) {
 }
 
 // Pos returns the position of where this variable was defined.
-func (i InputChoice) Pos() Pos {
+func (i InputChoice) Pos() visit.Pos {
 	return i.Source
 }
 

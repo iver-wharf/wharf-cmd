@@ -3,7 +3,9 @@ package wharfyml
 import (
 	"errors"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,33 +17,33 @@ var (
 // Stage holds the name, environment filter, and list of steps for this Wharf
 // build stage.
 type Stage struct {
-	Pos     Pos
+	Pos     visit.Pos
 	Name    string
 	Envs    []EnvRef
-	EnvsPos Pos
+	EnvsPos visit.Pos
 	Steps   []Step
 }
 
-func visitStageNode(nameNode strNode, node *yaml.Node, source varsub.Source) (stage Stage, errSlice Errors) {
-	stage.Pos = newPosNode(node)
-	stage.Name = nameNode.value
-	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (stage Stage, errSlice errutil.Slice) {
+	stage.Pos = visit.NewPosFromNode(node)
+	stage.Name = nameNode.Value
+	nodes, errs := visit.MapSlice(node)
+	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode(ErrStageEmpty, node))
+		errSlice.Add(errutil.NewPosFromNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {
-		switch stepNode.key.value {
+		switch stepNode.Key.Value {
 		case propEnvironments:
-			stage.EnvsPos = newPosNode(stepNode.value)
-			envs, errs := visitStageEnvironmentsNode(stepNode.value)
+			stage.EnvsPos = visit.NewPosFromNode(stepNode.Value)
+			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
 			stage.Envs = envs
-			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
+			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
 		default:
-			step, errs := visitStepNode(stepNode.key, stepNode.value, source)
+			step, errs := visitStepNode(stepNode.Key, stepNode.Value, args, source)
 			stage.Steps = append(stage.Steps, step)
-			errSlice.add(wrapPathErrorSlice(errs, stepNode.key.value)...)
+			errSlice.Add(errutil.ScopeSlice(errs, stepNode.Key.Value)...)
 		}
 	}
 	return

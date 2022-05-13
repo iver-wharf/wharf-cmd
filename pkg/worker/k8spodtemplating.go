@@ -5,11 +5,11 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"path"
 	"regexp"
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
+	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/env"
 	"gopkg.in/typ.v4/slices"
@@ -24,6 +24,7 @@ var (
 		Name:      "repo",
 		MountPath: "/mnt/repo",
 	}
+
 	//go:embed k8sscript-helm-package.sh
 	helmPackageScript string
 	//go:embed k8sscript-nuget-package.sh
@@ -31,6 +32,17 @@ var (
 )
 
 func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
+	podSpecer, ok := step.Type.(steps.PodSpecer)
+	if !ok {
+		return v1.Pod{}, errors.New("step type cannot produce a Kubernetes Pod specification")
+	}
+	podSpecPtr := podSpecer.PodSpec()
+	var podSpec v1.PodSpec
+	if podSpecPtr != nil {
+		// TODO: Return error if nil, as all steps should return valid pod spec.
+		podSpec = *podSpecPtr
+	}
+
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456",
 		"wharf.iver.com/stage-id":   "789",
@@ -59,33 +71,13 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 			},
 			OwnerReferences: getOwnerReferences(),
 		},
-		Spec: v1.PodSpec{
-			ServiceAccountName: "wharf-cmd",
-			RestartPolicy:      v1.RestartPolicyNever,
-			InitContainers: []v1.Container{
-				{
-					Name:            "init",
-					Image:           "alpine:3",
-					ImagePullPolicy: v1.PullIfNotPresent,
-					Command:         podInitWaitArgs,
-					VolumeMounts: []v1.VolumeMount{
-						commonRepoVolumeMount,
-					},
-				},
-			},
-			Volumes: []v1.Volume{
-				{
-					Name: commonRepoVolumeMount.Name,
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-			},
-		},
+		Spec: podSpec,
 	}
 
-	if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
-		return v1.Pod{}, err
+	if podSpecPtr == nil {
+		if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
+			return v1.Pod{}, err
+		}
 	}
 
 	if len(pod.Spec.Containers) == 0 {
@@ -163,9 +155,9 @@ func getOwnerReferences() []metav1.OwnerReference {
 
 func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 	switch s := step.Type.(type) {
-	case wharfyml.StepHelm:
+	case steps.Helm:
 		return s.Files, true
-	case wharfyml.StepKubectl:
+	case steps.Kubectl:
 		if s.File != "" {
 			return append(s.Files, s.File), true
 		}
@@ -177,17 +169,15 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case wharfyml.StepContainer:
+	case steps.Container:
 		return applyStepContainer(pod, s)
-	case wharfyml.StepDocker:
-		return applyStepDocker(c.Docker, pod, s, step.Name)
-	case wharfyml.StepHelmPackage:
+	case steps.HelmPackage:
 		return applyStepHelmPackage(pod, s)
-	case wharfyml.StepHelm:
+	case steps.Helm:
 		return applyStepHelm(c.Helm, pod, s)
-	case wharfyml.StepKubectl:
+	case steps.Kubectl:
 		return applyStepKubectl(c.Kubectl, pod, s)
-	case wharfyml.StepNuGetPackage:
+	case steps.NuGetPackage:
 		return applyStepNuGetPackage(pod, s)
 	case nil:
 		return errors.New("nil step type")
@@ -196,7 +186,7 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	}
 }
 
-func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
+func applyStepContainer(pod *v1.Pod, step steps.Container) error {
 	var cmds []string
 	if step.OS == "windows" && step.Shell == "/bin/sh" {
 		cmds = []string{"powershell.exe", "-C"}
@@ -255,143 +245,7 @@ func applyStepContainer(pod *v1.Pod, step wharfyml.StepContainer) error {
 	return nil
 }
 
-func applyStepDocker(config config.DockerStepConfig, pod *v1.Pod, step wharfyml.StepDocker, stepName string) error {
-	repoDir := commonRepoVolumeMount.MountPath
-	cont := v1.Container{
-		Name:  commonContainerName,
-		Image: fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
-		// default entrypoint for image is "/kaniko/executor"
-		WorkingDir: repoDir,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-		},
-	}
-
-	if step.AppendCert {
-		cont.VolumeMounts = append(cont.VolumeMounts,
-			v1.VolumeMount{
-				Name:      "cert",
-				ReadOnly:  true,
-				MountPath: "/mnt/cert",
-			})
-		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
-			Name: "cert",
-			VolumeSource: v1.VolumeSource{
-				EmptyDir: &v1.EmptyDirVolumeSource{},
-			},
-		})
-	}
-
-	// TODO: Mount Docker secrets from REG_SECRET built-in var
-
-	// TODO: Add "--insecure" arg if REG_INSECURE
-
-	args := []string{
-		// Not using path/filepath package because we know don't want to
-		// suddenly use Windows directory separator when running from Windows.
-		"--dockerfile", path.Join(repoDir, step.File),
-		"--context", path.Join(repoDir, step.Context),
-		"--skip-tls-verify", // This is bad, but remains due to backward compatibility
-	}
-
-	for _, buildArg := range step.Args {
-		args = append(args, "--build-arg", buildArg)
-	}
-
-	destination := getDockerDestination(step, stepName)
-	anyTag := false
-	for _, tag := range strings.Split(step.Tag, ",") {
-		tag = strings.TrimSpace(tag)
-		if tag == "" {
-			continue
-		}
-		anyTag = true
-		args = append(args, "--destination",
-			fmt.Sprintf("%s:%s", destination, tag))
-	}
-	if !anyTag {
-		return errors.New("tags field resolved to zero tags")
-	}
-
-	if !step.Push {
-		args = append(args, "--no-push")
-	}
-
-	if step.SecretName != "" {
-		// In Docker & Kaniko, adding only `--build-arg MY_ARG` will make it
-		// pull the value from an environment variable instead of from a literal.
-		// This is used to not specify the secret values in the pod manifest.
-
-		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
-			"local", // TODO: Use Wharf instance ID
-			1,       // TODO: Use project ID
-			step.SecretName,
-		)
-		optional := true
-		for _, arg := range step.SecretArgs {
-			idx := strings.IndexByte(arg, '=')
-			if idx == -1 {
-				log.Warn().Message(
-					"Invalid secret arg format, missing '=', expected 'ARG=secret-key', skipping secret arg.")
-				continue
-			}
-			argName, secretKey := arg[:idx], arg[idx+1:]
-			if len(argName) == 0 {
-				log.Warn().Message(
-					"Invalid secret arg format, 'ARG', expected 'ARG=secret-key', skipping secret arg.")
-				continue
-			}
-			if len(secretKey) == 0 {
-				log.Warn().Message(
-					"Invalid secret arg format, 'secret-key', expected 'ARG=secret-key', skipping secret arg.")
-				continue
-			}
-			args = append(args, "--build-arg", argName)
-			cont.Env = append(cont.Env, v1.EnvVar{
-				Name: argName,
-				ValueFrom: &v1.EnvVarSource{
-					SecretKeyRef: &v1.SecretKeySelector{
-						LocalObjectReference: v1.LocalObjectReference{
-							Name: secretName,
-						},
-						Optional: &optional,
-					},
-				},
-			})
-		}
-	} else if len(step.SecretArgs) != 0 {
-		log.Warn().Message(
-			"Found secretArgs but is missing secretName, skipping secret args.")
-	}
-
-	log.Debug().WithString("args", quoteArgsForLogging(args)).
-		Message("Kaniko args.")
-
-	cont.Args = args
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	return nil
-}
-
-func getDockerDestination(step wharfyml.StepDocker, stepName string) string {
-	if step.Destination != "" {
-		return strings.ToLower(step.Destination)
-	}
-	const repoName = "project-name" // TODO: replace with REPO_NAME built-in var
-	if step.Registry == "" {
-		step.Registry = "docker.io" // TODO: replace with REG_URL
-	}
-	if step.Group == "" {
-		step.Group = "iver-wharf" // TODO: replace with REPO_GROUP
-	}
-	if stepName == repoName {
-		return strings.ToLower(fmt.Sprintf("%s/%s/%s",
-			step.Registry, step.Group, repoName))
-	}
-	return strings.ToLower(fmt.Sprintf("%s/%s/%s/%s",
-		step.Registry, step.Group, repoName, stepName))
-}
-
-func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
+func applyStepHelmPackage(pod *v1.Pod, step steps.HelmPackage) error {
 	destination := "https://harbor.local/chartrepo/my-group" // TODO: replace with CHART_REPO/REPO_GROUP
 	if step.Destination != "" {
 		destination = step.Destination
@@ -419,7 +273,7 @@ func applyStepHelmPackage(pod *v1.Pod, step wharfyml.StepHelmPackage) error {
 	return nil
 }
 
-func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.StepHelm) error {
+func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step steps.Helm) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      fmt.Sprintf("%s:%s", config.Image, step.HelmVersion),
@@ -469,7 +323,7 @@ func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step wharfyml.Step
 	return nil
 }
 
-func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfyml.StepKubectl) error {
+func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step steps.Kubectl) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
@@ -520,7 +374,7 @@ func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step wharfym
 	return nil
 }
 
-func applyStepNuGetPackage(pod *v1.Pod, step wharfyml.StepNuGetPackage) error {
+func applyStepNuGetPackage(pod *v1.Pod, step steps.NuGetPackage) error {
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      "mcr.microsoft.com/dotnet/sdk:3.1-alpine",

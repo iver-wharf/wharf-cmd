@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -39,27 +41,27 @@ type Input interface {
 	InputVarName() string
 	DefaultValue() any
 	ParseValue(value any) (any, error)
-	Pos() Pos
+	Pos() visit.Pos
 }
 
-func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice Errors) {
-	nodes, err := visitSequence(node)
+func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
+	nodes, err := visit.Sequence(node)
 	if err != nil {
-		errSlice.add(err)
+		errSlice.Add(err)
 		return
 	}
 	inputs = make(Inputs, len(nodes))
 	for i, inputNode := range nodes {
 		input, errs := visitInputTypeNode(inputNode)
 		if len(errs) > 0 {
-			errSlice.add(wrapPathErrorSlice(errs, strconv.Itoa(i))...)
+			errSlice.Add(errutil.ScopeSlice(errs, strconv.Itoa(i))...)
 		}
 		if input != nil {
 			name := input.InputVarName()
 			if _, ok := inputs[name]; ok {
-				err := wrapPosErrorNode(
+				err := errutil.NewPosFromNode(
 					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
-				errSlice.add(wrapPathError(err, strconv.Itoa(i)))
+				errSlice.Add(errutil.Scope(err, strconv.Itoa(i)))
 			}
 			inputs[name] = input
 		}
@@ -67,65 +69,66 @@ func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice Errors) {
 	return
 }
 
-func visitInputTypeNode(node *yaml.Node) (input Input, errSlice Errors) {
-	nodeMap, errs := visitMap(node)
-	errSlice.add(errs...)
-	p := newNodeMapParser(node, nodeMap)
+func visitInputTypeNode(node *yaml.Node) (input Input, errSlice errutil.Slice) {
+	nodeMap, errs := visit.Map(node)
+	errSlice.Add(errs...)
+	v := visit.NewMapVisitor(node, nodeMap, nil)
 	var inputName string
 	var inputType string
-	errSlice.addNonNils(
-		p.unmarshalString("name", &inputName),
-		p.unmarshalString("type", &inputType),
-		p.validateRequiredString("name"),
-		p.validateRequiredString("type"),
+	errSlice.Add(
+		v.VisitString("name", &inputName),
+		v.VisitString("type", &inputType),
+		v.ValidateRequiredString("name"),
+		v.ValidateRequiredString("type"),
 	)
-	pos := newPosNode(node)
+	pos := visit.NewPosFromNode(node)
 	switch inputType {
 	case "":
 		// validate required has already added error for it
 		return
 	case "string":
 		inputString := InputString{Name: inputName, Source: pos}
-		p.unmarshalString("default", &inputString.Default)
+		v.VisitString("default", &inputString.Default)
 		input = inputString
 	case "password":
 		inputPassword := InputPassword{Name: inputName, Source: pos}
-		p.unmarshalString("default", &inputPassword.Default)
+		v.VisitString("default", &inputPassword.Default)
 		input = inputPassword
 	case "number":
 		inputNumber := InputNumber{Name: inputName, Source: pos}
-		p.unmarshalNumber("default", &inputNumber.Default)
+		v.VisitNumber("default", &inputNumber.Default)
 		input = inputNumber
 	case "choice":
 		inputChoice := InputChoice{Name: inputName, Source: pos}
-		p.unmarshalString("default", &inputChoice.Default)
-		p.unmarshalStringSlice("values", &inputChoice.Values)
+		v.VisitString("default", &inputChoice.Default)
+		v.VisitStringSlice("values", &inputChoice.Values)
 		input = inputChoice
-		errSlice.addNonNils(
-			p.validateRequiredString("default"),
-			p.validateRequiredSlice("values"),
+		errSlice.Add(
+			v.ValidateRequiredString("default"),
+			v.ValidateRequiredSlice("values"),
 			inputChoice.validateDefault(),
 		)
 	default:
-		errSlice.add(ErrInputUnknownType)
+		errSlice.Add(ErrInputUnknownType)
 	}
 	return
 }
 
-func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source, Errors) {
-	var errSlice Errors
+func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source, errutil.Slice) {
+	var errSlice errutil.Slice
 	source := make(varsub.SourceMap, len(inputArgs))
 	for k, argValue := range inputArgs {
 		input, ok := inputDefs[k]
 		if !ok {
 			err := fmt.Errorf("%w: %q", ErrUseOfUndefinedInput, k)
-			errSlice.add(wrapPathError(err, "inputs"))
+			errSlice.Add(errutil.Scope(err, "inputs"))
 			continue
 		}
 		value, err := input.ParseValue(argValue)
 		if err != nil {
-			err := wrapPosError(err, input.Pos())
-			errSlice.add(wrapPathError(err, "inputs", k))
+			pos := input.Pos()
+			err := errutil.NewPos(err, pos.Line, pos.Column)
+			errSlice.Add(errutil.Scope(err, "inputs", k))
 			continue
 		}
 		source[k] = varsub.Val{

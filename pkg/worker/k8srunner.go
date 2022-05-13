@@ -18,6 +18,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -431,7 +432,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 	}
 	log.Debug().WithFunc(r.logFunc).Message("Transferred repo to init container.")
 
-	if step, ok := r.step.Type.(wharfyml.StepDocker); ok && step.AppendCert {
+	if step, ok := r.step.Type.(steps.Docker); ok && step.AppendCert {
 		if err := r.transferModifiedDockerfileToPod(ctx, step); err != nil {
 			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
@@ -443,7 +444,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 	return nil
 }
 
-func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
+func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step steps.Docker) error {
 	log.Debug().WithFunc(r.logFunc).Message("Transferring modified Dockerfile to init container.")
 	dockerfilePath := filepath.Join(r.CurrentDir, step.File)
 	if isIllegalParentDirAccess(dockerfilePath) {
@@ -497,7 +498,7 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath string) error 
 	return r.copyToPodStdin(ctx, tarReader, args)
 }
 
-func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
+func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step steps.Docker) error {
 	srcPath := filepath.Join(r.CurrentDir, step.File)
 	if isIllegalParentDirAccess(srcPath) {
 		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, srcPath)
