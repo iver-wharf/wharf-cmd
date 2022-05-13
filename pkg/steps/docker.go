@@ -102,7 +102,7 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 		errSlice.Add(v.LookupStringFromVarSub("REG_SECRET", &s.Secret))
 	}
 
-	// Visitling
+	// Visiting
 	errSlice.Add(
 		v.VisitString(dockerFieldFile, &s.File),
 		v.VisitString(dockerFieldTag, &s.Tag),

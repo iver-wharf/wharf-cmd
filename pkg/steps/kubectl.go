@@ -35,7 +35,7 @@ func (s Kubectl) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sl
 
 	var errSlice errutil.Slice
 
-	// Visitling
+	// Visiting
 	errSlice.Add(
 		v.VisitString("file", &s.File),
 		v.VisitString("namespace", &s.Namespace),

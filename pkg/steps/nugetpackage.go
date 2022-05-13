@@ -31,7 +31,7 @@ func (s NuGetPackage) PodSpec() *v1.PodSpec { return s.podSpec }
 func (s NuGetPackage) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 
-	// Visitling
+	// Visiting
 	errSlice.Add(
 		v.VisitString("version", &s.Version),
 		v.VisitString("project-path", &s.ProjectPath),

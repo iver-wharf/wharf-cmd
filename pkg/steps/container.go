@@ -35,7 +35,7 @@ func (s Container) init(stepName string, v visit.MapVisitor) (StepType, errutil.
 
 	var errSlice errutil.Slice
 
-	// Visitling
+	// Visiting
 	errSlice.Add(
 		v.VisitString("image", &s.Image),
 		v.VisitString("os", &s.OS),

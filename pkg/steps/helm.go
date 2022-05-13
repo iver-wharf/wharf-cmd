@@ -54,7 +54,7 @@ func (s Helm) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice
 		s.Repo = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
-	// Visitling
+	// Visiting
 	errSlice.Add(
 		v.VisitString("chart", &s.Chart),
 		v.VisitString("name", &s.Name),

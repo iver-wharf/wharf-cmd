@@ -41,7 +41,7 @@ func (s HelmPackage) init(stepName string, v visit.MapVisitor) (StepType, erruti
 		s.Destination = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
-	// Visitling
+	// Visiting
 	errSlice.Add(
 		v.VisitString("version", &s.Version),
 		v.VisitString("chart-path", &s.ChartPath),
