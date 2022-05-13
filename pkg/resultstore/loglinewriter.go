@@ -71,17 +71,16 @@ type logLineWriteCloser struct {
 	writeCloser io.WriteCloser
 }
 
-func (w *logLineWriteCloser) WriteLogLine(line string) error {
+func (w *logLineWriteCloser) WriteLogLine(line string) (LogLine, error) {
 	sanitized := sanitizeLogLine(line)
 	if _, err := w.writeCloser.Write([]byte(sanitized)); err != nil {
-		return err
+		return LogLine{}, err
 	}
 	if _, err := w.writeCloser.Write(newLineBytes); err != nil {
-		return err
+		return LogLine{}, err
 	}
 	logID := atomic.AddUint64(&w.lastLogID, 1)
-	w.store.parseAndPubLogLine(w.stepID, logID, sanitized)
-	return nil
+	return w.store.parseAndPubLogLine(w.stepID, logID, sanitized), nil
 }
 
 func (w *logLineWriteCloser) Close() error {

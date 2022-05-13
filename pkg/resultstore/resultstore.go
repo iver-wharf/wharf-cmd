@@ -149,7 +149,7 @@ type LogLineWriteCloser interface {
 	// LogLine to any active subscriptions. An error is returned if it failed
 	// to write, such as if the file system has run out of disk space or if the
 	// file was removed.
-	WriteLogLine(line string) error
+	WriteLogLine(line string) (LogLine, error)
 }
 
 // LogLineReadCloser is the interface for reading log lines and ability to

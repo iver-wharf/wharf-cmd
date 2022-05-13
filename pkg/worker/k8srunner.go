@@ -393,11 +393,13 @@ func (r k8sStepRunner) readLogs(ctx context.Context, opts *v1.PodLogOptions) err
 		if idx != -1 {
 			txt = txt[idx+1:]
 		}
-		r.log.Info().Message(txt)
 		if writer != nil {
-			if err := writer.WriteLogLine(txt); err != nil {
-				r.log.Error().WithError(err).Message("Failed to write log line.")
+			line, err := writer.WriteLogLine(txt)
+			if err != nil {
+				r.log.Error().WithError(err).Message("Failed to write log line. No further logs will be written.")
+				return err
 			}
+			r.log.Info().Message(line.Message)
 		}
 	}
 	return scanner.Err()
