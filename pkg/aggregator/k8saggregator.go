@@ -226,7 +226,7 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 			continue
 		}
 
-		if podErrored(pod) {
+		if pod.Status.Phase == v1.PodPending && podNotErrored(pod) {
 			continue
 		}
 
@@ -418,9 +418,9 @@ func newPortForwardURL(apiURL, namespace, podName string) (*url.URL, error) {
 
 // Modified version of DescribeEvents found at:
 //   https://github.com/kubernetes/kubernetes/blob/b6a0718858876bbf8cedaeeb47e6de7e650a6c5b/pkg/kubectl/describe/versioned/describe.go#L3247
-func describeEvents(el *v1.EventList) string {
+func describeEvents(el *v1.EventList) []string {
 	if len(el.Items) == 0 {
-		return "<none>"
+		return []string{"<none>"}
 	}
 
 	var sb strings.Builder
@@ -443,7 +443,7 @@ func describeEvents(el *v1.EventList) string {
 		)
 	}
 	tw.Flush()
-	return sb.String()
+	return strings.Split(sb.String(), "\n")
 }
 
 // translateTimestampSince returns the elapsed time since timestamp in
@@ -477,13 +477,16 @@ func (a k8sAggr) appendEventsFromPodToChannel(ctx context.Context, pod *v1.Pod, 
 		return err
 	}
 
-	str := describeEvents(eventsList)
-	log.Debug().Message(str)
-	idx := strings.LastIndexByte(str, '\r')
-	if idx != -1 {
-		str = str[idx+1:]
+	lines := describeEvents(eventsList)
+	for _, line := range lines {
+		log.Debug().Message(line)
+		idx := strings.LastIndexByte(line, '\r')
+		if idx != -1 {
+			line = line[idx+1:]
+		}
+		ch <- line
 	}
-	ch <- str
+
 	return nil
 }
 
@@ -526,17 +529,14 @@ func logFuncFromProb(prob problem.Response) func(ev logger.Event) logger.Event {
 	}
 }
 
-func podErrored(pod v1.Pod) bool {
-	if pod.Status.Phase != v1.PodPending {
-		return false
-	}
+func podNotErrored(pod v1.Pod) bool {
 	for _, s := range pod.Status.InitContainerStatuses {
 		if s.State.Waiting != nil {
 			switch s.State.Waiting.Reason {
 			case "CrashLoopBackOff", "ErrImagePull",
 				"ImagePullBackOff", "CreateContainerConfigError",
 				"InvalidImageName", "CreateContainerError":
-				return true
+				return false
 			}
 		}
 	}
@@ -546,9 +546,9 @@ func podErrored(pod v1.Pod) bool {
 			case "CrashLoopBackOff", "ErrImagePull",
 				"ImagePullBackOff", "CreateContainerConfigError",
 				"InvalidImageName", "CreateContainerError":
-				return true
+				return false
 			}
 		}
 	}
-	return false
+	return true
 }
