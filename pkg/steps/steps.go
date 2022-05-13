@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 )
 
+// Errors specific to parsing step types.
 var (
 	ErrStepTypeUnknown = errors.New("unknown step type")
 )
@@ -58,12 +59,16 @@ type StepType interface {
 	PodSpecer
 }
 
+// PodSpecer is a type that can return a Kubernetes Pod specification.
 type PodSpecer interface {
 	PodSpec() *v1.PodSpec
 }
 
+// Factory is the default factory implementation using the default hardcoded
+// configs.
 var Factory wharfyml.StepTypeFactory = factory{config: &config.DefaultConfig}
 
+// NewFactory creates a new step type factory using the provided config.
 func NewFactory(config *config.Config) wharfyml.StepTypeFactory {
 	return factory{config: config}
 }
