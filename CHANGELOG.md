@@ -114,7 +114,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added ability to configure values, and wharf looks for it in multiple files in
   the following order, where former files take precedence over latter files on a
-  per-variable basis: (#116, #133, #134)
+  per-variable basis: (#116, #133, #134, #150)
 
   - Environment variables, prefixed with `WHARF_`
   - File from environment variable: `WHARF_CONFIG`
@@ -240,6 +240,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed to trim away everything before the last CR (carriage return)
   character in a log line from a Kubernetes pod. (#49)
+
+- Changed so `wharf run` logs the parsed log message provided by Kubernetes,
+  without the timestamp. (#148)
 
 - Changed location of packages and code files: (#44, #87)
 

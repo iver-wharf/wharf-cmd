@@ -17,9 +17,9 @@ func TestLogLineWriteCloser(t *testing.T) {
 		writeCloser: nopWriteCloser{&buf},
 		store:       &store{},
 	}
-	err := w.WriteLogLine(sampleTimeStr + " Foo bar")
+	_, err := w.WriteLogLine(sampleTimeStr + " Foo bar")
 	require.NoError(t, err, "write 1/2")
-	err = w.WriteLogLine(sampleTimeStr + " Moo doo")
+	_, err = w.WriteLogLine(sampleTimeStr + " Moo doo")
 	require.NoError(t, err, "write 2/2")
 
 	want := sampleTimeStr + " Foo bar\n" + sampleTimeStr + " Moo doo\n"
@@ -34,7 +34,7 @@ func TestLogLineWriteCloser_Sanitizes(t *testing.T) {
 		writeCloser: nopWriteCloser{&buf},
 		store:       &store{},
 	}
-	err := w.WriteLogLine(sampleTimeStr + " Foo \nbar")
+	_, err := w.WriteLogLine(sampleTimeStr + " Foo \nbar")
 	require.NoError(t, err)
 
 	want := sampleTimeStr + " Foo \\nbar\n"
@@ -116,7 +116,7 @@ func TestStore_OpenLogWriterUsesLastLogLineID(t *testing.T) {
 	require.NoError(t, err, "open writer")
 	assert.Equal(t, uint64(8), w.(*logLineWriteCloser).lastLogID)
 
-	err = w.WriteLogLine("Hello 9")
+	_, err = w.WriteLogLine("Hello 9")
 	require.NoError(t, err, "write line")
 	assert.Equal(t, uint64(9), w.(*logLineWriteCloser).lastLogID)
 }

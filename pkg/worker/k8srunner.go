@@ -394,11 +394,13 @@ func (r k8sStepRunner) readLogs(ctx context.Context, opts *v1.PodLogOptions) err
 		if idx != -1 {
 			txt = txt[idx+1:]
 		}
-		r.log.Info().Message(txt)
 		if writer != nil {
-			if err := writer.WriteLogLine(txt); err != nil {
-				r.log.Error().WithError(err).Message("Failed to write log line.")
+			line, err := writer.WriteLogLine(txt)
+			if err != nil {
+				r.log.Error().WithError(err).Message("Failed to write log line. No further logs will be written.")
+				return err
 			}
+			r.log.Info().Message(line.Message)
 		}
 	}
 	return scanner.Err()
@@ -435,7 +437,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
 
-		if err := r.copyCertToAppContainer(ctx, step); err != nil {
+		if err := r.copyCertToAppContainer(); err != nil {
 			return fmt.Errorf("transfer cert: %w", err)
 		}
 	}
@@ -458,7 +460,7 @@ func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step
 	return nil
 }
 
-func (r k8sStepRunner) copyCertToAppContainer(ctx context.Context, step steps.Docker) error {
+func (r k8sStepRunner) copyCertToAppContainer() error {
 	log.Debug().WithFunc(r.logFunc).Message("Copying cert file from init container to app container.")
 	exec, err := execInPodPipeStdout(
 		r.RestConfig,
