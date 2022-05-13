@@ -40,7 +40,7 @@ func (p MapVisitor) ParentPos() Pos {
 	return NewPosFromNode(p.parent)
 }
 
-// ReadNodePos returns a map of the positions for all of the nodes that has so
+// ReadNodesPos returns a map of the positions for all of the nodes that has so
 // far been visited.
 func (p MapVisitor) ReadNodesPos() map[string]Pos {
 	return p.positions
@@ -190,17 +190,17 @@ func (p MapVisitor) VisitBool(key string, target *bool) error {
 	return visitNode(p, key, target, Bool)
 }
 
-// RequireIntFromVarSub looks up a value from the predefined varsub.Source
-// and writes the values to the pointer. An error is returned if the looked up
-// variable is not found or on type errors.
+// LookupBoolFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned on type error.
+// If the variable is not present, then nil is returned and the pointer is
+// untouched.
 func (p MapVisitor) LookupBoolFromVarSub(varLookup string, target *bool) error {
 	return lookupFromVarSub(p, varLookup, target, p.VisitBool)
 }
 
-// LookupIntFromVarSub looks up a value from the predefined varsub.Source
-// and writes the values to the pointer. An error is returned on type error.
-// If the variable is not present, then nil is returned and the pointer is
-// untouched.
+// RequireBoolFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned if the looked up
+// variable is not found or on type errors.
 func (p MapVisitor) RequireBoolFromVarSub(varLookup string, target *bool) error {
 	return requireFromVarSub(p, varLookup, target, p.VisitBool)
 }
@@ -297,6 +297,9 @@ func lookupFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(s
 	return err
 }
 
+// AddErrorFor will add an error to the slice of errors with errutil.Pos and
+// errutil.Scoped errors wrapped around it, using the node's position and
+// key name respectively.
 func (p MapVisitor) AddErrorFor(key string, errSlice *errutil.Slice, err error) {
 	node, ok := p.nodes[key]
 	if ok {

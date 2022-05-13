@@ -26,6 +26,8 @@ func (v VarSubNode) String() string {
 	return v.Node.Value
 }
 
+// VarSubNodeRec will perform variable substitution recursively on a YAML node
+// tree.
 func VarSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	if source == nil {
 		return node, nil
@@ -51,6 +53,8 @@ func VarSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	return &clone, nil
 }
 
+// VarSubStringNode will perform variable substitution on a string node and
+// return a new node with the substituted value.
 func VarSubStringNode(str StringNode, source varsub.Source) (*yaml.Node, error) {
 	val, err := varsub.Substitute(str.Value, source)
 	if err != nil {
@@ -59,6 +63,8 @@ func VarSubStringNode(str StringNode, source varsub.Source) (*yaml.Node, error) 
 	return NewNodeWithValue(str.Node, val)
 }
 
+// NewNodeWithValue creates a new YAML node with the correct kind and tag
+// depending on the reflected type.
 func NewNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 	clone := *node
 	clone.Kind = yaml.ScalarNode

@@ -7,6 +7,9 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DecodeFirstRootNode returns the first YAML root node from the first parsed
+// document. If there are multiple documents then the first document is returned
+// together with an error.
 func DecodeFirstRootNode(reader io.Reader) (*yaml.Node, error) {
 	rootNodes, err := DecodeRootNodes(reader)
 	if err != nil {
@@ -21,6 +24,8 @@ func DecodeFirstRootNode(reader io.Reader) (*yaml.Node, error) {
 	return rootNodes[0], nil
 }
 
+// DecodeRootNodes returns the list of YAML root nodes from all documents
+// in the parsed input.
 func DecodeRootNodes(reader io.Reader) ([]*yaml.Node, error) {
 	dec := yaml.NewDecoder(reader)
 	var rootNodes []*yaml.Node
