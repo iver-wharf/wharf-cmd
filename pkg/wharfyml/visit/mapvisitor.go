@@ -45,17 +45,7 @@ func (p MapVisitor) HasNode(key string) bool {
 }
 
 func (p MapVisitor) VisitNumber(key string, target *float64) error {
-	node, ok := p.nodes[key]
-	if !ok {
-		return nil
-	}
-	p.positions[key] = NewPosNode(node)
-	num, err := Float64(node)
-	if err != nil {
-		return errutil.Scope(err, key)
-	}
-	*target = num
-	return nil
+	return visitNode(p, key, target, Float64)
 }
 
 func (p MapVisitor) RequireNumberFromVarSub(varLookup string, target *float64) error {
@@ -67,17 +57,7 @@ func (p MapVisitor) LookupNumberFromVarSub(varLookup string, target *float64) er
 }
 
 func (p MapVisitor) VisitInt(key string, target *int) error {
-	node, ok := p.nodes[key]
-	if !ok {
-		return nil
-	}
-	p.positions[key] = NewPosNode(node)
-	num, err := Int(node)
-	if err != nil {
-		return errutil.Scope(err, key)
-	}
-	*target = num
-	return nil
+	return visitNode(p, key, target, Int)
 }
 
 func (p MapVisitor) RequireIntFromVarSub(varLookup string, target *int) error {
@@ -89,17 +69,7 @@ func (p MapVisitor) LookupIntFromVarSub(varLookup string, target *int) error {
 }
 
 func (p MapVisitor) VisitString(key string, target *string) error {
-	node, ok := p.nodes[key]
-	if !ok {
-		return nil
-	}
-	p.positions[key] = NewPosNode(node)
-	str, err := String(node)
-	if err != nil {
-		return errutil.Scope(err, key)
-	}
-	*target = str
-	return nil
+	return visitNode(p, key, target, String)
 }
 
 func (p MapVisitor) VisitStringSlice(key string, target *[]string) errutil.Slice {
@@ -214,6 +184,20 @@ func (p MapVisitor) ValidateRequiredSlice(key string) error {
 func (p MapVisitor) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
 	return WrapPosErrorNode(inner, p.parent)
+}
+
+func visitNode[T any](p MapVisitor, key string, target *T, f func(*yaml.Node) (T, error)) error {
+	node, ok := p.nodes[key]
+	if !ok {
+		return nil
+	}
+	p.positions[key] = NewPosNode(node)
+	val, err := f(node)
+	if err != nil {
+		return errutil.Scope(err, key)
+	}
+	*target = val
+	return nil
 }
 
 func (p MapVisitor) loadFromVarSubIfUnset(nodeKey, varLookup string) error {
