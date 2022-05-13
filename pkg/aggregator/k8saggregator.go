@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
@@ -16,6 +17,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/pkg/problem"
 	"gopkg.in/typ.v4/sync2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -25,7 +27,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/duration"
 	k8sruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -67,6 +71,10 @@ func NewK8sAggregator(config *config.Config, restConfig *rest.Config) (Aggregato
 		wharfapi: wharfapi.Client{
 			APIURL: config.Aggregator.WharfAPIURL,
 		},
+
+		inProgress:            &sync2.Set[types.UID]{},
+		timeStartedPending:    &sync2.Map[types.UID, time.Time]{},
+		maxTimeAllowedPending: 30 * time.Second,
 	}, nil
 }
 
@@ -84,6 +92,10 @@ type k8sAggr struct {
 	listOptionsMatchLabels metav1.ListOptions
 
 	wharfapi wharfapi.Client
+
+	inProgress            *sync2.Set[types.UID]
+	timeStartedPending    *sync2.Map[types.UID, time.Time]
+	maxTimeAllowedPending time.Duration
 }
 
 func (a k8sAggr) Serve(ctx context.Context) error {
@@ -98,7 +110,6 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 	// a worker while its server wasn't running.
 	k8sruntime.ErrorHandlers = []func(error){}
 
-	var inProgress sync2.Set[types.UID]
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
@@ -106,6 +117,9 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		// iteration.
 
 		pods, err := a.fetchPods(ctx)
+		// TODO: Add clearing of too old entries in timeStartedPending, possibly
+		//       every poll, to make it simple, as it really shouldn't take very
+		//       long to iterate over.
 		if err != nil {
 			if errors.Is(ctx.Err(), context.Canceled) {
 				return ctx.Err()
@@ -117,9 +131,6 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			continue
 		}
 		for _, pod := range pods {
-			if pod.Status.Phase == v1.PodPending {
-				continue
-			}
 			buildID, err := parsePodBuildID(pod.ObjectMeta)
 			if err != nil {
 				log.Warn().WithError(err).
@@ -127,51 +138,75 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 					Message("Failed to parse worker's build ID.")
 				continue
 			}
-			if !inProgress.Add(pod.UID) {
+			if !a.inProgress.Add(pod.UID) {
 				// Failed to add => Already being processed
 				continue
 			}
+
+			log.Debug().
+				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+				WithString("status", string(pod.Status.Phase)).
+				Message("Pod found.")
 			switch pod.Status.Phase {
 			case v1.PodRunning:
-				log.Debug().
-					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-					Message("Pod found.")
-
 				go func(pod v1.Pod) {
 					if err := a.relayToWharfAPI(ctx, pod.Name, buildID); err != nil {
 						log.Error().WithError(err).
 							WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 							Message("Relay error.")
 					}
-					inProgress.Remove(pod.UID)
+					a.terminatePod(ctx, pod)
 				}(pod)
 			case v1.PodFailed:
 				go func(pod v1.Pod) {
-					// Send plain logs as logs to wharf-api
-					logs := make(chan string)
-					logs <- fmt.Sprintf("The %s pod failed to start.", pod.Name)
-					logs <- fmt.Sprintf("Logs from %s:\n", pod.Name)
-					if err := a.appendRawLogsFromPodToChannel(ctx, pod.Name, logs); err != nil {
-						logs <- fmt.Sprintf("Failed reading logs: %v", err)
+					if err := a.relayRawLogs(ctx, pod, buildID); err != nil {
+						log.Error().WithError(err).
+							WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+							Message("Failed relaying logs for failed pod.")
 					}
-					a.relayLogsFromChannelToWharfAPI(ctx, pod.Name, logs, buildID)
-					inProgress.Remove(pod.UID)
+					a.terminatePod(ctx, pod)
 				}(pod)
 			default:
-				// go func(pod v1.Pod) {
-				// 	// Send k8s events as logs to wharf-api
-				// 	logs := make(chan string)
-				// 	logs <- fmt.Sprintf("The %s pod failed to start. Kubernetes events:", pod.Name)
-				// 	if err := a.appendEventsFromPodToChannel(ctx, pod.Name, logs); err != nil {
-				// 		logs <- fmt.Sprintf("Failed reading events: %v", err)
-				// 	}
-				// 	a.relayLogsFromChannelToWharfAPI(ctx, pod.Name, logs, buildID)
-				// 	inProgress.Remove(pod.UID)
-				// }(pod)
+				go func(pod v1.Pod) {
+					if err := a.relayRawLogs(ctx, pod, buildID); err != nil {
+						log.Error().WithError(err).
+							WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+							Message("Failed relaying events for failed pod.")
+					}
+					a.relayEvents(ctx, pod, buildID)
+					a.terminatePod(ctx, pod)
+				}(pod)
 			}
 		}
 		time.Sleep(pollDelay)
 	}
+}
+
+func (a k8sAggr) relayRawLogs(ctx context.Context, pod v1.Pod, buildID uint) error {
+	logs := make(chan string)
+	go func() {
+		logs <- fmt.Sprintf("The %s pod failed to start.", pod.Name)
+		logs <- fmt.Sprintf("Logs from %s:\n", pod.Name)
+		if err := a.appendRawLogsFromPodToChannel(ctx, pod.Name, logs); err != nil {
+			logs <- fmt.Sprintf("Failed reading logs: %v", err)
+		}
+		close(logs)
+	}()
+	defer func() {
+		if _, err := a.wharfapi.UpdateBuildStatus(buildID, request.LogOrStatusUpdate{
+			Message:   "Build failed",
+			Timestamp: time.Now(),
+			Status:    request.BuildFailed,
+		}); err != nil {
+			var prob problem.Response
+			if errors.As(err, &prob) {
+				log.Error().WithFunc(probFunc(prob)).Message("Failed updating build status after logs streaming.")
+			} else {
+				log.Error().WithError(err).Message("Failed updating build status after logs streaming.")
+			}
+		}
+	}()
+	return a.relayLogsFromChannelToWharfAPI(ctx, pod.Name, logs, buildID)
 }
 
 func parsePodBuildID(podMeta metav1.ObjectMeta) (uint, error) {
@@ -195,11 +230,21 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 	for _, pod := range list.Items {
 		// Skip terminating pods
 		if pod.ObjectMeta.DeletionTimestamp != nil {
+			a.timeStartedPending.Delete(pod.UID)
 			continue
 		}
-		// Skip failed or pending pods
-		if pod.Status.Phase != "Running" {
-			continue
+		if pod.Status.Phase == v1.PodPending {
+			t, _ := a.timeStartedPending.LoadOrStore(pod.UID, time.Now())
+			since := time.Since(t)
+			log.Debug().WithDuration("pending for", since).Message("Pending pod check")
+			if time.Since(t) < a.maxTimeAllowedPending {
+				log.Debug().Message("Not adding yet...")
+				continue
+			} else {
+				log.Debug().Message("Added!")
+			}
+		} else {
+			a.timeStartedPending.Delete(pod.UID)
 		}
 		pods = append(pods, pod)
 	}
@@ -253,16 +298,13 @@ func (a k8sAggr) relayLogsFromChannelToWharfAPI(ctx context.Context, podName str
 			Message("Inserted logs into wharf-api.")
 	}()
 	for logLine := range logs {
-		log.Debug().
-			Message(logLine)
-		writer.Send(request.Log{
-			BuildID: buildID,
-			// WorkerLogID:  uint(logLine.LogID), // What to do about this?
-			// WorkerStepID: uint(logLine.StepID), // What to do about this?
-			// Timestamp: logLine.Timestamp.AsTime(), // What to do about this?
+		if err := writer.Send(request.Log{
+			BuildID:   buildID,
 			Timestamp: time.Now(),
 			Message:   logLine,
-		})
+		}); err != nil {
+			log.Error().WithError(err).Message("Sending logs to Wharf API failed.")
+		}
 		sentLogs++
 	}
 	return nil
@@ -277,6 +319,43 @@ func (a k8sAggr) newWorkerClient(portConn portConnection, buildID uint) (workerc
 		InsecureSkipVerify: true,
 		BuildID:            buildID,
 	})
+}
+
+func (a k8sAggr) terminatePod(ctx context.Context, pod v1.Pod) error {
+	log.Debug().
+		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
+		Message("Done relaying. Terminating pod.")
+
+	if err := a.pods.Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
+		return fmt.Errorf("terminate pod after done with relay build results: %w", err)
+	}
+
+	log.Info().
+		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
+		Message("Done with worker.")
+
+	a.inProgress.Remove(pod.UID)
+	return nil
+}
+
+func (a k8sAggr) appendRawLogsFromPodToChannel(ctx context.Context, podName string, ch chan<- string) error {
+	req := a.pods.GetLogs(podName, &v1.PodLogOptions{})
+	readCloser, err := req.Stream(ctx)
+	if err != nil {
+		return err
+	}
+	defer readCloser.Close()
+	scanner := bufio.NewScanner(readCloser)
+	for scanner.Scan() {
+		txt := scanner.Text()
+		log.Debug().Message(txt)
+		idx := strings.LastIndexByte(txt, '\r')
+		if idx != -1 {
+			txt = txt[idx+1:]
+		}
+		ch <- txt
+	}
+	return nil
 }
 
 type portConnection struct {
@@ -353,62 +432,112 @@ func newPortForwardURL(apiURL, namespace, podName string) (*url.URL, error) {
 	return portForwardURL, nil
 }
 
-func (a k8sAggr) terminatePod(ctx context.Context, podName string) error {
-	log.Debug().
-		WithStringf("pod", "%s/%s", a.namespace, podName).
-		Message("Done relaying. Terminating pod.")
-
-	if err := a.pods.Delete(ctx, podName, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("terminate pod after done with relay build results: %w", err)
+// Modified version of DescribeEvents found at:
+//   https://github.com/kubernetes/kubernetes/blob/b6a0718858876bbf8cedaeeb47e6de7e650a6c5b/pkg/kubectl/describe/versioned/describe.go#L3247
+func describeEvents(el *v1.EventList) string {
+	if len(el.Items) == 0 {
+		return "<none>"
 	}
 
-	log.Info().
-		WithStringf("pod", "%s/%s", a.namespace, podName).
-		Message("Done with worker.")
-	return nil
+	var sb strings.Builder
+	tw := tabwriter.NewWriter(&sb, 1, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "\nType\tReason\tAge\tFrom\tMessage")
+	fmt.Fprintln(tw, "----\t------\t----\t----\t-------")
+	for _, e := range el.Items {
+		var interval string
+		if e.Count > 1 {
+			interval = fmt.Sprintf("%s (x%d over %s)", translateTimestampSince(e.LastTimestamp), e.Count, translateTimestampSince(e.FirstTimestamp))
+		} else {
+			interval = translateTimestampSince(e.FirstTimestamp)
+		}
+		fmt.Fprintf(tw, "%v\t%v\t%s\t%v\t%v\n",
+			e.Type,
+			e.Reason,
+			interval,
+			formatEventSource(e.Source),
+			strings.TrimSpace(e.Message),
+		)
+	}
+	tw.Flush()
+	return sb.String()
 }
 
-func (a k8sAggr) appendRawLogsFromPodToChannel(ctx context.Context, podName string, ch chan<- string) error {
-	req := a.pods.GetLogs(podName, &v1.PodLogOptions{})
-	readCloser, err := req.Stream(ctx)
+// translateTimestampSince returns the elapsed time since timestamp in
+// human-readable approximation.
+//
+// Copied from:
+//   https://github.com/kubernetes/kubernetes/blob/b6a0718858876bbf8cedaeeb47e6de7e650a6c5b/pkg/kubectl/describe/versioned/describe.go#L4299
+func translateTimestampSince(timestamp metav1.Time) string {
+	if timestamp.IsZero() {
+		return "<unknown>"
+	}
+
+	return duration.HumanDuration(time.Since(timestamp.Time))
+}
+
+// formatEventSource formats EventSource as a comma separated string excluding Host when empty
+//
+// Copied from:
+//   https://github.com/kubernetes/kubernetes/blob/b6a0718858876bbf8cedaeeb47e6de7e650a6c5b/pkg/kubectl/describe/versioned/describe.go#L4308
+func formatEventSource(es v1.EventSource) string {
+	EventSourceString := []string{es.Component}
+	if len(es.Host) > 0 {
+		EventSourceString = append(EventSourceString, es.Host)
+	}
+	return strings.Join(EventSourceString, ", ")
+}
+
+func (a k8sAggr) appendEventsFromPodToChannel(ctx context.Context, pod *v1.Pod, ch chan<- string) error {
+	eventsList, err := a.clientset.CoreV1().Events(a.namespace).Search(scheme.Scheme, pod)
 	if err != nil {
 		return err
 	}
-	go func() {
-		defer readCloser.Close()
-		scanner := bufio.NewScanner(readCloser)
-		for scanner.Scan() {
-			txt := scanner.Text()
-			idx := strings.LastIndexByte(txt, '\r')
-			if idx != -1 {
-				txt = txt[idx+1:]
-			}
-			ch <- txt
-		}
-		close(ch)
-	}()
+
+	str := describeEvents(eventsList)
+	log.Debug().Message(str)
+	idx := strings.LastIndexByte(str, '\r')
+	if idx != -1 {
+		str = str[idx+1:]
+	}
+	ch <- str
 	return nil
 }
 
-// func (a k8sAggr) appendEventsFromPodToChannel(ctx context.Context, podName string, ch chan<- string) error {
-// 	// Use PodDescriber?
-// 	// req := a.pods.L
-// 	// readCloser, err := req.Stream(ctx)
-// 	// if err != nil {
-// 	// 	return err
-// 	// }
-// 	// go func() {
-// 	// 	defer readCloser.Close()
-// 	// 	scanner := bufio.NewScanner(readCloser)
-// 	// 	for scanner.Scan() {
-// 	// 		txt := scanner.Text()
-// 	// 		idx := strings.LastIndexByte(txt, '\r')
-// 	// 		if idx != -1 {
-// 	// 			txt = txt[idx+1:]
-// 	// 		}
-// 	// 		ch <- txt
-// 	// 	}
-// 	// 	close(ch)
-// 	// }()
-// 	return nil
-// }
+func (a k8sAggr) relayEvents(ctx context.Context, pod v1.Pod, buildID uint) error {
+	logs := make(chan string)
+	go func() {
+		logs <- fmt.Sprintf("The %s pod failed to start. Kubernetes events:", pod.Name)
+		if err := a.appendEventsFromPodToChannel(ctx, &pod, logs); err != nil {
+			logs <- fmt.Sprintf("Failed reading events: %v", err)
+		}
+		logs <- fmt.Sprintf("No logs from %s pod.", pod.Name)
+		close(logs)
+	}()
+	defer func() {
+		if _, err := a.wharfapi.UpdateBuildStatus(buildID, request.LogOrStatusUpdate{
+			Message:   "Build failed",
+			Timestamp: time.Now(),
+			Status:    request.BuildFailed,
+		}); err != nil {
+			var prob problem.Response
+			if errors.As(err, &prob) {
+				log.Error().WithFunc(probFunc(prob)).Message("Failed updating build status after event logs streaming.")
+			} else {
+				log.Error().WithError(err).Message("Failed updating build status after event logs streaming.")
+			}
+		}
+	}()
+	return a.relayLogsFromChannelToWharfAPI(ctx, pod.Name, logs, buildID)
+}
+
+func probFunc(prob problem.Response) func(ev logger.Event) logger.Event {
+	return func(ev logger.Event) logger.Event {
+		return ev.
+			WithInt("httpStatus", prob.Status).
+			WithString("docs", prob.Type).
+			WithString("title", prob.Title).
+			WithString("detail", prob.Detail).
+			WithString("instance", prob.Instance).
+			WithString("error", prob.Error())
+	}
+}
