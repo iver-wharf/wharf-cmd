@@ -9,7 +9,7 @@ import (
 
 func VerifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 	if node.Kind != wantKind {
-		return errutil.NewPosNode(fmt.Errorf("%w: expected %s, but was %s",
+		return errutil.NewPosFromNode(fmt.Errorf("%w: expected %s, but was %s",
 			ErrInvalidFieldType, wantStr, PrettyNodeTypeName(node)), node)
 	}
 	return nil
@@ -18,7 +18,7 @@ func VerifyKind(node *yaml.Node, wantStr string, wantKind yaml.Kind) error {
 func VerifyTag(node *yaml.Node, wantStr string, wantTag string) error {
 	gotTag := node.ShortTag()
 	if gotTag != wantTag {
-		return errutil.NewPosNode(fmt.Errorf("%w: expected %s, but was %s",
+		return errutil.NewPosFromNode(fmt.Errorf("%w: expected %s, but was %s",
 			ErrInvalidFieldType, wantStr, PrettyNodeTypeName(node)), node)
 	}
 	return nil

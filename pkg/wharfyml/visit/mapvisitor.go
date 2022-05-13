@@ -264,10 +264,10 @@ func lookupFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(s
 func (p MapVisitor) AddErrorFor(key string, errSlice *errutil.Slice, err error) {
 	node, ok := p.nodes[key]
 	if ok {
-		err = errutil.NewPosNode(err, node)
+		err = errutil.NewPosFromNode(err, node)
 	} else {
 		if p.parent != nil {
-			err = errutil.NewPosNode(err, p.parent)
+			err = errutil.NewPosFromNode(err, p.parent)
 		}
 	}
 	err = errutil.Scope(err, key)

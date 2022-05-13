@@ -34,7 +34,7 @@ func Int(node *yaml.Node) (int, error) {
 	}
 	num, err := parseInt(node.Value)
 	if err != nil {
-		return 0, errutil.NewPosNode(err, node)
+		return 0, errutil.NewPosFromNode(err, node)
 	}
 	return num, nil
 }
@@ -52,7 +52,7 @@ func Float64(node *yaml.Node) (float64, error) {
 	}
 	num, err := parseFloat64(node.Value)
 	if err != nil {
-		return 0, errutil.NewPosNode(err, node)
+		return 0, errutil.NewPosFromNode(err, node)
 	}
 	return num, nil
 }
@@ -63,7 +63,7 @@ func Bool(node *yaml.Node) (bool, error) {
 	}
 	b, err := parseBool(node.Value)
 	if err != nil {
-		return false, errutil.NewPosNode(err, node)
+		return false, errutil.NewPosFromNode(err, node)
 	}
 	return b, nil
 }
@@ -110,15 +110,15 @@ func MapSlice(node *yaml.Node) ([]MapItem, errutil.Slice) {
 
 		key, err := String(keyNode)
 		if err != nil {
-			errSlice.Add(errutil.NewPosNode(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
+			errSlice.Add(errutil.NewPosFromNode(fmt.Errorf("%w: %v", ErrKeyNotString, err), keyNode))
 			// non fatal error
 		} else if key == "" {
-			errSlice.Add(errutil.NewPosNode(ErrKeyEmpty, keyNode))
+			errSlice.Add(errutil.NewPosFromNode(ErrKeyEmpty, keyNode))
 			// non fatal error
 		}
 		if _, ok := keys[key]; ok {
 			errSlice.Add(errutil.Scope(
-				errutil.NewPosNode(ErrKeyCollision, keyNode),
+				errutil.NewPosFromNode(ErrKeyCollision, keyNode),
 				key))
 			continue
 		}

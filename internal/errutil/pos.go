@@ -18,9 +18,9 @@ func NewPos(err error, line, column int) error {
 	}
 }
 
-// NewPosNode is a utility function that creates a new Pos error based on the
+// NewPosFromNode is a utility function that creates a new Pos error based on the
 // position info from a YAML node.
-func NewPosNode(err error, node *yaml.Node) error {
+func NewPosFromNode(err error, node *yaml.Node) error {
 	return Pos{
 		Err:    err,
 		Line:   node.Line,
