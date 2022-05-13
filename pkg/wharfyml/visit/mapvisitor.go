@@ -15,6 +15,8 @@ var (
 	ErrMissingBuiltinVar = errors.New("missing built-in var")
 )
 
+// NewMapVisitor creates a new type that can visit nodes from a map of nodes by
+// key, allowing simpler parsing of a map node with many different field types.
 func NewMapVisitor(parent *yaml.Node, nodes map[string]*yaml.Node, source varsub.Source) MapVisitor {
 	return MapVisitor{
 		parent:    parent,
@@ -24,6 +26,8 @@ func NewMapVisitor(parent *yaml.Node, nodes map[string]*yaml.Node, source varsub
 	}
 }
 
+// MapVisitor is a utility type that can visit nodes from a map of nodes by
+// key, allowing simpler parsing of a map node with many different field types.
 type MapVisitor struct {
 	parent    *yaml.Node
 	nodes     map[string]*yaml.Node
@@ -31,47 +35,78 @@ type MapVisitor struct {
 	source    varsub.Source
 }
 
+// ParentPos returns the position of the map node's parent.
 func (p MapVisitor) ParentPos() Pos {
 	return NewPosNode(p.parent)
 }
 
+// ReadNodePos returns a map of the positions for all of the nodes that has so
+// far been visited.
 func (p MapVisitor) ReadNodesPos() map[string]Pos {
 	return p.positions
 }
 
+// HasNode returns a boolean if the node is defined. A YAML node with the value
+// null will still return true.
 func (p MapVisitor) HasNode(key string) bool {
 	_, ok := p.nodes[key]
 	return ok
 }
 
+// VisitNumber reads a node by string key and writes the parsed float64 value to
+// the pointer. An error is returned on parse error. If the node is not present,
+// then nil is returned and the pointer is untouched.
 func (p MapVisitor) VisitNumber(key string, target *float64) error {
 	return visitNode(p, key, target, Float64)
 }
 
+// RequireNumberFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned if the looked up
+// variable is not found or on type errors.
 func (p MapVisitor) RequireNumberFromVarSub(varLookup string, target *float64) error {
 	return requireFromVarSub(p, varLookup, target, p.VisitNumber)
 }
 
+// LookupNumberFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned on type error.
+// If the variable is not present, then nil is returned and the pointer is
+// untouched.
 func (p MapVisitor) LookupNumberFromVarSub(varLookup string, target *float64) error {
 	return lookupFromVarSub(p, varLookup, target, p.VisitNumber)
 }
 
+// VisitInt reads a node by string key and writes the parsed int value to
+// the pointer. An error is returned on parse error. If the node is not present,
+// then nil is returned and the pointer is untouched.
 func (p MapVisitor) VisitInt(key string, target *int) error {
 	return visitNode(p, key, target, Int)
 }
 
+// RequireIntFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned if the looked up
+// variable is not found or on type errors.
 func (p MapVisitor) RequireIntFromVarSub(varLookup string, target *int) error {
 	return requireFromVarSub(p, varLookup, target, p.VisitInt)
 }
 
+// LookupIntFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned on type error.
+// If the variable is not present, then nil is returned and the pointer is
+// untouched.
 func (p MapVisitor) LookupIntFromVarSub(varLookup string, target *int) error {
 	return lookupFromVarSub(p, varLookup, target, p.VisitInt)
 }
 
+// VisitString reads a node by string key and writes the string value to
+// the pointer. An error is returned on type error. If the node is not present,
+// then nil is returned and the pointer is untouched.
 func (p MapVisitor) VisitString(key string, target *string) error {
 	return visitNode(p, key, target, String)
 }
 
+// VisitStringSlice reads a node by string key and writes the string values to
+// the pointer. A slice of error contains any type errors. If the node is not
+// present, then nil is returned and the pointer is untouched.
 func (p MapVisitor) VisitStringSlice(key string, target *[]string) errutil.Slice {
 	node, ok := p.nodes[key]
 	if !ok {
@@ -96,6 +131,9 @@ func (p MapVisitor) VisitStringSlice(key string, target *[]string) errutil.Slice
 	return errSlice
 }
 
+// VisitStringStringMap reads a node by string key and writes the string items
+// to the pointer. A slice of error contains any type errors. If the node is not
+// present, then nil is returned and the pointer is untouched.
 func (p MapVisitor) VisitStringStringMap(key string, target *map[string]string) errutil.Slice {
 	node, ok := p.nodes[key]
 	if !ok {
@@ -119,6 +157,9 @@ func (p MapVisitor) VisitStringStringMap(key string, target *map[string]string) 
 	return errSlice
 }
 
+// VisitStringWithVarSub will try find a variable from the predefined
+// varsub.Source and use that as a default if the node at the given key is not
+// present. An error is returned on type errors.
 func (p MapVisitor) VisitStringWithVarSub(nodeKey, varLookup string, target *string) error {
 	err := p.loadFromVarSubIfUnset(nodeKey, varLookup)
 	if err != nil {
@@ -127,36 +168,45 @@ func (p MapVisitor) VisitStringWithVarSub(nodeKey, varLookup string, target *str
 	return p.VisitString(nodeKey, target)
 }
 
+// RequireStringFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned if the looked up
+// variable is not found or on type errors.
 func (p MapVisitor) RequireStringFromVarSub(varLookup string, target *string) error {
 	return requireFromVarSub(p, varLookup, target, p.VisitString)
 }
 
+// LookupStringFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned on type error.
+// If the variable is not present, then nil is returned and the pointer is
+// untouched.
 func (p MapVisitor) LookupStringFromVarSub(varLookup string, target *string) error {
 	return lookupFromVarSub(p, varLookup, target, p.VisitString)
 }
 
+// VisitBool reads a node by string key and writes the parsed bool value to
+// the pointer. An error is returned on parse error. If the node is not present,
+// then nil is returned and the pointer is untouched.
 func (p MapVisitor) VisitBool(key string, target *bool) error {
-	node, ok := p.nodes[key]
-	if !ok {
-		return nil
-	}
-	p.positions[key] = NewPosNode(node)
-	b, err := Bool(node)
-	if err != nil {
-		return errutil.Scope(err, key)
-	}
-	*target = b
-	return nil
+	return visitNode(p, key, target, Bool)
 }
 
+// RequireIntFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned if the looked up
+// variable is not found or on type errors.
 func (p MapVisitor) LookupBoolFromVarSub(varLookup string, target *bool) error {
 	return lookupFromVarSub(p, varLookup, target, p.VisitBool)
 }
 
+// LookupIntFromVarSub looks up a value from the predefined varsub.Source
+// and writes the values to the pointer. An error is returned on type error.
+// If the variable is not present, then nil is returned and the pointer is
+// untouched.
 func (p MapVisitor) RequireBoolFromVarSub(varLookup string, target *bool) error {
 	return requireFromVarSub(p, varLookup, target, p.VisitBool)
 }
 
+// ValidateRequiredString will return an error if the node at the given key is
+// not found or is an empty string.
 func (p MapVisitor) ValidateRequiredString(key string) error {
 	node, ok := p.nodes[key]
 	if !ok {
@@ -169,6 +219,8 @@ func (p MapVisitor) ValidateRequiredString(key string) error {
 	return nil
 }
 
+// ValidateRequiredSlice will return an error if the node at the given key is
+// not found or is an empty slice.
 func (p MapVisitor) ValidateRequiredSlice(key string) error {
 	node, ok := p.nodes[key]
 	if !ok {
