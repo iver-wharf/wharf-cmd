@@ -125,10 +125,10 @@ func logParseErrors(errs errutil.Slice, currentDir string) {
 		}
 		var posErr errutil.Pos
 		if errors.As(err, &posErr) {
-			log.Warn().Messagef("%4d:%-4d%s%s",
+			log.Warn().Messagef("%4d:%-4d %s%s",
 				posErr.Line, posErr.Column, scopePrefix, err.Error())
 		} else {
-			log.Warn().Messagef("   -:-   %s%s", scopePrefix, err.Error())
+			log.Warn().Messagef("   -:-    %s%s", scopePrefix, err.Error())
 		}
 	}
 	log.Warn().Message("")
