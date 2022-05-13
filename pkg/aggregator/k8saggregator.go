@@ -72,9 +72,7 @@ func NewK8sAggregator(config *config.Config, restConfig *rest.Config) (Aggregato
 			APIURL: config.Aggregator.WharfAPIURL,
 		},
 
-		inProgress:            &sync2.Set[types.UID]{},
-		timeStartedPending:    &sync2.Map[types.UID, time.Time]{},
-		maxTimeAllowedPending: 30 * time.Second,
+		inProgress: &sync2.Set[types.UID]{},
 	}, nil
 }
 
@@ -93,9 +91,7 @@ type k8sAggr struct {
 
 	wharfapi wharfapi.Client
 
-	inProgress            *sync2.Set[types.UID]
-	timeStartedPending    *sync2.Map[types.UID, time.Time]
-	maxTimeAllowedPending time.Duration
+	inProgress *sync2.Set[types.UID]
 }
 
 func (a k8sAggr) Serve(ctx context.Context) error {
@@ -117,9 +113,6 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		// iteration.
 
 		pods, err := a.fetchPods(ctx)
-		// TODO: Add clearing of too old entries in timeStartedPending, possibly
-		//       every poll, to make it simple, as it really shouldn't take very
-		//       long to iterate over.
 		if err != nil {
 			if errors.Is(ctx.Err(), context.Canceled) {
 				return ctx.Err()
@@ -200,7 +193,7 @@ func (a k8sAggr) relayRawLogs(ctx context.Context, pod v1.Pod, buildID uint) err
 		}); err != nil {
 			var prob problem.Response
 			if errors.As(err, &prob) {
-				log.Error().WithFunc(probFunc(prob)).Message("Failed updating build status after logs streaming.")
+				log.Error().WithFunc(logFuncFromProb(prob)).Message("Failed updating build status after logs streaming.")
 			} else {
 				log.Error().WithError(err).Message("Failed updating build status after logs streaming.")
 			}
@@ -230,22 +223,13 @@ func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
 	for _, pod := range list.Items {
 		// Skip terminating pods
 		if pod.ObjectMeta.DeletionTimestamp != nil {
-			a.timeStartedPending.Delete(pod.UID)
 			continue
 		}
-		if pod.Status.Phase == v1.PodPending {
-			t, _ := a.timeStartedPending.LoadOrStore(pod.UID, time.Now())
-			since := time.Since(t)
-			log.Debug().WithDuration("pending for", since).Message("Pending pod check")
-			if time.Since(t) < a.maxTimeAllowedPending {
-				log.Debug().Message("Not adding yet...")
-				continue
-			} else {
-				log.Debug().Message("Added!")
-			}
-		} else {
-			a.timeStartedPending.Delete(pod.UID)
+
+		if podErrored(pod) {
+			continue
 		}
+
 		pods = append(pods, pod)
 	}
 	return pods, nil
@@ -521,7 +505,7 @@ func (a k8sAggr) relayEvents(ctx context.Context, pod v1.Pod, buildID uint) erro
 		}); err != nil {
 			var prob problem.Response
 			if errors.As(err, &prob) {
-				log.Error().WithFunc(probFunc(prob)).Message("Failed updating build status after event logs streaming.")
+				log.Error().WithFunc(logFuncFromProb(prob)).Message("Failed updating build status after event logs streaming.")
 			} else {
 				log.Error().WithError(err).Message("Failed updating build status after event logs streaming.")
 			}
@@ -530,7 +514,7 @@ func (a k8sAggr) relayEvents(ctx context.Context, pod v1.Pod, buildID uint) erro
 	return a.relayLogsFromChannelToWharfAPI(ctx, pod.Name, logs, buildID)
 }
 
-func probFunc(prob problem.Response) func(ev logger.Event) logger.Event {
+func logFuncFromProb(prob problem.Response) func(ev logger.Event) logger.Event {
 	return func(ev logger.Event) logger.Event {
 		return ev.
 			WithInt("httpStatus", prob.Status).
@@ -540,4 +524,31 @@ func probFunc(prob problem.Response) func(ev logger.Event) logger.Event {
 			WithString("instance", prob.Instance).
 			WithString("error", prob.Error())
 	}
+}
+
+func podErrored(pod v1.Pod) bool {
+	if pod.Status.Phase != v1.PodPending {
+		return false
+	}
+	for _, s := range pod.Status.InitContainerStatuses {
+		if s.State.Waiting != nil {
+			switch s.State.Waiting.Reason {
+			case "CrashLoopBackOff", "ErrImagePull",
+				"ImagePullBackOff", "CreateContainerConfigError",
+				"InvalidImageName", "CreateContainerError":
+				return true
+			}
+		}
+	}
+	for _, s := range pod.Status.ContainerStatuses {
+		if s.State.Waiting != nil {
+			switch s.State.Waiting.Reason {
+			case "CrashLoopBackOff", "ErrImagePull",
+				"ImagePullBackOff", "CreateContainerConfigError",
+				"InvalidImageName", "CreateContainerError":
+				return true
+			}
+		}
+	}
+	return false
 }
