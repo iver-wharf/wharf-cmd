@@ -24,6 +24,8 @@ type NuGetPackage struct {
 // StepTypeName returns the name of this step type.
 func (NuGetPackage) StepTypeName() string { return "nuget-package" }
 
+// PodSpec returns this step's Kubernetes Pod specification. Meant to be used
+// by the wharf-cmd-worker when creating the actual pods.
 func (s NuGetPackage) PodSpec() *v1.PodSpec { return s.podSpec }
 
 func (s NuGetPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {

@@ -32,6 +32,8 @@ type Helm struct {
 // StepTypeName returns the name of this step type.
 func (Helm) StepTypeName() string { return "helm" }
 
+// PodSpec returns this step's Kubernetes Pod specification. Meant to be used
+// by the wharf-cmd-worker when creating the actual pods.
 func (s Helm) PodSpec() *v1.PodSpec { return s.podSpec }
 
 func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
