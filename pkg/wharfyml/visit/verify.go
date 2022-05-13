@@ -28,9 +28,9 @@ func VerifyTag(node *yaml.Node, wantStr string, wantTag string) error {
 	return nil
 }
 
-// VerifyKindAndTag checks if the given node has both the wanted kind and then
-// also then wanted tag. The wantStr is only used as a pretty string of the
-// wanted type in the potential error message.
+// VerifyKindAndTag checks if the given node has the wanted kind and tag. The
+// wantStr is only used as a pretty string of the wanted type in the potential
+// error message.
 func VerifyKindAndTag(node *yaml.Node, wantStr string, wantKind yaml.Kind, wantTag string) error {
 	if err := VerifyKind(node, wantStr, wantKind); err != nil {
 		return err

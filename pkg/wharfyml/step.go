@@ -34,7 +34,7 @@ func visitStepNode(name visit.StringNode, node *yaml.Node, args Args, source var
 	}
 	if len(nodes) > 1 {
 		errSlice.Add(errutil.NewPosFromNode(ErrStepMultipleStepTypes, node))
-		// Continue, its not a fatal issue
+		// Continue, it's not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
 		stepType, meta, errs := visitStepTypeNode(
