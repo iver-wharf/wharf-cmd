@@ -60,6 +60,7 @@ var (
 func addKubernetesFlags(flagSet *pflag.FlagSet) {
 	runAfterConfig = append(runAfterConfig, func() {
 		overrideFlags := clientcmd.RecommendedConfigOverrideFlags("k8s-")
+		overrideFlags.CurrentContext.Default = rootConfig.K8s.Context
 		overrideFlags.ContextOverrideFlags.Namespace.Default = rootConfig.K8s.Namespace
 		clientcmd.BindOverrideFlags(&k8sOverridesFlags, flagSet, overrideFlags)
 	})
