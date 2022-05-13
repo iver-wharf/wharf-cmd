@@ -219,9 +219,9 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 		// suddenly use Windows directory separator when running from Windows.
 		"--dockerfile", path.Join(repoDir, s.File),
 		"--context", path.Join(repoDir, s.Context),
-                // TODO:
-                //   --skip-tls-verify is bad, but remains due to backward compatibility.
-                //   Would be nice to make optional/phase it out.
+		// TODO:
+		//   --skip-tls-verify is bad, but remains due to backward compatibility.
+		//   Would be nice to make optional/phase it out.
 		"--skip-tls-verify",
 	}
 
