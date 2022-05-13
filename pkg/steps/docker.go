@@ -170,17 +170,16 @@ func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpe
 	}
 
 	if s.AppendCert {
-		cont.VolumeMounts = append(cont.VolumeMounts,
-			v1.VolumeMount{
-				Name:      "cert",
-				ReadOnly:  true,
-				MountPath: "/mnt/cert",
-			})
 		podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
 			Name: "cert",
 			VolumeSource: v1.VolumeSource{
 				EmptyDir: &v1.EmptyDirVolumeSource{},
 			},
+		})
+		cont.VolumeMounts = append(cont.VolumeMounts, v1.VolumeMount{
+			Name:      "cert",
+			ReadOnly:  true,
+			MountPath: "/mnt/cert",
 		})
 	}
 
