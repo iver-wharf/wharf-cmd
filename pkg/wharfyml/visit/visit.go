@@ -21,7 +21,7 @@ var (
 	ErrTooManyDocs      = errors.New("only 1 document is allowed")
 )
 
-// String will try read this YAML node as a string.
+// String will try to read this YAML node as a string.
 func String(node *yaml.Node) (string, error) {
 	if err := VerifyKindAndTag(node, "string", yaml.ScalarNode, ShortTagString); err != nil {
 		return "", err
@@ -29,7 +29,7 @@ func String(node *yaml.Node) (string, error) {
 	return node.Value, nil
 }
 
-// Int will try read this YAML node as an integer.
+// Int will try to read this YAML node as an integer.
 func Int(node *yaml.Node) (int, error) {
 	if err := VerifyKindAndTag(node, "integer", yaml.ScalarNode, ShortTagInt); err != nil {
 		return 0, err
@@ -41,7 +41,7 @@ func Int(node *yaml.Node) (int, error) {
 	return num, nil
 }
 
-// Float64 will try read this YAML node as a float64.
+// Float64 will try to read this YAML node as a float64.
 func Float64(node *yaml.Node) (float64, error) {
 	if node.Kind == yaml.ScalarNode && node.ShortTag() == ShortTagInt {
 		num, err := Int(node)
@@ -60,7 +60,7 @@ func Float64(node *yaml.Node) (float64, error) {
 	return num, nil
 }
 
-// Bool will try read this YAML node as a bool.
+// Bool will try to read this YAML node as a bool.
 func Bool(node *yaml.Node) (bool, error) {
 	if err := VerifyKindAndTag(node, "boolean", yaml.ScalarNode, ShortTagBool); err != nil {
 		return false, err
@@ -72,7 +72,7 @@ func Bool(node *yaml.Node) (bool, error) {
 	return b, nil
 }
 
-// Map will try read this YAML node as a map of nodes with string keys.
+// Map will try to read this YAML node as a map of nodes with string keys.
 func Map(node *yaml.Node) (map[string]*yaml.Node, errutil.Slice) {
 	pairs, errs := MapSlice(node)
 	m := make(map[string]*yaml.Node, len(pairs))
@@ -95,7 +95,7 @@ type StringNode struct {
 	Value string
 }
 
-// MapSlice will try read this YAML node as a map of nodes with string keys,
+// MapSlice will try to read this YAML node as a map of nodes with string keys,
 // returned as a slice of key-value pairs, keeping the original order of the
 // nodes from the YAML file.
 func MapSlice(node *yaml.Node) ([]MapItem, errutil.Slice) {
@@ -139,7 +139,7 @@ func MapSlice(node *yaml.Node) ([]MapItem, errutil.Slice) {
 	return pairs, errSlice
 }
 
-// Sequence will try read this YAML node as a sequence of nodes (array).
+// Sequence will try to read this YAML node as a sequence of nodes (array).
 func Sequence(node *yaml.Node) ([]*yaml.Node, error) {
 	if err := VerifyKind(node, "sequence", yaml.SequenceNode); err != nil {
 		return nil, err
@@ -147,7 +147,7 @@ func Sequence(node *yaml.Node) ([]*yaml.Node, error) {
 	return node.Content, nil
 }
 
-// Document will try read the root node of this document YAML node.
+// Document will try to read the root node of this document YAML node.
 func Document(node *yaml.Node) (*yaml.Node, error) {
 	if err := VerifyKind(node, "document", yaml.DocumentNode); err != nil {
 		return nil, err
