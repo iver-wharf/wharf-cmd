@@ -24,7 +24,7 @@ func (HelmPackage) StepTypeName() string { return "helm-package" }
 
 func (s HelmPackage) PodSpec() *v1.PodSpec { return s.podSpec }
 
-func (s HelmPackage) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
+func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
 
 	if !v.HasNode("destination") {

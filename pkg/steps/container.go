@@ -28,7 +28,7 @@ func (Container) StepTypeName() string { return "container" }
 
 func (s Container) PodSpec() *v1.PodSpec { return s.podSpec }
 
-func (s Container) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
+func (s Container) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.OS = "linux"
 	s.Shell = "/bin/sh"
 	s.ServiceAccount = "default"

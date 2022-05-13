@@ -34,7 +34,7 @@ func (Helm) StepTypeName() string { return "helm" }
 
 func (s Helm) PodSpec() *v1.PodSpec { return s.podSpec }
 
-func (s Helm) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
+func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
 	s.HelmVersion = "v2.14.1"
 

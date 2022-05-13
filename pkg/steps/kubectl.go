@@ -29,7 +29,7 @@ func (Kubectl) StepTypeName() string { return "kubectl" }
 
 func (s Kubectl) PodSpec() *v1.PodSpec { return s.podSpec }
 
-func (s Kubectl) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
+func (s Kubectl) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
 	s.Action = "apply"
 

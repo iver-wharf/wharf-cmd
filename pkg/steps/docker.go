@@ -147,14 +147,14 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 			fmt.Errorf("found %s but is missing %s", dockerFieldSecretName, dockerFieldSecretArgs))
 	}
 
-	podSpec, errs := s.applyStepDocker(stepName, v)
+	podSpec, errs := s.applyStepDocker(v)
 	s.podSpec = podSpec
 	errSlice.Add(errs...)
 
 	return s, errSlice
 }
 
-func (s Docker) applyStepDocker(stepName string, v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s Docker) applyStepDocker(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := basePodSpec
 
