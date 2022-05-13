@@ -37,7 +37,7 @@ type MapVisitor struct {
 
 // ParentPos returns the position of the map node's parent.
 func (p MapVisitor) ParentPos() Pos {
-	return NewPosNode(p.parent)
+	return NewPosFromNode(p.parent)
 }
 
 // ReadNodePos returns a map of the positions for all of the nodes that has so
@@ -112,7 +112,7 @@ func (p MapVisitor) VisitStringSlice(key string, target *[]string) errutil.Slice
 	if !ok {
 		return nil
 	}
-	p.positions[key] = NewPosNode(node)
+	p.positions[key] = NewPosFromNode(node)
 	seq, err := Sequence(node)
 	if err != nil {
 		return errutil.Slice{errutil.Scope(err, key)}
@@ -139,7 +139,7 @@ func (p MapVisitor) VisitStringStringMap(key string, target *map[string]string) 
 	if !ok {
 		return nil
 	}
-	p.positions[key] = NewPosNode(node)
+	p.positions[key] = NewPosFromNode(node)
 	var errSlice errutil.Slice
 	nodes, errs := MapSlice(node)
 	errSlice.Add(errutil.ScopeSlice(errs, key)...)
@@ -243,7 +243,7 @@ func visitNode[T any](p MapVisitor, key string, target *T, f func(*yaml.Node) (T
 	if !ok {
 		return nil
 	}
-	p.positions[key] = NewPosNode(node)
+	p.positions[key] = NewPosFromNode(node)
 	val, err := f(node)
 	if err != nil {
 		return errutil.Scope(err, key)

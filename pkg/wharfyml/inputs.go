@@ -81,7 +81,7 @@ func visitInputTypeNode(node *yaml.Node) (input Input, errSlice errutil.Slice) {
 		v.ValidateRequiredString("name"),
 		v.ValidateRequiredString("type"),
 	)
-	pos := visit.NewPosNode(node)
+	pos := visit.NewPosFromNode(node)
 	switch inputType {
 	case "":
 		// validate required has already added error for it

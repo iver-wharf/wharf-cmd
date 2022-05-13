@@ -25,7 +25,7 @@ type Stage struct {
 }
 
 func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (stage Stage, errSlice errutil.Slice) {
-	stage.Pos = visit.NewPosNode(node)
+	stage.Pos = visit.NewPosFromNode(node)
 	stage.Name = nameNode.Value
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
@@ -36,7 +36,7 @@ func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, sourc
 	for _, stepNode := range nodes {
 		switch stepNode.Key.Value {
 		case propEnvironments:
-			stage.EnvsPos = visit.NewPosNode(stepNode.Value)
+			stage.EnvsPos = visit.NewPosFromNode(stepNode.Value)
 			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
 			stage.Envs = envs
 			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)

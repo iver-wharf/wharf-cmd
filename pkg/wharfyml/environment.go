@@ -59,7 +59,7 @@ func visitEnvironmentNode(nameNode visit.StringNode, node *yaml.Node) (env Env, 
 	env = Env{
 		Name:   nameNode.Value,
 		Vars:   make(map[string]visit.VarSubNode),
-		Source: visit.NewPosNode(node),
+		Source: visit.NewPosFromNode(node),
 	}
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
@@ -93,7 +93,7 @@ func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice erruti
 			continue
 		}
 		envs = append(envs, EnvRef{
-			Source: visit.NewPosNode(envNode),
+			Source: visit.NewPosFromNode(envNode),
 			Name:   env,
 		})
 	}

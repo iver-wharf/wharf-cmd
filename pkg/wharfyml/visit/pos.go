@@ -20,7 +20,7 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
-func NewPosNode(node *yaml.Node) Pos {
+func NewPosFromNode(node *yaml.Node) Pos {
 	return Pos{
 		Line:   node.Line,
 		Column: node.Column,
@@ -36,5 +36,5 @@ func WrapPosError(err error, pos Pos) error {
 }
 
 func WrapPosErrorNode(err error, node *yaml.Node) error {
-	return WrapPosError(err, NewPosNode(node))
+	return WrapPosError(err, NewPosFromNode(node))
 }

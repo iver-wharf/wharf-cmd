@@ -24,7 +24,7 @@ type Step struct {
 }
 
 func visitStepNode(name visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (step Step, errSlice errutil.Slice) {
-	step.Pos = visit.NewPosNode(node)
+	step.Pos = visit.NewPosFromNode(node)
 	step.Name = name.Value
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
