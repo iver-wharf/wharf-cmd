@@ -26,6 +26,9 @@ type StepTypeMeta struct {
 	FieldPos map[string]visit.Pos
 }
 
+// StepTypeFactory is a factory type that can create step types from a step
+// type name. This type is expected to be implemented and injected into wharfyml
+// to provide it with the step type definitons.
 type StepTypeFactory interface {
 	NewStepType(stepTypeName, stepName string, v visit.MapVisitor) (StepType, errutil.Slice)
 }
