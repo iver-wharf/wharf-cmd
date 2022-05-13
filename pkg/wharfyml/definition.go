@@ -65,7 +65,7 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice errutil.
 	// Add environment varsub.Source first, as it should have priority
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)
 	if err != nil {
-		err = visit.WrapPosErrorNode(err, envSourceNode)
+		err = errutil.NewPosFromNode(err, envSourceNode)
 		err = errutil.Scope(err, propEnvironments)
 		errSlice.Add(err) // Non fatal error
 	} else if targetEnv != nil {
@@ -125,7 +125,7 @@ func validateDefEnvironmentUsage(def Definition) errutil.Slice {
 		for _, env := range stage.Envs {
 			if _, ok := def.Envs[env.Name]; !ok {
 				err := fmt.Errorf("%w: %q", ErrUseOfUndefinedEnv, env.Name)
-				err = visit.WrapPosError(err, env.Source)
+				err = errutil.NewPos(err, env.Source.Line, env.Source.Column)
 				err = errutil.Scope(err, stage.Name, propEnvironments)
 				errSlice.Add(err)
 			}

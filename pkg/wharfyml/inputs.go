@@ -59,7 +59,7 @@ func visitInputsNode(node *yaml.Node) (inputs Inputs, errSlice errutil.Slice) {
 		if input != nil {
 			name := input.InputVarName()
 			if _, ok := inputs[name]; ok {
-				err := visit.WrapPosErrorNode(
+				err := errutil.NewPosFromNode(
 					fmt.Errorf("%w: %q", ErrInputNameCollision, name), inputNode)
 				errSlice.Add(errutil.Scope(err, strconv.Itoa(i)))
 			}
@@ -126,7 +126,8 @@ func visitInputsArgs(inputDefs Inputs, inputArgs map[string]any) (varsub.Source,
 		}
 		value, err := input.ParseValue(argValue)
 		if err != nil {
-			err := visit.WrapPosError(err, input.Pos())
+			pos := input.Pos()
+			err := errutil.NewPos(err, pos.Line, pos.Column)
 			errSlice.Add(errutil.Scope(err, "inputs", k))
 			continue
 		}

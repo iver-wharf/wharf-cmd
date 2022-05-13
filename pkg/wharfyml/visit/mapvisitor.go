@@ -235,7 +235,7 @@ func (p MapVisitor) ValidateRequiredSlice(key string) error {
 
 func (p MapVisitor) newRequiredError(key string) error {
 	inner := fmt.Errorf("%w: %q", ErrMissingRequired, key)
-	return WrapPosErrorNode(inner, p.parent)
+	return errutil.NewPosFromNode(inner, p.parent)
 }
 
 func visitNode[T any](p MapVisitor, key string, target *T, f func(*yaml.Node) (T, error)) error {
@@ -268,12 +268,12 @@ func (p MapVisitor) lookupFromVarSub(varLookup string) (*yaml.Node, error) {
 	varValue, ok := safeLookupVar(p.source, varLookup)
 	if !ok {
 		err := fmt.Errorf("%w: need %s", ErrMissingBuiltinVar, varLookup)
-		return nil, WrapPosErrorNode(err, p.parent)
+		return nil, errutil.NewPosFromNode(err, p.parent)
 	}
 	newNode, err := NewNodeWithValue(p.parent, varValue.Value)
 	if err != nil {
 		err := fmt.Errorf("read %s: %w", varLookup, err)
-		return nil, WrapPosErrorNode(err, p.parent)
+		return nil, errutil.NewPosFromNode(err, p.parent)
 	}
 	return newNode, nil
 }

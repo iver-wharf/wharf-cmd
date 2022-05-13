@@ -29,11 +29,11 @@ func visitStepNode(name visit.StringNode, node *yaml.Node, args Args, source var
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.Add(visit.WrapPosErrorNode(ErrStepEmpty, node))
+		errSlice.Add(errutil.NewPosFromNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.Add(visit.WrapPosErrorNode(ErrStepMultipleStepTypes, node))
+		errSlice.Add(errutil.NewPosFromNode(ErrStepMultipleStepTypes, node))
 		// Continue, its not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {

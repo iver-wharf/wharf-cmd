@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
@@ -53,7 +54,7 @@ func VarSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 func VarSubStringNode(str StringNode, source varsub.Source) (*yaml.Node, error) {
 	val, err := varsub.Substitute(str.Value, source)
 	if err != nil {
-		return nil, WrapPosErrorNode(err, str.Node)
+		return nil, errutil.NewPosFromNode(err, str.Node)
 	}
 	return NewNodeWithValue(str.Node, val)
 }
@@ -92,7 +93,7 @@ func NewNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 		clone.SetString(val.String())
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedVarSubType, val)
-		return nil, WrapPosErrorNode(err, node)
+		return nil, errutil.NewPosFromNode(err, node)
 	}
 	return &clone, nil
 }

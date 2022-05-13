@@ -30,7 +30,7 @@ func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, sourc
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.Add(visit.WrapPosErrorNode(ErrStageEmpty, node))
+		errSlice.Add(errutil.NewPosFromNode(ErrStageEmpty, node))
 		return
 	}
 	for _, stepNode := range nodes {

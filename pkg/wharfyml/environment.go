@@ -89,7 +89,7 @@ func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice erruti
 			continue
 		}
 		if env == "" {
-			errSlice.Add(visit.WrapPosErrorNode(ErrStageEnvEmpty, envNode))
+			errSlice.Add(errutil.NewPosFromNode(ErrStageEnvEmpty, envNode))
 			continue
 		}
 		envs = append(envs, EnvRef{

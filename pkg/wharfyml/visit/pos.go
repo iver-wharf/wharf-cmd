@@ -3,7 +3,6 @@ package visit
 import (
 	"fmt"
 
-	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"gopkg.in/yaml.v3"
 )
 
@@ -20,21 +19,10 @@ func (p Pos) String() string {
 	return fmt.Sprintf("%d:%d", p.Line, p.Column)
 }
 
+// NewPosFromNode creates a new Pos using a YAML node's Line and Column.
 func NewPosFromNode(node *yaml.Node) Pos {
 	return Pos{
 		Line:   node.Line,
 		Column: node.Column,
 	}
-}
-
-func WrapPosError(err error, pos Pos) error {
-	return errutil.Pos{
-		Err:    err,
-		Line:   pos.Line,
-		Column: pos.Column,
-	}
-}
-
-func WrapPosErrorNode(err error, node *yaml.Node) error {
-	return WrapPosError(err, NewPosFromNode(node))
 }
