@@ -5,7 +5,8 @@ import (
 	"strings"
 )
 
-const ScopeDelimiter = "/"
+// ScopeDelimiter is the delimiter used in joined error scopes.
+var ScopeDelimiter = "/"
 
 // Scope creates a new scoped error. The full scope path can later be retrieved
 // from the first scope found via errors.As.
@@ -45,7 +46,7 @@ func AsScope(err error) string {
 }
 
 // Scoped is an error that is scoped. Each scope adds a substring to the
-// scope, delimited by a slash.
+// scope, delimited by ScopeDelimiter.
 type Scoped struct {
 	scope string
 	next  *Scoped
