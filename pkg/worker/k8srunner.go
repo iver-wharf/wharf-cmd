@@ -436,7 +436,7 @@ func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
 
-		if err := r.copyCertToAppContainer(ctx, step); err != nil {
+		if err := r.copyCertToAppContainer(); err != nil {
 			return fmt.Errorf("transfer cert: %w", err)
 		}
 	}
@@ -459,7 +459,7 @@ func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step
 	return nil
 }
 
-func (r k8sStepRunner) copyCertToAppContainer(ctx context.Context, step wharfyml.StepDocker) error {
+func (r k8sStepRunner) copyCertToAppContainer() error {
 	log.Debug().WithFunc(r.logFunc).Message("Copying cert file from init container to app container.")
 	exec, err := execInPodPipeStdout(
 		r.RestConfig,
