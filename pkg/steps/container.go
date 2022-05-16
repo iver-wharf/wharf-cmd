@@ -1,6 +1,9 @@
 package steps
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	v1 "k8s.io/api/core/v1"
@@ -20,7 +23,8 @@ type Container struct {
 	ServiceAccount        string
 	CertificatesMountPath string
 
-	podSpec *v1.PodSpec
+	instanceID string
+	podSpec    *v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -53,5 +57,72 @@ func (s Container) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) 
 		v.ValidateRequiredString("image"),
 		v.ValidateRequiredSlice("cmds"),
 	)
+
+	podSpec, errs := s.applyStepContainer(v)
+	s.podSpec = podSpec
+	errSlice.Add(errs...)
+
 	return s, errSlice
+}
+
+func (s Container) applyStepContainer(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+	var errSlice errutil.Slice
+	podSpec := newBasePodSpec()
+
+	var cmds []string
+	if s.OS == "windows" && s.Shell == "/bin/sh" {
+		cmds = []string{"powershell.exe", "-C"}
+	} else {
+		cmds = []string{s.Shell, "-c"}
+	}
+
+	cont := v1.Container{
+		Name:            commonContainerName,
+		Image:           s.Image,
+		ImagePullPolicy: v1.PullAlways,
+		Command:         cmds,
+		Args:            []string{strings.Join(s.Cmds, "\n")},
+		WorkingDir:      commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+		},
+	}
+
+	if s.CertificatesMountPath != "" {
+		podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
+			Name: "certificates",
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: "ca-certificates-config",
+					},
+				},
+			},
+		})
+		cont.VolumeMounts = append(cont.VolumeMounts, v1.VolumeMount{
+			Name:      "certificates",
+			MountPath: s.CertificatesMountPath,
+		})
+	}
+
+	if s.SecretName != "" {
+		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
+			s.instanceID,
+			1, // TODO: Use project ID
+			s.SecretName,
+		)
+		optional := true
+		cont.EnvFrom = append(cont.EnvFrom, v1.EnvFromSource{
+			SecretRef: &v1.SecretEnvSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: secretName,
+				},
+				Optional: &optional,
+			},
+		})
+	}
+
+	podSpec.ServiceAccountName = s.ServiceAccount
+	podSpec.Containers = append(podSpec.Containers, cont)
+	return &podSpec, errSlice
 }

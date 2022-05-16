@@ -169,8 +169,6 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case steps.Container:
-		return applyStepContainer(pod, s)
 	case steps.HelmPackage:
 		return applyStepHelmPackage(pod, s)
 	case steps.Helm:
@@ -184,65 +182,6 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	default:
 		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
 	}
-}
-
-func applyStepContainer(pod *v1.Pod, step steps.Container) error {
-	var cmds []string
-	if step.OS == "windows" && step.Shell == "/bin/sh" {
-		cmds = []string{"powershell.exe", "-C"}
-	} else {
-		cmds = []string{step.Shell, "-c"}
-	}
-
-	cont := v1.Container{
-		Name:            commonContainerName,
-		Image:           step.Image,
-		ImagePullPolicy: v1.PullAlways,
-		Command:         cmds,
-		Args:            []string{strings.Join(step.Cmds, "\n")},
-		WorkingDir:      commonRepoVolumeMount.MountPath,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-		},
-	}
-
-	if step.CertificatesMountPath != "" {
-		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
-			Name: "certificates",
-			VolumeSource: v1.VolumeSource{
-				ConfigMap: &v1.ConfigMapVolumeSource{
-					LocalObjectReference: v1.LocalObjectReference{
-						Name: "ca-certificates-config",
-					},
-				},
-			},
-		})
-		cont.VolumeMounts = append(cont.VolumeMounts, v1.VolumeMount{
-			Name:      "certificates",
-			MountPath: step.CertificatesMountPath,
-		})
-	}
-
-	if step.SecretName != "" {
-		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
-			"local", // TODO: Use Wharf instance ID
-			1,       // TODO: Use project ID
-			step.SecretName,
-		)
-		optional := true
-		cont.EnvFrom = append(cont.EnvFrom, v1.EnvFromSource{
-			SecretRef: &v1.SecretEnvSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: secretName,
-				},
-				Optional: &optional,
-			},
-		})
-	}
-
-	pod.Spec.ServiceAccountName = step.ServiceAccount
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	return nil
 }
 
 func applyStepHelmPackage(pod *v1.Pod, step steps.HelmPackage) error {
