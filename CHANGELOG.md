@@ -85,7 +85,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
-  line & column of each parse error. (#48, #58, #147)
+  line & column of each parse error. (#48, #58, #147, #153)
 
 - Added support for a new file type: `.wharf-vars.yml`. It is used to define
   built-in variables, and wharf looks for it in multiple files in the
