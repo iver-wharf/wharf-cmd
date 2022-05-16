@@ -14,7 +14,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Taken from k8s.io/api@v0.23.3/core/v1/types.go
+// Originally taken from k8s.io/api@v0.23.3/core/v1/types.go
+// This has since been modified to fit our use-case
 
 package config
 
