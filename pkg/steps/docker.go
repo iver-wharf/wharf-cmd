@@ -13,19 +13,19 @@ import (
 )
 
 const (
-	dockerFieldFile        string = "file"
-	dockerFieldTag         string = "tag"
-	dockerFieldDestination string = "destination"
-	dockerFieldName        string = "name"
-	dockerFieldGroup       string = "group"
-	dockerFieldContext     string = "context"
-	dockerFieldSecret      string = "secret"
-	dockerFieldRegistry    string = "registry"
-	dockerFieldAppendCert  string = "append-cert"
-	dockerFieldPush        string = "push"
-	dockerFieldArgs        string = "args"
-	dockerFieldSecretName  string = "secretName"
-	dockerFieldSecretArgs  string = "secretArgs"
+	dockerFieldFile        = "file"
+	dockerFieldTag         = "tag"
+	dockerFieldDestination = "destination"
+	dockerFieldName        = "name"
+	dockerFieldGroup       = "group"
+	dockerFieldContext     = "context"
+	dockerFieldSecret      = "secret"
+	dockerFieldRegistry    = "registry"
+	dockerFieldAppendCert  = "append-cert"
+	dockerFieldPush        = "push"
+	dockerFieldArgs        = "args"
+	dockerFieldSecretName  = "secretName"
+	dockerFieldSecretArgs  = "secretArgs"
 )
 
 // Docker represents a step type for building and pushing Docker images.
@@ -158,7 +158,7 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 
 func (s Docker) applyStepDocker(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
-	podSpec := basePodSpec
+	podSpec := newBasePodSpec()
 
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
@@ -247,7 +247,7 @@ func (s Docker) applyStepDocker(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice)
 			fmt.Sprintf("%s:%s", s.Destination, tag))
 	}
 	if !anyTag {
-		errSlice.Add(errors.New("tags field resolved to zero tags"))
+		v.AddErrorFor(dockerFieldTag, &errSlice, errors.New("field resolved to zero tags"))
 	}
 
 	if !s.Push {

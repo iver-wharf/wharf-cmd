@@ -52,6 +52,10 @@ var (
 	}
 )
 
+func newBasePodSpec() v1.PodSpec {
+	return basePodSpec
+}
+
 // StepType is an interface that is implemented by all step types.
 type StepType interface {
 	StepTypeName() string
@@ -83,7 +87,7 @@ func (f factory) NewStepType(stepTypeName, stepName string, v visit.MapVisitor) 
 	}
 	switch stepTypeName {
 	case "container":
-		step = Container{}
+		step = Container{instanceID: f.config.InstanceID}
 	case "docker":
 		step = Docker{config: &f.config.Worker.Steps.Docker, instanceID: f.config.InstanceID}
 	case "helm":
