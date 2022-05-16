@@ -22,7 +22,7 @@ type HelmPackage struct {
 	ChartPath   string
 	Destination string
 
-	podSpec *v1.PodSpec
+	podSpec v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -30,7 +30,7 @@ func (HelmPackage) StepTypeName() string { return "helm-package" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s HelmPackage) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s HelmPackage) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
@@ -63,7 +63,7 @@ func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice
 	return s, errSlice
 }
 
-func (s HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s HelmPackage) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
@@ -92,5 +92,5 @@ func (s HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) 
 	}
 
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return &podSpec, errSlice
+	return podSpec, errSlice
 }

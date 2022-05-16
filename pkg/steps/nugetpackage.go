@@ -26,7 +26,7 @@ type NuGetPackage struct {
 	SkipDuplicate         bool
 	CertificatesMountPath string
 
-	podSpec *v1.PodSpec
+	podSpec v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -34,7 +34,7 @@ func (NuGetPackage) StepTypeName() string { return "nuget-package" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s NuGetPackage) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s NuGetPackage) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s NuGetPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
@@ -60,7 +60,7 @@ func (s NuGetPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slic
 	return s, errSlice
 }
 
-func (s NuGetPackage) applyStep() *v1.PodSpec {
+func (s NuGetPackage) applyStep() v1.PodSpec {
 	podSpec := newBasePodSpec()
 
 	cont := v1.Container{
@@ -92,5 +92,5 @@ func (s NuGetPackage) applyStep() *v1.PodSpec {
 	}
 
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return &podSpec
+	return podSpec
 }

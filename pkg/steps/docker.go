@@ -49,7 +49,7 @@ type Docker struct {
 
 	instanceID string
 	config     *config.DockerStepConfig
-	podSpec    *v1.PodSpec
+	podSpec    v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -57,7 +57,7 @@ func (Docker) StepTypeName() string { return "docker" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s Docker) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s Docker) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Name = stepName
@@ -156,7 +156,7 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 	return s, errSlice
 }
 
-func (s Docker) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s Docker) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
@@ -287,5 +287,5 @@ func (s Docker) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 
 	cont.Args = args
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return &podSpec, errSlice
+	return podSpec, errSlice
 }

@@ -26,7 +26,7 @@ type Helm struct {
 	Cluster      string
 
 	config  *config.HelmStepConfig
-	podSpec *v1.PodSpec
+	podSpec v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -34,7 +34,7 @@ func (Helm) StepTypeName() string { return "helm" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s Helm) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s Helm) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
@@ -86,7 +86,7 @@ func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	return s, errSlice
 }
 
-func (s Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s Helm) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
@@ -141,5 +141,5 @@ func (s Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 		},
 	})
 
-	return &podSpec, errSlice
+	return podSpec, errSlice
 }

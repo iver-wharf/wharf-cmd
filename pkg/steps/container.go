@@ -24,7 +24,7 @@ type Container struct {
 	CertificatesMountPath string
 
 	instanceID string
-	podSpec    *v1.PodSpec
+	podSpec    v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -32,7 +32,7 @@ func (Container) StepTypeName() string { return "container" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s Container) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s Container) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s Container) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.OS = "linux"
@@ -63,7 +63,7 @@ func (s Container) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) 
 	return s, errSlice
 }
 
-func (s Container) applyStep() *v1.PodSpec {
+func (s Container) applyStep() v1.PodSpec {
 	podSpec := newBasePodSpec()
 
 	var cmds []string
@@ -121,5 +121,5 @@ func (s Container) applyStep() *v1.PodSpec {
 
 	podSpec.ServiceAccountName = s.ServiceAccount
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return &podSpec
+	return podSpec
 }

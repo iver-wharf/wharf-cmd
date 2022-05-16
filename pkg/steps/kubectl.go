@@ -23,7 +23,7 @@ type Kubectl struct {
 	Cluster   string
 
 	config  *config.KubectlStepConfig
-	podSpec *v1.PodSpec
+	podSpec v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -31,7 +31,7 @@ func (Kubectl) StepTypeName() string { return "kubectl" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s Kubectl) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s Kubectl) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s Kubectl) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Cluster = "kubectl-config"
@@ -60,7 +60,7 @@ func (s Kubectl) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	return s, errSlice
 }
 
-func (s Kubectl) applyStep() *v1.PodSpec {
+func (s Kubectl) applyStep() v1.PodSpec {
 	podSpec := newBasePodSpec()
 
 	cont := v1.Container{
@@ -108,5 +108,5 @@ func (s Kubectl) applyStep() *v1.PodSpec {
 		},
 	})
 
-	return &podSpec
+	return podSpec
 }

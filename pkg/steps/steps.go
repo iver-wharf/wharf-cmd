@@ -65,7 +65,7 @@ type StepType interface {
 
 // PodSpecer is a type that can return a Kubernetes Pod specification.
 type PodSpecer interface {
-	PodSpec() *v1.PodSpec
+	PodSpec() v1.PodSpec
 }
 
 type stepInitializer interface {

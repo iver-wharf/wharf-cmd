@@ -20,10 +20,6 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 	if !ok {
 		return v1.Pod{}, errors.New("step type cannot produce a Kubernetes Pod specification")
 	}
-	podSpec := podSpecer.PodSpec()
-	if podSpec == nil {
-		return v1.Pod{}, errors.New("step type returned nil Kubernetes Pod specification")
-	}
 
 	annotations := map[string]string{
 		"wharf.iver.com/project-id": "456", // TODO: Use real numbers
@@ -53,7 +49,7 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 			},
 			OwnerReferences: getOwnerReferences(),
 		},
-		Spec: *podSpec,
+		Spec: podSpecer.PodSpec(),
 	}
 
 	if len(pod.Spec.Containers) == 0 {
