@@ -66,7 +66,7 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 				return nil, err
 			}
 		}
-		if len(matches) == 1 && len(value) == len(match.FullMatch) {
+		if len(matches) == 1 {
 			// keep the value as-is if it matches the whole value
 			return matchVal, nil
 		}
