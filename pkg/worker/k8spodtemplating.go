@@ -25,8 +25,6 @@ var (
 		MountPath: "/mnt/repo",
 	}
 
-	//go:embed k8sscript-helm-package.sh
-	helmPackageScript string
 	//go:embed k8sscript-nuget-package.sh
 	nugetPackageScript string
 )
@@ -169,8 +167,6 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case steps.HelmPackage:
-		return applyStepHelmPackage(pod, s)
 	case steps.Helm:
 		return applyStepHelm(c.Helm, pod, s)
 	case steps.Kubectl:
@@ -182,34 +178,6 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	default:
 		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
 	}
-}
-
-func applyStepHelmPackage(pod *v1.Pod, step steps.HelmPackage) error {
-	destination := "https://harbor.local/chartrepo/my-group" // TODO: replace with CHART_REPO/REPO_GROUP
-	if step.Destination != "" {
-		destination = step.Destination
-	}
-
-	cont := v1.Container{
-		Name:       commonContainerName,
-		Image:      "wharfse/helm:v3.8.1",
-		WorkingDir: commonRepoVolumeMount.MountPath,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-		},
-		Env: []v1.EnvVar{
-			{Name: "CHART_PATH", Value: step.ChartPath},
-			{Name: "CHART_REPO", Value: destination},
-			{Name: "CHART_VERSION", Value: step.Version},
-			{Name: "REG_USER", Value: "admin"},    // TODO: replace with REG_USER
-			{Name: "REG_PASS", Value: "changeit"}, // TODO: replace with REG_PASS
-		},
-		Command: []string{"/bin/bash", "-c"},
-		Args:    []string{helmPackageScript},
-	}
-
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	return nil
 }
 
 func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step steps.Helm) error {

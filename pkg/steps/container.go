@@ -58,14 +58,14 @@ func (s Container) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) 
 		v.ValidateRequiredSlice("cmds"),
 	)
 
-	podSpec, errs := s.applyStepContainer(v)
+	podSpec, errs := s.applyStep(v)
 	s.podSpec = podSpec
 	errSlice.Add(errs...)
 
 	return s, errSlice
 }
 
-func (s Container) applyStepContainer(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s Container) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 

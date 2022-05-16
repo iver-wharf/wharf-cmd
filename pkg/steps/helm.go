@@ -78,5 +78,10 @@ func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 		v.ValidateRequiredString("name"),
 		v.ValidateRequiredString("namespace"),
 	)
+
+	//podSpec, errs := s.applyStepContainer(v)
+	//s.podSpec = podSpec
+	//errSlice.Add(errs...)
+
 	return s, errSlice
 }
