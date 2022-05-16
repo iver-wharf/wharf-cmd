@@ -18,6 +18,7 @@ import (
 
 type k8sProvisioner struct {
 	k8sWorkerConf config.ProvisionerK8sWorkerConfig
+	extraEnvs     []v1.EnvVar
 	clientset     *kubernetes.Clientset
 	pods          corev1.PodInterface
 	restConfig    *rest.Config
@@ -33,8 +34,20 @@ func NewK8sProvisioner(config *config.Config, restConfig *rest.Config) (Provisio
 	if err != nil {
 		return nil, err
 	}
+	var extraEnvs []v1.EnvVar
+	for _, configEnv := range config.Provisioner.K8s.Worker.ExtraEnvs {
+		k8sEnv, err := configEnv.AsV1()
+		if err != nil {
+			return nil, fmt.Errorf("parse config extraEnvs: env %q: %w", configEnv.Name, err)
+		}
+		if k8sEnv == nil {
+			continue
+		}
+		extraEnvs = append(extraEnvs, *k8sEnv)
+	}
 	return k8sProvisioner{
 		k8sWorkerConf: config.Provisioner.K8s.Worker,
+		extraEnvs:     extraEnvs,
 		clientset:     clientset,
 		pods:          clientset.CoreV1().Pods(config.K8s.Namespace),
 		restConfig:    restConfig,
@@ -152,6 +165,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		wharfArgs = append(wharfArgs, "--", relSubDir)
 	}
 
+	wharfArgs = append(wharfArgs, p.k8sWorkerConf.ExtraArgs...)
+
 	wharfEnvs := []v1.EnvVar{
 		{
 			Name:  "WHARF_KUBERNETES_OWNER_ENABLE",
@@ -176,6 +191,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			},
 		},
 	}
+
+	wharfEnvs = append(wharfEnvs, p.extraEnvs...)
 
 	for k, v := range args.AdditionalVars {
 		wharfEnvs = append(wharfEnvs, v1.EnvVar{
