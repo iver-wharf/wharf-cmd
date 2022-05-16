@@ -148,7 +148,7 @@ func TestSubstitute(t *testing.T) {
 		{
 			name:  "simple text with escaped empty white signs 2",
 			value: "Foo ${ %\n \r%\n} bar",
-			want:  "Foo ${\n \r} bar",
+			want:  "Foo ${ %\n \r%\n} bar",
 		},
 		{
 			name:  "simple text with invalid escaped text",

@@ -23,9 +23,7 @@ type VarMatch struct {
 	FullMatch string
 }
 
-var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
-var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
-var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
+var varSyntaxPattern = regexp.MustCompile(`\${\s*([^}]*)\s*}`)
 
 // Substitute will replace all variables in the string using the variable
 // substution source. Variables are looked up recursively.
@@ -38,25 +36,23 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 	matches := Matches(value)
 	for _, match := range matches {
 		var matchVal any
-		if match.Name == "%" {
-			matchVal = "${}"
-		} else if escapedParamPattern.MatchString(match.Name) {
-			matchVal = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
-		} else {
-			if slices.Contains(usedParams, match.Name) {
-				return nil, ErrRecursiveLoop
-			}
-			v, ok := source.Lookup(match.Name)
-			if !ok {
-				continue
-			}
-			matchVal = v.Value
-			if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
-				var err error
-				matchVal, err = substituteRec(str, source, append(usedParams, match.Name))
-				if err != nil {
-					return nil, err
-				}
+		if unescaped, ok := unescapeFullMatch(match.FullMatch); ok {
+			return strings.Replace(result, match.FullMatch, unescaped, 1), nil
+		}
+
+		if slices.Contains(usedParams, match.Name) {
+			return nil, ErrRecursiveLoop
+		}
+		v, ok := source.Lookup(match.Name)
+		if !ok {
+			continue
+		}
+		matchVal = v.Value
+		if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
+			var err error
+			matchVal, err = substituteRec(str, source, append(usedParams, match.Name))
+			if err != nil {
+				return nil, err
 			}
 		}
 		if len(matches) == 1 && len(value) == len(match.FullMatch) {
@@ -67,6 +63,17 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 		result = strings.Replace(result, match.FullMatch, matchValStr, 1)
 	}
 	return result, nil
+}
+
+func unescapeFullMatch(fullMatch string) (string, bool) {
+	if fullMatch == "${%}" {
+		return "${}", true
+	}
+	if !strings.HasPrefix(fullMatch, "${%") || !strings.HasSuffix(fullMatch, "%}") {
+		return fullMatch, false
+	}
+	s := strings.TrimPrefix(strings.TrimSuffix(fullMatch, "%}"), "${%")
+	return fmt.Sprintf("${%s}", s), true
 }
 
 func stringify(val any) string {
@@ -86,14 +93,10 @@ func Matches(value string) []VarMatch {
 	var params []VarMatch
 
 	for _, match := range matches {
-		paramName := match[1]
+		paramName := strings.TrimSpace(match[1])
 
 		if paramName == "" {
 			continue
-		}
-
-		if paramName[0] != '%' {
-			paramName = paramNamePattern.ReplaceAllString(paramName, "$1")
 		}
 
 		params = append(params, VarMatch{
