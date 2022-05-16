@@ -143,6 +143,43 @@ type ProvisionerK8sWorkerConfig struct {
 	//
 	// Added in v0.8.0.
 	Container K8sContainerConfig
+	// ConfigMapName is the name of a Kubernetes ConfigMap to mount into the
+	// wharf-cmd-worker Pod. The ConfigMap can have the following keys, that
+	// corresponds to their respective files:
+	//
+	//  wharf-cmd-config.yml
+	//  wharf-vars.yml
+	//
+	// Sample ConfigMap manifest:
+	//
+	//  apiVersion: v1
+	//  kind: ConfigMap
+	//  metadata:
+	//    name: wharf-cmd-worker-config
+	//  data:
+	//    wharf-cmd-config.yml: |
+	//      instanceId: dev
+	//    wharf-vars.yml: |
+	//      vars:
+	//        REG_SECRET: docker-registry
+	//
+	// With the above manifest created in the same namespace as where the
+	// wharf-cmd-worker pods are created, you would then set this field to
+	//
+	//  wharf-cmd-worker-config
+	//
+	// Added in v0.8.0.
+	ConfigMapName string
+	// ExtraEnvs is an array of additional environment variables to set on the
+	// wharf-cmd-worker Pod.
+	//
+	// Added in v0.8.0.
+	ExtraEnvs []K8sEnvVar
+	// ExtraArgs is an array of additional command-line arguments to add to the
+	// wharf-cmd-worker Pod.
+	//
+	// Added in v0.8.0.
+	ExtraArgs []string
 }
 
 // K8sContainerConfig holds settings for a kubernetes container.
