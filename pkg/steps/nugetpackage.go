@@ -1,9 +1,17 @@
 package steps
 
 import (
+	_ "embed"
+
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
+	"gopkg.in/typ.v4"
 	v1 "k8s.io/api/core/v1"
+)
+
+var (
+	//go:embed k8sscript-nuget-package.sh
+	nugetPackageScript string
 )
 
 // NuGetPackage represents a step type used for building .NET NuGet
@@ -46,5 +54,46 @@ func (s NuGetPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slic
 		v.ValidateRequiredString("project-path"),
 		v.ValidateRequiredString("repo"),
 	)
+
+	podSpec, errs := s.applyStep(v)
+	s.podSpec = podSpec
+	errSlice.Add(errs...)
+
 	return s, errSlice
+}
+
+func (step NuGetPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+	var errSlice errutil.Slice
+	podSpec := newBasePodSpec()
+
+	cont := v1.Container{
+		Name:       commonContainerName,
+		Image:      "mcr.microsoft.com/dotnet/sdk:3.1-alpine",
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+		},
+		Env: []v1.EnvVar{
+			{
+				Name: "NUGET_TOKEN",
+				ValueFrom: &v1.EnvVarSource{
+					SecretKeyRef: &v1.SecretKeySelector{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: "wharf-nuget-api-token",
+						},
+						Key: "token",
+					},
+				},
+			},
+			{Name: "NUGET_REPO", Value: step.Repo},
+			{Name: "NUGET_PROJECT_PATH", Value: step.ProjectPath},
+			{Name: "NUGET_VERSION", Value: step.Version},
+			{Name: "NUGET_SKIP_DUP", Value: typ.Tern(step.SkipDuplicate, "true", "false")},
+		},
+		Command: []string{"/bin/bash", "-c"},
+		Args:    []string{nugetPackageScript},
+	}
+
+	podSpec.Containers = append(podSpec.Containers, cont)
+	return &podSpec, errSlice
 }

@@ -2,7 +2,6 @@ package worker
 
 import (
 	"context"
-	_ "embed"
 	"errors"
 	"fmt"
 	"regexp"
@@ -24,9 +23,6 @@ var (
 		Name:      "repo",
 		MountPath: "/mnt/repo",
 	}
-
-	//go:embed k8sscript-nuget-package.sh
-	nugetPackageScript string
 )
 
 func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
@@ -167,46 +163,11 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case steps.NuGetPackage:
-		return applyStepNuGetPackage(pod, s)
 	case nil:
 		return errors.New("nil step type")
 	default:
 		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
 	}
-}
-
-func applyStepNuGetPackage(pod *v1.Pod, step steps.NuGetPackage) error {
-	cont := v1.Container{
-		Name:       commonContainerName,
-		Image:      "mcr.microsoft.com/dotnet/sdk:3.1-alpine",
-		WorkingDir: commonRepoVolumeMount.MountPath,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-		},
-		Env: []v1.EnvVar{
-			{
-				Name: "NUGET_TOKEN",
-				ValueFrom: &v1.EnvVarSource{
-					SecretKeyRef: &v1.SecretKeySelector{
-						LocalObjectReference: v1.LocalObjectReference{
-							Name: "wharf-nuget-api-token",
-						},
-						Key: "token",
-					},
-				},
-			},
-			{Name: "NUGET_REPO", Value: step.Repo},
-			{Name: "NUGET_PROJECT_PATH", Value: step.ProjectPath},
-			{Name: "NUGET_VERSION", Value: step.Version},
-			{Name: "NUGET_SKIP_DUP", Value: boolString(step.SkipDuplicate)},
-		},
-		Command: []string{"/bin/bash", "-c"},
-		Args:    []string{nugetPackageScript},
-	}
-
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	return nil
 }
 
 func quoteArgsForLogging(args []string) string {
@@ -217,11 +178,4 @@ func quoteArgsForLogging(args []string) string {
 		}
 	}
 	return strings.Join(argsQuoted, " ")
-}
-
-func boolString(v bool) string {
-	if v {
-		return "true"
-	}
-	return "false"
 }
