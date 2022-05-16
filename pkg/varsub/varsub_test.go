@@ -157,6 +157,11 @@ func TestSubstitute(t *testing.T) {
 			want:  "Foo ${ %\n \r%\n} bar",
 		},
 		{
+			name:  "unescaped variables don't mess with substitution of matching vars after",
+			value: "Foo ${lorem} ${%lorem%} ${lorem}",
+			want:  "Foo ipsum ${lorem} ipsum",
+		},
+		{
 			name:  "simple text with invalid escaped text",
 			value: "Foo ${%lorem} bar",
 			want:  "Foo ${%lorem} bar",
