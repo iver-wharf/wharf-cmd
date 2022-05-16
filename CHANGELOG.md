@@ -271,6 +271,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `syscall.SIGTERM`
   - `syscall.SIGHUP`
 
+- Fixed variable substitution not recognizing kebab-cased variables.
+  Now all variable naming formats are supported inside the `${my-variable}`
+  syntax. (#154)
+
 ## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)
