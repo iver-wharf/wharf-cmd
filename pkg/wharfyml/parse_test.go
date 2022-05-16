@@ -20,11 +20,13 @@ var testVarSource = varsub.SourceMap{
 	"REG_URL":    varsub.Val{Value: "http://harbor.example.com"},
 	"REG_SECRET": varsub.Val{Value: "docker-secret"},
 	"CHART_REPO": varsub.Val{Value: "http://charts.example.com"},
+	"REG_USER":   varsub.Val{Value: "admin"},
+	"REG_PASS":   varsub.Val{Value: "nimda"},
 }
 
 var testArgs = wharfyml.Args{
 	VarSource:       testVarSource,
-	StepTypeFactory: steps.Factory,
+	StepTypeFactory: steps.DefaultFactory,
 }
 
 func TestParse_AcceptanceTest(t *testing.T) {
@@ -74,7 +76,7 @@ myStage2:
   myKubectlStep:
     kubectl:
       file: deploy/pod.yaml
-`), wharfyml.Args{Env: "myEnvA", VarSource: testVarSource, StepTypeFactory: steps.Factory})
+`), wharfyml.Args{Env: "myEnvA", VarSource: testVarSource, StepTypeFactory: steps.DefaultFactory})
 	errtesting.RequireNoErr(t, errs)
 
 	assert.Len(t, got.Inputs, 4)
@@ -367,7 +369,7 @@ func TestParse_EnvVarSub(t *testing.T) {
 	}{
 		{
 			name:      "no env",
-			args:      wharfyml.Args{StepTypeFactory: steps.Factory},
+			args:      wharfyml.Args{StepTypeFactory: steps.DefaultFactory},
 			wantImage: "${myImage}",
 			wantCmd:   "${myCmd}",
 			input: `
@@ -385,7 +387,7 @@ myStage:
 		},
 		{
 			name:      "with env",
-			args:      wharfyml.Args{Env: "myEnv", StepTypeFactory: steps.Factory},
+			args:      wharfyml.Args{Env: "myEnv", StepTypeFactory: steps.DefaultFactory},
 			wantImage: "ubuntu:latest",
 			wantCmd:   "echo hello world",
 			input: `
