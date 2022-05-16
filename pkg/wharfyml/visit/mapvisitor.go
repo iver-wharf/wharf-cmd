@@ -256,7 +256,7 @@ func (p MapVisitor) loadFromVarSubIfUnset(nodeKey, varLookup string) error {
 	if _, ok := p.nodes[nodeKey]; ok {
 		return nil
 	}
-	node, err := p.lookupFromVarSub(varLookup)
+	node, err := p.requireFromVarSub(varLookup)
 	if err != nil {
 		return err
 	}
@@ -264,10 +264,14 @@ func (p MapVisitor) loadFromVarSubIfUnset(nodeKey, varLookup string) error {
 	return nil
 }
 
-func (p MapVisitor) lookupFromVarSub(varLookup string) (*yaml.Node, error) {
+func (p MapVisitor) requireFromVarSub(varLookup string) (*yaml.Node, error) {
 	varValue, ok := safeLookupVar(p.source, varLookup)
 	if !ok {
 		err := fmt.Errorf("%w: need %s", ErrMissingBuiltinVar, varLookup)
+		return nil, errutil.NewPosFromNode(err, p.parent)
+	}
+	if varValue.Value == "" {
+		err := fmt.Errorf("%w: empty %s", ErrMissingBuiltinVar, varLookup)
 		return nil, errutil.NewPosFromNode(err, p.parent)
 	}
 	newNode, err := NewNodeWithValue(p.parent, varValue.Value)
@@ -279,7 +283,7 @@ func (p MapVisitor) lookupFromVarSub(varLookup string) (*yaml.Node, error) {
 }
 
 func requireFromVarSub[T any](p MapVisitor, varLookup string, target *T, f func(string, *T) error) error {
-	node, err := p.lookupFromVarSub(varLookup)
+	node, err := p.requireFromVarSub(varLookup)
 	if err != nil {
 		return err
 	}
