@@ -68,9 +68,15 @@ type PodSpecer interface {
 	PodSpec() *v1.PodSpec
 }
 
-// Factory is the default factory implementation using the default hardcoded
-// configs.
-var Factory wharfyml.StepTypeFactory = factory{config: &config.DefaultConfig}
+type stepInitializer interface {
+	init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice)
+}
+
+// DefaultFactory is the default factory implementation using the default
+// hardcoded configs.
+var DefaultFactory wharfyml.StepTypeFactory = factory{
+	config: &config.DefaultConfig,
+}
 
 // NewFactory creates a new step type factory using the provided config.
 func NewFactory(config *config.Config) wharfyml.StepTypeFactory {
@@ -82,24 +88,28 @@ type factory struct {
 }
 
 func (f factory) NewStepType(stepTypeName, stepName string, v visit.MapVisitor) (wharfyml.StepType, errutil.Slice) {
-	var step interface {
-		init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice)
-	}
-	switch stepTypeName {
-	case "container":
-		step = Container{instanceID: f.config.InstanceID}
-	case "docker":
-		step = Docker{config: &f.config.Worker.Steps.Docker, instanceID: f.config.InstanceID}
-	case "helm":
-		step = Helm{config: &f.config.Worker.Steps.Helm}
-	case "helm-package":
-		step = HelmPackage{}
-	case "kubectl":
-		step = Kubectl{config: &f.config.Worker.Steps.Kubectl}
-	case "nuget-package":
-		step = NuGetPackage{}
-	default:
-		return nil, errutil.Slice{ErrStepTypeUnknown}
+	step, err := f.newStepInitializer(stepTypeName)
+	if err != nil {
+		return nil, errutil.Slice{err}
 	}
 	return step.init(stepName, v)
+}
+
+func (f factory) newStepInitializer(stepTypeName string) (stepInitializer, error) {
+	switch stepTypeName {
+	case "container":
+		return Container{instanceID: f.config.InstanceID}, nil
+	case "docker":
+		return Docker{config: &f.config.Worker.Steps.Docker, instanceID: f.config.InstanceID}, nil
+	case "helm":
+		return Helm{config: &f.config.Worker.Steps.Helm}, nil
+	case "helm-package":
+		return HelmPackage{}, nil
+	case "kubectl":
+		return Kubectl{config: &f.config.Worker.Steps.Kubectl}, nil
+	case "nuget-package":
+		return NuGetPackage{}, nil
+	default:
+		return nil, ErrStepTypeUnknown
+	}
 }
