@@ -15,13 +15,6 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-var (
-	commonRepoVolumeMount = v1.VolumeMount{
-		Name:      "repo",
-		MountPath: "/mnt/repo",
-	}
-)
-
 func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.Step) (v1.Pod, error) {
 	podSpecer, ok := step.Type.(steps.PodSpecer)
 	if !ok {

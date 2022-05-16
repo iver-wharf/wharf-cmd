@@ -15,17 +15,19 @@ var (
 	ErrStepTypeUnknown = errors.New("unknown step type")
 )
 
+// Kubernetes execution commands.
+var (
+	PodInitWaitArgs        = []string{"/bin/sh", "-c", "sleep infinite || true"}
+	PodInitContinueArgs    = []string{"killall", "-s", "SIGINT", "sleep"}
+	PodRepoVolumeMountPath = "/mnt/repo"
+)
+
 var (
 	commonContainerName   = "step"
 	commonRepoVolumeMount = v1.VolumeMount{
 		Name:      "repo",
-		MountPath: "/mnt/repo",
+		MountPath: PodRepoVolumeMountPath,
 	}
-
-	podInitWaitArgs     = []string{"/bin/sh", "-c", "sleep infinite || true"}
-	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
-
-	errIllegalParentDirAccess = errors.New("illegal parent directory access")
 )
 
 func newBasePodSpec() v1.PodSpec {
@@ -37,7 +39,7 @@ func newBasePodSpec() v1.PodSpec {
 				Name:            "init",
 				Image:           "alpine:3",
 				ImagePullPolicy: v1.PullIfNotPresent,
-				Command:         podInitWaitArgs,
+				Command:         PodInitWaitArgs,
 				VolumeMounts: []v1.VolumeMount{
 					commonRepoVolumeMount,
 				},
