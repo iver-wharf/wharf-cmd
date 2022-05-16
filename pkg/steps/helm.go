@@ -79,9 +79,67 @@ func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 		v.ValidateRequiredString("namespace"),
 	)
 
-	//podSpec, errs := s.applyStepContainer(v)
-	//s.podSpec = podSpec
-	//errSlice.Add(errs...)
+	podSpec, errs := s.applyStep(v)
+	s.podSpec = podSpec
+	errSlice.Add(errs...)
 
 	return s, errSlice
+}
+
+func (step Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+	var errSlice errutil.Slice
+	podSpec := newBasePodSpec()
+
+	cont := v1.Container{
+		Name:       commonContainerName,
+		Image:      fmt.Sprintf("%s:%s", step.config.Image, step.HelmVersion),
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+			{Name: "kubeconfig", MountPath: "/root/.kube"},
+		},
+	}
+
+	cmd := []string{
+		"helm",
+		"upgrade",
+		"--install",
+		step.Name,
+		step.Chart,
+		"--repo", step.Repo,
+		"--namespace", step.Namespace,
+	}
+
+	if step.ChartVersion != "" {
+		cmd = append(cmd, "--version", step.ChartVersion)
+	}
+
+	for _, file := range step.Files {
+		cmd = append(cmd, "--values", file)
+	}
+
+	var regUser, regPass string
+	errSlice.Add(
+		v.LookupStringFromVarSub("REG_USER", &regUser),
+		v.LookupStringFromVarSub("REG_PASS", &regPass),
+	)
+	if regUser != "" {
+		cmd = append(cmd, "--username", regUser, "--password", regPass)
+	}
+
+	cont.Command = cmd
+
+	podSpec.Containers = append(podSpec.Containers, cont)
+	podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
+		Name: "kubeconfig",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: step.Cluster,
+				},
+			},
+		},
+	})
+
+	return &podSpec, errSlice
 }

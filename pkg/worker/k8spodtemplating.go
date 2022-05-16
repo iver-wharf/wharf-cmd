@@ -167,8 +167,6 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case steps.Helm:
-		return applyStepHelm(c.Helm, pod, s)
 	case steps.Kubectl:
 		return applyStepKubectl(c.Kubectl, pod, s)
 	case steps.NuGetPackage:
@@ -178,56 +176,6 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	default:
 		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
 	}
-}
-
-func applyStepHelm(config config.HelmStepConfig, pod *v1.Pod, step steps.Helm) error {
-	cont := v1.Container{
-		Name:       commonContainerName,
-		Image:      fmt.Sprintf("%s:%s", config.Image, step.HelmVersion),
-		WorkingDir: commonRepoVolumeMount.MountPath,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-			{Name: "kubeconfig", MountPath: "/root/.kube"},
-		},
-	}
-
-	cmd := []string{
-		"helm",
-		"upgrade",
-		"--install",
-		step.Name,
-		step.Chart,
-		"--repo", step.Repo,
-		"--namespace", step.Namespace,
-	}
-
-	if step.ChartVersion != "" {
-		cmd = append(cmd, "--version", step.ChartVersion)
-	}
-
-	for _, file := range step.Files {
-		cmd = append(cmd, "--values", file)
-	}
-
-	// TODO: Add chart repo credentials from REG_USER & REG_PASS if set
-	// TODO: Also make sure to censor them, so their values don't get logged.
-
-	log.Debug().WithString("args", quoteArgsForLogging(cmd)).
-		Message("Helm args.")
-
-	cont.Command = cmd
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
-		Name: "kubeconfig",
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: step.Cluster,
-				},
-			},
-		},
-	})
-	return nil
 }
 
 func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step steps.Kubectl) error {
