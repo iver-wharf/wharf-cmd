@@ -1,11 +1,17 @@
 package steps
 
 import (
+	_ "embed"
 	"fmt"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	v1 "k8s.io/api/core/v1"
+)
+
+var (
+	//go:embed k8sscript-helm-package.sh
+	helmPackageScript string
 )
 
 // HelmPackage represents a step type for building and uploading a Helm
@@ -16,7 +22,7 @@ type HelmPackage struct {
 	ChartPath   string
 	Destination string
 
-	podSpec *v1.PodSpec
+	podSpec v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -24,7 +30,7 @@ func (HelmPackage) StepTypeName() string { return "helm-package" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s HelmPackage) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s HelmPackage) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	var errSlice errutil.Slice
@@ -50,5 +56,41 @@ func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice
 		v.VisitString("destination", &s.Destination),
 	)
 
+	podSpec, errs := s.applyStep(v)
+	s.podSpec = podSpec
+	errSlice.Add(errs...)
+
 	return s, errSlice
+}
+
+func (s HelmPackage) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
+	var errSlice errutil.Slice
+	podSpec := newBasePodSpec()
+
+	var regUser, regPass string
+	errSlice.Add(
+		v.RequireStringFromVarSub("REG_USER", &regUser),
+		v.RequireStringFromVarSub("REG_PASS", &regPass),
+	)
+
+	cont := v1.Container{
+		Name:       commonContainerName,
+		Image:      "wharfse/helm:v3.8.1",
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+		},
+		Env: []v1.EnvVar{
+			{Name: "CHART_PATH", Value: s.ChartPath},
+			{Name: "CHART_REPO", Value: s.Destination},
+			{Name: "CHART_VERSION", Value: s.Version},
+			{Name: "REG_USER", Value: regUser},
+			{Name: "REG_PASS", Value: regPass},
+		},
+		Command: []string{"/bin/bash", "-c"},
+		Args:    []string{helmPackageScript},
+	}
+
+	podSpec.Containers = append(podSpec.Containers, cont)
+	return podSpec, errSlice
 }

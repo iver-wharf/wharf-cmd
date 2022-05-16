@@ -13,19 +13,19 @@ import (
 )
 
 const (
-	dockerFieldFile        string = "file"
-	dockerFieldTag         string = "tag"
-	dockerFieldDestination string = "destination"
-	dockerFieldName        string = "name"
-	dockerFieldGroup       string = "group"
-	dockerFieldContext     string = "context"
-	dockerFieldSecret      string = "secret"
-	dockerFieldRegistry    string = "registry"
-	dockerFieldAppendCert  string = "append-cert"
-	dockerFieldPush        string = "push"
-	dockerFieldArgs        string = "args"
-	dockerFieldSecretName  string = "secretName"
-	dockerFieldSecretArgs  string = "secretArgs"
+	dockerFieldFile        = "file"
+	dockerFieldTag         = "tag"
+	dockerFieldDestination = "destination"
+	dockerFieldName        = "name"
+	dockerFieldGroup       = "group"
+	dockerFieldContext     = "context"
+	dockerFieldSecret      = "secret"
+	dockerFieldRegistry    = "registry"
+	dockerFieldAppendCert  = "append-cert"
+	dockerFieldPush        = "push"
+	dockerFieldArgs        = "args"
+	dockerFieldSecretName  = "secretName"
+	dockerFieldSecretArgs  = "secretArgs"
 )
 
 // Docker represents a step type for building and pushing Docker images.
@@ -49,7 +49,7 @@ type Docker struct {
 
 	instanceID string
 	config     *config.DockerStepConfig
-	podSpec    *v1.PodSpec
+	podSpec    v1.PodSpec
 }
 
 // StepTypeName returns the name of this step type.
@@ -57,7 +57,7 @@ func (Docker) StepTypeName() string { return "docker" }
 
 // PodSpec returns this step's Kubernetes Pod specification. Meant to be used
 // by the wharf-cmd-worker when creating the actual pods.
-func (s Docker) PodSpec() *v1.PodSpec { return s.podSpec }
+func (s Docker) PodSpec() v1.PodSpec { return s.podSpec }
 
 func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	s.Name = stepName
@@ -149,16 +149,16 @@ func (s Docker) init(stepName string, v visit.MapVisitor) (StepType, errutil.Sli
 			fmt.Errorf("found %s but is missing %s", dockerFieldSecretName, dockerFieldSecretArgs))
 	}
 
-	podSpec, errs := s.applyStepDocker(v)
+	podSpec, errs := s.applyStep(v)
 	s.podSpec = podSpec
 	errSlice.Add(errs...)
 
 	return s, errSlice
 }
 
-func (s Docker) applyStepDocker(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s Docker) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
-	podSpec := basePodSpec
+	podSpec := newBasePodSpec()
 
 	repoDir := commonRepoVolumeMount.MountPath
 	cont := v1.Container{
@@ -247,7 +247,7 @@ func (s Docker) applyStepDocker(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice)
 			fmt.Sprintf("%s:%s", s.Destination, tag))
 	}
 	if !anyTag {
-		errSlice.Add(errors.New("tags field resolved to zero tags"))
+		v.AddErrorFor(dockerFieldTag, &errSlice, errors.New("field resolved to zero tags"))
 	}
 
 	if !s.Push {
@@ -287,5 +287,5 @@ func (s Docker) applyStepDocker(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice)
 
 	cont.Args = args
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return &podSpec, errSlice
+	return podSpec, errSlice
 }

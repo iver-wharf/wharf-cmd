@@ -35,9 +35,6 @@ import (
 )
 
 var (
-	podInitWaitArgs     = []string{"/bin/sh", "-c", "sleep infinite || true"}
-	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
-
 	errIllegalParentDirAccess = errors.New("illegal parent directory access")
 )
 
@@ -427,7 +424,7 @@ func (r k8sStepRunner) stopPodNow(ctx context.Context) {
 
 func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 	log.Debug().WithFunc(r.logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, commonRepoVolumeMount.MountPath); err != nil {
+	if err := r.copyDirToPod(ctx, steps.PodRepoVolumeMountPath); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(r.logFunc).Message("Transferred repo to init container.")
@@ -477,7 +474,7 @@ func (r k8sStepRunner) copyCertToAppContainer() error {
 }
 
 func (r k8sStepRunner) continueInitContainer() error {
-	exec, err := execInPodPipeStdout(r.RestConfig, r.target, podInitContinueArgs)
+	exec, err := execInPodPipeStdout(r.RestConfig, r.target, steps.PodInitContinueArgs)
 	if err != nil {
 		return err
 	}
@@ -504,7 +501,7 @@ func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step steps.Docke
 		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, srcPath)
 	}
 
-	destPath := path.Join(commonRepoVolumeMount.MountPath, step.File)
+	destPath := path.Join(steps.PodRepoVolumeMountPath, step.File)
 	if isIllegalParentDirAccess(destPath) {
 		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, destPath)
 	}
