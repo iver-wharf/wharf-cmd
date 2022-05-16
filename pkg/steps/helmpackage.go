@@ -63,7 +63,7 @@ func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice
 	return s, errSlice
 }
 
-func (step HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
@@ -81,9 +81,9 @@ func (step HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slic
 			commonRepoVolumeMount,
 		},
 		Env: []v1.EnvVar{
-			{Name: "CHART_PATH", Value: step.ChartPath},
-			{Name: "CHART_REPO", Value: step.Destination},
-			{Name: "CHART_VERSION", Value: step.Version},
+			{Name: "CHART_PATH", Value: s.ChartPath},
+			{Name: "CHART_REPO", Value: s.Destination},
+			{Name: "CHART_VERSION", Value: s.Version},
 			{Name: "REG_USER", Value: regUser},
 			{Name: "REG_PASS", Value: regPass},
 		},

@@ -86,13 +86,13 @@ func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 	return s, errSlice
 }
 
-func (step Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+func (s Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
 	cont := v1.Container{
 		Name:       commonContainerName,
-		Image:      fmt.Sprintf("%s:%s", step.config.Image, step.HelmVersion),
+		Image:      fmt.Sprintf("%s:%s", s.config.Image, s.HelmVersion),
 		WorkingDir: commonRepoVolumeMount.MountPath,
 		VolumeMounts: []v1.VolumeMount{
 			commonRepoVolumeMount,
@@ -104,17 +104,17 @@ func (step Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 		"helm",
 		"upgrade",
 		"--install",
-		step.Name,
-		step.Chart,
-		"--repo", step.Repo,
-		"--namespace", step.Namespace,
+		s.Name,
+		s.Chart,
+		"--repo", s.Repo,
+		"--namespace", s.Namespace,
 	}
 
-	if step.ChartVersion != "" {
-		cmd = append(cmd, "--version", step.ChartVersion)
+	if s.ChartVersion != "" {
+		cmd = append(cmd, "--version", s.ChartVersion)
 	}
 
-	for _, file := range step.Files {
+	for _, file := range s.Files {
 		cmd = append(cmd, "--values", file)
 	}
 
@@ -135,7 +135,7 @@ func (step Helm) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
 		VolumeSource: v1.VolumeSource{
 			ConfigMap: &v1.ConfigMapVolumeSource{
 				LocalObjectReference: v1.LocalObjectReference{
-					Name: step.Cluster,
+					Name: s.Cluster,
 				},
 			},
 		},

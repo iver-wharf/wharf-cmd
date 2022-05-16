@@ -55,15 +55,12 @@ func (s NuGetPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slic
 		v.ValidateRequiredString("repo"),
 	)
 
-	podSpec, errs := s.applyStep(v)
-	s.podSpec = podSpec
-	errSlice.Add(errs...)
+	s.podSpec = s.applyStep()
 
 	return s, errSlice
 }
 
-func (step NuGetPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
-	var errSlice errutil.Slice
+func (s NuGetPackage) applyStep() *v1.PodSpec {
 	podSpec := newBasePodSpec()
 
 	cont := v1.Container{
@@ -85,15 +82,15 @@ func (step NuGetPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Sli
 					},
 				},
 			},
-			{Name: "NUGET_REPO", Value: step.Repo},
-			{Name: "NUGET_PROJECT_PATH", Value: step.ProjectPath},
-			{Name: "NUGET_VERSION", Value: step.Version},
-			{Name: "NUGET_SKIP_DUP", Value: typ.Tern(step.SkipDuplicate, "true", "false")},
+			{Name: "NUGET_REPO", Value: s.Repo},
+			{Name: "NUGET_PROJECT_PATH", Value: s.ProjectPath},
+			{Name: "NUGET_VERSION", Value: s.Version},
+			{Name: "NUGET_SKIP_DUP", Value: typ.Tern(s.SkipDuplicate, "true", "false")},
 		},
 		Command: []string{"/bin/bash", "-c"},
 		Args:    []string{nugetPackageScript},
 	}
 
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return &podSpec, errSlice
+	return &podSpec
 }
