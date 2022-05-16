@@ -111,6 +111,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		sshVolumeName       = "ssh"
 		certVolumeName      = "cert"
 		certVolumeMountPath = "/mnt/cert"
+		configVolumeName    = "config"
+		configVolumePath    = "/etc/iver-wharf/wharf-cmd"
 	)
 	workerInstanceID := typ.Coal(args.WharfInstanceID, p.instanceID)
 	labels := map[string]string{
@@ -123,12 +125,50 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		"wharf.iver.com/build-ref":     uitoa(args.BuildID),
 		"wharf.iver.com/project-id":    uitoa(args.ProjectID),
 	}
+
+	volumes := []v1.Volume{
+		{
+			Name: repoVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: sshVolumeName,
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName:  "wharf-cmd-worker-git-ssh",
+					DefaultMode: typ.Ref[int32](0600),
+					Optional:    typ.Ref(true),
+				},
+			},
+		},
+	}
+
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      repoVolumeName,
 			MountPath: repoVolumeMountPath,
 		},
 	}
+
+	if p.k8sWorkerConf.ConfigMapName != "" {
+		volumes = append(volumes, v1.Volume{
+			Name: configVolumeName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: p.k8sWorkerConf.ConfigMapName,
+					},
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, v1.VolumeMount{
+			Name:      configVolumeName,
+			MountPath: configVolumePath,
+		})
+	}
+
 	gitVolumeMounts := append(volumeMounts, v1.VolumeMount{
 		Name:      sshVolumeName,
 		ReadOnly:  true,
@@ -229,24 +269,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Env:             wharfEnvs,
 				},
 			},
-			Volumes: []v1.Volume{
-				{
-					Name: repoVolumeName,
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-				{
-					Name: sshVolumeName,
-					VolumeSource: v1.VolumeSource{
-						Secret: &v1.SecretVolumeSource{
-							SecretName:  "wharf-cmd-worker-git-ssh",
-							DefaultMode: typ.Ref[int32](0600),
-							Optional:    typ.Ref(true),
-						},
-					},
-				},
-			},
+			Volumes: volumes,
 		},
 	}
 }
