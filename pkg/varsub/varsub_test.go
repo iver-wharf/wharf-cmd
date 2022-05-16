@@ -98,7 +98,8 @@ func TestMatches(t *testing.T) {
 
 func TestSubstitute(t *testing.T) {
 	source := SourceMap{
-		"lorem": Val{Value: "ipsum"},
+		"lorem":   Val{Value: "ipsum"},
+		"foo-bar": Val{Value: "smilie"},
 	}
 	tests := []struct {
 		name  string
@@ -111,7 +112,7 @@ func TestSubstitute(t *testing.T) {
 			want:  "ipsum",
 		},
 		{
-			name:  "invalid simple variable",
+			name:  "undefined simple variable",
 			value: "${lorem ipsum}",
 			want:  "${lorem ipsum}",
 		},
@@ -119,6 +120,11 @@ func TestSubstitute(t *testing.T) {
 			name:  "simple text with variable",
 			value: "Foo ${lorem} bar",
 			want:  "Foo ipsum bar",
+		},
+		{
+			name:  "simple text with kebab variable",
+			value: "Foo ${foo-bar} bar",
+			want:  "Foo smilie bar",
 		},
 		{
 			name:  "simple text with variable and white spaces",
