@@ -167,8 +167,6 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 
 func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	switch s := step.Type.(type) {
-	case steps.Kubectl:
-		return applyStepKubectl(c.Kubectl, pod, s)
 	case steps.NuGetPackage:
 		return applyStepNuGetPackage(pod, s)
 	case nil:
@@ -176,57 +174,6 @@ func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
 	default:
 		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
 	}
-}
-
-func applyStepKubectl(config config.KubectlStepConfig, pod *v1.Pod, step steps.Kubectl) error {
-	cont := v1.Container{
-		Name:       commonContainerName,
-		Image:      fmt.Sprintf("%s:%s", config.Image, config.ImageTag),
-		WorkingDir: commonRepoVolumeMount.MountPath,
-		VolumeMounts: []v1.VolumeMount{
-			commonRepoVolumeMount,
-			{Name: "kubeconfig", MountPath: "/root/.kube"},
-		},
-	}
-
-	cmd := []string{
-		"kubectl",
-		step.Action,
-	}
-
-	if step.Namespace != "" {
-		cmd = append(cmd, "--namespace", step.Namespace)
-	}
-
-	files := step.Files
-	if step.File != "" {
-		files = append(files, step.File)
-	}
-
-	for _, file := range files {
-		cmd = append(cmd, "--filename", file)
-	}
-
-	if step.Force {
-		cmd = append(cmd, "--force")
-	}
-
-	log.Debug().WithString("args", quoteArgsForLogging(cmd)).
-		Message("Kubectl args.")
-
-	cont.Command = cmd
-	pod.Spec.Containers = append(pod.Spec.Containers, cont)
-	pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
-		Name: "kubeconfig",
-		VolumeSource: v1.VolumeSource{
-			ConfigMap: &v1.ConfigMapVolumeSource{
-				LocalObjectReference: v1.LocalObjectReference{
-					Name: step.Cluster,
-				},
-			},
-		},
-	})
-	return nil
 }
 
 func applyStepNuGetPackage(pod *v1.Pod, step steps.NuGetPackage) error {

@@ -1,6 +1,8 @@
 package steps
 
 import (
+	"fmt"
+
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
@@ -52,5 +54,62 @@ func (s Kubectl) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 		// Only either file or files is required
 		errSlice.Add(v.ValidateRequiredString("file"))
 	}
+
+	podSpec, errs := s.applyStep(v)
+	s.podSpec = podSpec
+	errSlice.Add(errs...)
+
 	return s, errSlice
+}
+
+func (s Kubectl) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slice) {
+	var errSlice errutil.Slice
+	podSpec := newBasePodSpec()
+
+	cont := v1.Container{
+		Name:       commonContainerName,
+		Image:      fmt.Sprintf("%s:%s", s.config.Image, s.config.ImageTag),
+		WorkingDir: commonRepoVolumeMount.MountPath,
+		VolumeMounts: []v1.VolumeMount{
+			commonRepoVolumeMount,
+			{Name: "kubeconfig", MountPath: "/root/.kube"},
+		},
+	}
+
+	cmd := []string{
+		"kubectl",
+		s.Action,
+	}
+
+	if s.Namespace != "" {
+		cmd = append(cmd, "--namespace", s.Namespace)
+	}
+
+	files := s.Files
+	if s.File != "" {
+		files = append(files, s.File)
+	}
+
+	for _, file := range files {
+		cmd = append(cmd, "--filename", file)
+	}
+
+	if s.Force {
+		cmd = append(cmd, "--force")
+	}
+
+	cont.Command = cmd
+	podSpec.Containers = append(podSpec.Containers, cont)
+	podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
+		Name: "kubeconfig",
+		VolumeSource: v1.VolumeSource{
+			ConfigMap: &v1.ConfigMapVolumeSource{
+				LocalObjectReference: v1.LocalObjectReference{
+					Name: s.Cluster,
+				},
+			},
+		},
+	})
+
+	return &podSpec, errSlice
 }
