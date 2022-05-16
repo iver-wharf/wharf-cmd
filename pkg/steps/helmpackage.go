@@ -67,10 +67,11 @@ func (step HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slic
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
-	destination := "https://harbor.local/chartrepo/my-group" // TODO: replace with CHART_REPO/REPO_GROUP
-	if step.Destination != "" {
-		destination = step.Destination
-	}
+	var regUser, regPass string
+	errSlice.Add(
+		v.RequireStringFromVarSub("REG_USER", &regUser),
+		v.RequireStringFromVarSub("REG_PASS", &regPass),
+	)
 
 	cont := v1.Container{
 		Name:       commonContainerName,
@@ -81,10 +82,10 @@ func (step HelmPackage) applyStep(v visit.MapVisitor) (*v1.PodSpec, errutil.Slic
 		},
 		Env: []v1.EnvVar{
 			{Name: "CHART_PATH", Value: step.ChartPath},
-			{Name: "CHART_REPO", Value: destination},
+			{Name: "CHART_REPO", Value: step.Destination},
 			{Name: "CHART_VERSION", Value: step.Version},
-			{Name: "REG_USER", Value: "admin"},    // TODO: replace with REG_USER
-			{Name: "REG_PASS", Value: "changeit"}, // TODO: replace with REG_PASS
+			{Name: "REG_USER", Value: regUser},
+			{Name: "REG_PASS", Value: regPass},
 		},
 		Command: []string{"/bin/bash", "-c"},
 		Args:    []string{helmPackageScript},
