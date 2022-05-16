@@ -7,95 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestMatches(t *testing.T) {
-	tests := []struct {
-		name  string
-		value string
-		want  []VarMatch
-	}{
-		{
-			name:  "text without variable",
-			value: "text without variable",
-			want:  nil,
-		},
-		{
-			name:  "simple variable",
-			value: "${lorem}",
-			want:  []VarMatch{{Name: "lorem", FullMatch: "${lorem}"}},
-		},
-		{
-			name:  "invalid simple variable",
-			value: "${lorem ipsum}",
-			want:  []VarMatch{{Name: "lorem ipsum", FullMatch: "${lorem ipsum}"}},
-		},
-		{
-			name:  "simple text with variable",
-			value: "Foo ${lorem} bar",
-			want:  []VarMatch{{Name: "lorem", FullMatch: "${lorem}"}},
-		},
-		{
-			name:  "simple text with variable and white spaces",
-			value: "Foo ${\n \tlorem\r} bar",
-			want:  []VarMatch{{Name: "lorem", FullMatch: "${\n \tlorem\r}"}},
-		},
-		{
-			name:  "simple text with escaped variable",
-			value: "Foo ${%lorem%} bar",
-			want:  []VarMatch{{Name: "%lorem%", FullMatch: "${%lorem%}"}},
-		},
-		{
-			name:  "simple text with escaped empty string",
-			value: "Foo ${%%} bar",
-			want:  []VarMatch{{Name: "%%", FullMatch: "${%%}"}},
-		},
-		{
-			name:  "simple text with escaped empty string by singular percent",
-			value: "Foo ${%} bar",
-			want:  []VarMatch{{Name: "%", FullMatch: "${%}"}},
-		},
-		{
-			name:  "simple text with escaped white signs",
-			value: "Foo ${%\n \r%} bar",
-			want:  []VarMatch{{Name: "%\n \r%", FullMatch: "${%\n \r%}"}},
-		},
-		{
-			name:  "simple text with escaped white signs 2",
-			value: "Foo ${\t%\n \r% } bar",
-			want:  []VarMatch{{Name: "%\n \r%", FullMatch: "${\t%\n \r% }"}},
-		},
-		{
-			name:  "simple text with invalid escaped text",
-			value: "Foo ${%lorem} bar",
-			want:  []VarMatch{{Name: "%lorem", FullMatch: "${%lorem}"}},
-		},
-		{
-			name:  "simple text with invalid variable",
-			value: "Foo ${} bar",
-			want:  nil,
-		},
-		{
-			name:  "three variables",
-			value: "${lorem} ${ipsum} ${dolor}",
-			want: []VarMatch{
-				{Name: "lorem", FullMatch: "${lorem}"},
-				{Name: "ipsum", FullMatch: "${ipsum}"},
-				{Name: "dolor", FullMatch: "${dolor}"},
-			},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got := Matches(tc.value)
-			if len(tc.want) == 0 {
-				assert.Len(t, got, 0)
-				return
-			}
-			assert.Equal(t, tc.want, got)
-		})
-	}
-}
-
 func TestSubstitute(t *testing.T) {
 	source := SourceMap{
 		"lorem":   Val{Value: "ipsum"},
@@ -290,4 +201,58 @@ func TestSubstitute_errIfRecursiveLoop(t *testing.T) {
 	}
 	result, err := Substitute("root: ${lorem}", source)
 	assert.ErrorIsf(t, err, ErrRecursiveLoop, "unexpected result: %q", result)
+}
+
+func TestSplit(t *testing.T) {
+	var tests = []struct {
+		name      string
+		value     string
+		wantFull  []string
+		wantNames []string
+	}{
+		{
+			name:      "no matches",
+			value:     "hello there",
+			wantFull:  []string{"hello there"},
+			wantNames: []string{""},
+		},
+		{
+			name:      "many matches",
+			value:     "Foo ${lorem} ${%lorem%} ${lorem} bar",
+			wantFull:  []string{"Foo ", "${lorem}", " ", "${%lorem%}", " ", "${lorem}", " bar"},
+			wantNames: []string{"", "lorem", "", "%lorem%", "", "lorem", ""},
+		},
+		{
+			name:      "missing closing",
+			value:     "Foo ${lorem",
+			wantFull:  []string{"Foo ${lorem"},
+			wantNames: []string{""},
+		},
+		{
+			name:      "full string match",
+			value:     "${lorem}",
+			wantFull:  []string{"${lorem}"},
+			wantNames: []string{"lorem"},
+		},
+		{
+			name:      "matches next to each other",
+			value:     "${foo}${bar}",
+			wantFull:  []string{"${foo}", "${bar}"},
+			wantNames: []string{"foo", "bar"},
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotMatches := Split(tc.value)
+			var gotFull []string
+			var gotNames []string
+			for _, m := range gotMatches {
+				gotFull = append(gotFull, m.FullMatch)
+				gotNames = append(gotNames, m.Name)
+			}
+			assert.Equal(t, tc.wantFull, gotFull, ".FullMatch")
+			assert.Equal(t, tc.wantNames, gotNames, ".Name")
+		})
+	}
 }
