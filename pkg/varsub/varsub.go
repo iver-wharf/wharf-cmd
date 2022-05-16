@@ -37,7 +37,8 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 	for _, match := range matches {
 		var matchVal any
 		if unescaped, ok := unescapeFullMatch(match.FullMatch); ok {
-			return strings.Replace(result, match.FullMatch, unescaped, 1), nil
+			result = strings.Replace(result, match.FullMatch, unescaped, 1)
+			continue
 		}
 
 		if slices.Contains(usedParams, match.Name) {
