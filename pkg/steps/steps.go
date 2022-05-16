@@ -26,8 +26,10 @@ var (
 	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
 
 	errIllegalParentDirAccess = errors.New("illegal parent directory access")
+)
 
-	basePodSpec = v1.PodSpec{
+func newBasePodSpec() v1.PodSpec {
+	return v1.PodSpec{
 		ServiceAccountName: "wharf-cmd",
 		RestartPolicy:      v1.RestartPolicyNever,
 		InitContainers: []v1.Container{
@@ -50,10 +52,6 @@ var (
 			},
 		},
 	}
-)
-
-func newBasePodSpec() v1.PodSpec {
-	return basePodSpec
 }
 
 // StepType is an interface that is implemented by all step types.
