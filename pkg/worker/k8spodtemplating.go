@@ -7,18 +7,15 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-core/pkg/env"
-	"gopkg.in/typ.v4/slices"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 var (
-	commonContainerName   = "step"
 	commonRepoVolumeMount = v1.VolumeMount{
 		Name:      "repo",
 		MountPath: "/mnt/repo",
@@ -30,15 +27,13 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 	if !ok {
 		return v1.Pod{}, errors.New("step type cannot produce a Kubernetes Pod specification")
 	}
-	podSpecPtr := podSpecer.PodSpec()
-	var podSpec v1.PodSpec
-	if podSpecPtr != nil {
-		// TODO: Return error if nil, as all steps should return valid pod spec.
-		podSpec = *podSpecPtr
+	podSpec := podSpecer.PodSpec()
+	if podSpec == nil {
+		return v1.Pod{}, errors.New("step type returned nil Kubernetes Pod specification")
 	}
 
 	annotations := map[string]string{
-		"wharf.iver.com/project-id": "456",
+		"wharf.iver.com/project-id": "456", // TODO: Use real numbers
 		"wharf.iver.com/stage-id":   "789",
 		"wharf.iver.com/step-id":    "789",
 		"wharf.iver.com/step-name":  step.Name,
@@ -58,20 +53,14 @@ func (f k8sStepRunnerFactory) getStepPodSpec(ctx context.Context, step wharfyml.
 				"app.kubernetes.io/created-by": "wharf-cmd-worker",
 
 				"wharf.iver.com/instance":   f.Config.InstanceID,
-				"wharf.iver.com/build-ref":  "123",
+				"wharf.iver.com/build-ref":  "123", // TODO: Use real numbers
 				"wharf.iver.com/project-id": "456",
 				"wharf.iver.com/stage-id":   "789",
 				"wharf.iver.com/step-id":    "789",
 			},
 			OwnerReferences: getOwnerReferences(),
 		},
-		Spec: podSpec,
-	}
-
-	if podSpecPtr == nil {
-		if err := applyStep(f.Config.Worker.Steps, &pod, step); err != nil {
-			return v1.Pod{}, err
-		}
+		Spec: *podSpec,
 	}
 
 	if len(pod.Spec.Containers) == 0 {
@@ -159,23 +148,4 @@ func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {
 	default:
 		return nil, false
 	}
-}
-
-func applyStep(c config.StepsConfig, pod *v1.Pod, step wharfyml.Step) error {
-	switch s := step.Type.(type) {
-	case nil:
-		return errors.New("nil step type")
-	default:
-		return fmt.Errorf("unknown step type: %q", s.StepTypeName())
-	}
-}
-
-func quoteArgsForLogging(args []string) string {
-	argsQuoted := slices.Clone(args)
-	for i, arg := range args {
-		if strings.ContainsAny(arg, `"\' `) {
-			argsQuoted[i] = fmt.Sprintf("%q", arg)
-		}
-	}
-	return strings.Join(argsQuoted, " ")
 }
