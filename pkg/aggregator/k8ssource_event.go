@@ -22,7 +22,9 @@ type k8sEventsSource struct {
 	events  corev1.EventInterface
 }
 
-func (s k8sEventsSource) pushInto(dst chan<- request.Log) error {
+var _ Source[request.Log] = k8sEventsSource{}
+
+func (s k8sEventsSource) PushInto(dst chan<- request.Log) error {
 	dst <- s.stringToLog(fmt.Sprintf("The %s pod failed to start. Kubernetes events:", s.pod.Name))
 	eventsList, err := s.events.Search(scheme.Scheme, &s.pod)
 	if err != nil {

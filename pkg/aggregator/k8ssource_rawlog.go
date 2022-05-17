@@ -21,7 +21,9 @@ type k8sRawLogSource struct {
 	pods corev1.PodInterface
 }
 
-func (s k8sRawLogSource) pushInto(dst chan<- request.Log) error {
+var _ Source[request.Log] = k8sRawLogSource{}
+
+func (s k8sRawLogSource) PushInto(dst chan<- request.Log) error {
 	dst <- s.stringToLog(fmt.Sprintf("The %s pod failed to start.", s.pod.Name))
 	dst <- s.stringToLog(fmt.Sprintf("Logs from %s:\n", s.pod.Name))
 	req := s.pods.GetLogs(s.pod.Name, &v1.PodLogOptions{})

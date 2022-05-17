@@ -117,11 +117,36 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		}
 		for _, pod := range pods {
 			if err := a.handlePod(ctx, pod); err != nil {
-				return err
+				log.Error().
+					WithError(err).
+					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+					WithString("phase", string(pod.Status.Phase)).
+					Message("Error handling pod.")
 			}
 		}
 		time.Sleep(pollDelay)
 	}
+}
+
+func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
+	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
+	if err != nil {
+		return nil, err
+	}
+	var pods []v1.Pod
+	for _, pod := range list.Items {
+		// Skip terminating pods
+		if pod.ObjectMeta.DeletionTimestamp != nil {
+			continue
+		}
+
+		if pod.Status.Phase == v1.PodPending && k8sPodNotErrored(pod) {
+			continue
+		}
+
+		pods = append(pods, pod)
+	}
+	return pods, nil
 }
 
 func (a k8sAggr) handlePod(ctx context.Context, pod v1.Pod) error {
@@ -136,70 +161,51 @@ func (a k8sAggr) handlePod(ctx context.Context, pod v1.Pod) error {
 		// Failed to add => Already being processed
 		return nil
 	}
+	defer a.inProgress.Remove(pod.UID)
 
 	log.Debug().
 		WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 		WithString("status", string(pod.Status.Phase)).
 		Message("Pod found.")
 
-	portConn, err := newPortForwarding(a, a.namespace, pod.Name)
+	worker, err := newScopedWorker(a, pod.Name, buildID)
 	if err != nil {
 		return err
 	}
-	defer portConn.Close()
 
-	worker, err := a.newWorkerClient(portConn, buildID)
-	if err != nil {
-		return err
-	}
-	defer worker.Close()
-
-	apiLogStream, err := a.wharfapi.CreateBuildLogStream(ctx)
+	apiLogStream, err := newScopedLogStream(ctx, a.wharfapi)
 	if err != nil {
 		return fmt.Errorf("open logs stream to wharf-api: %w", err)
 	}
-	defer func() {
-		resp, err := apiLogStream.CloseAndRecv()
-		if err != nil {
-			log.Warn().
-				WithError(err).
-				Message("Unexpected error when closing log writer stream to wharf-api.")
-			return
-		}
-		log.Debug().
-			WithUint("inserted", resp.LogsInserted).
-			Message("Inserted logs into wharf-api.")
-	}()
-
-	errorLogEv := log.Error().
-		WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-		WithString("phase", string(pod.Status.Phase))
 
 	switch pod.Status.Phase {
 	case v1.PodRunning:
-		if err := a.handleRunningPod(ctx, apiLogStream, worker, pod); err != nil {
-			errorLogEv.Message("Error handling pod.")
-		}
+		go a.relayWithLogging(ctx, pod, func() error {
+			return a.handleRunningPod(ctx, apiLogStream, worker, pod)
+		})
 	case v1.PodFailed:
-		go func(pod v1.Pod) {
-			err := relay[request.Log](k8sRawLogSource{ctx, buildID, pod, a.pods}, func(v request.Log) error {
+		go a.relayWithLogging(ctx, pod, func() error {
+			return relay[request.Log](k8sRawLogSource{ctx, buildID, pod, a.pods}, func(v request.Log) error {
 				return apiLogStream.Send(v)
 			})
-			if err != nil {
-				errorLogEv.Message("Error handling pod.")
-			}
-			a.terminatePod(ctx, pod)
-		}(pod)
+		})
 	default:
-		go func(pod v1.Pod) {
-			err := relay[request.Log](k8sEventsSource{ctx, buildID, pod, a.clientset.CoreV1().Events(a.namespace)}, func(v request.Log) error {
+		go a.relayWithLogging(ctx, pod, func() error {
+			return relay[request.Log](k8sEventsSource{ctx, buildID, pod, a.clientset.CoreV1().Events(a.namespace)}, func(v request.Log) error {
 				return apiLogStream.Send(v)
 			})
-			if err != nil {
-				errorLogEv.Message("Error handling pod.")
-			}
-			a.terminatePod(ctx, pod)
-		}(pod)
+		})
+	}
+	return nil
+}
+
+func (a k8sAggr) relayWithLogging(ctx context.Context, pod v1.Pod, f func() error) error {
+	err := f()
+	if err != nil {
+		return err
+	}
+	if err := a.terminatePod(ctx, pod); err != nil {
+		log.Error().WithError(err).Message("Failed terminating pod.")
 	}
 	return nil
 }
@@ -209,10 +215,8 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, apiLogStream wharfapi.Cre
 		log.Debug().
 			WithStringf("pod", "%s/%s", a.namespace, pod.Name).
 			Message("Failed to ping worker pod. Assuming it's not running yet. Skipping.")
-		a.inProgress.Remove(pod.UID)
 		return nil
 	}
-
 	pg := parallel.Group{}
 	pg.AddFunc("logs", func(pod v1.Pod) parallel.Func {
 		return func(ctx context.Context) error {
@@ -242,11 +246,11 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, apiLogStream wharfapi.Cre
 				previousStatus = newStatus
 				return nil
 			}
-			err := relay[request.BuildStatus](statusSource{ctx, worker}, func(newStatus request.BuildStatus) error {
-				if newStatus == request.BuildFailed || newStatus == request.BuildCompleted {
-					return updateStatus(newStatus)
+			err := relay[request.BuildStatus](statusSource{ctx, worker}, func(reqNewStatus request.BuildStatus) error {
+				if reqNewStatus == request.BuildFailed || reqNewStatus == request.BuildCompleted {
+					return updateStatus(reqNewStatus)
 				}
-				if newStatus == request.BuildRunning && previousStatus == request.BuildScheduling {
+				if reqNewStatus == request.BuildRunning && previousStatus == request.BuildScheduling {
 					if err := updateStatus(request.BuildRunning); err != nil {
 						return err
 					}
@@ -281,31 +285,7 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, apiLogStream wharfapi.Cre
 			return err
 		}
 	}(pod))
-	if err := pg.RunCancelEarly(ctx); err != nil {
-		return err
-	}
-	return a.terminatePod(ctx, pod)
-}
-
-func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
-	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
-	if err != nil {
-		return nil, err
-	}
-	var pods []v1.Pod
-	for _, pod := range list.Items {
-		// Skip terminating pods
-		if pod.ObjectMeta.DeletionTimestamp != nil {
-			continue
-		}
-
-		if pod.Status.Phase == v1.PodPending && k8sPodNotErrored(pod) {
-			continue
-		}
-
-		pods = append(pods, pod)
-	}
-	return pods, nil
+	return pg.RunCancelEarly(ctx)
 }
 
 func (a k8sAggr) newWorkerClient(portConn portConnection, buildID uint) (workerclient.Client, error) {

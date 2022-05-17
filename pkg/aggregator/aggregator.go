@@ -14,10 +14,10 @@ type Aggregator interface {
 //
 // If the provided function returns an error, relaying will stop and the error
 // will be returned as-is.
-func relay[T any](src source[T], relayFunc func(v T) error) error {
+func relay[T any](src Source[T], relayFunc func(v T) error) error {
 	ch := make(chan T)
 	go func() {
-		src.pushInto(ch)
+		src.PushInto(ch)
 		close(ch)
 	}()
 	for v := range ch {

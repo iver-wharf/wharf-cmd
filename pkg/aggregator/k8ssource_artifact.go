@@ -14,7 +14,9 @@ type artifactSource struct {
 	worker workerclient.Client
 }
 
-func (s artifactSource) pushInto(dst chan<- *workerclient.ArtifactEvent) error {
+var _ Source[*workerclient.ArtifactEvent] = artifactSource{}
+
+func (s artifactSource) PushInto(dst chan<- *workerclient.ArtifactEvent) error {
 	reader, err := s.worker.StreamArtifactEvents(s.ctx, &workerclient.ArtifactEventsRequest{})
 	if err != nil {
 		return fmt.Errorf("open artifact events stream from wharf-cmd-worker: %w", err)

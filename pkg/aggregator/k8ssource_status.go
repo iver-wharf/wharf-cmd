@@ -16,7 +16,9 @@ type statusSource struct {
 	worker workerclient.Client
 }
 
-func (s statusSource) pushInto(dst chan<- request.BuildStatus) error {
+var _ Source[request.BuildStatus] = &statusSource{}
+
+func (s statusSource) PushInto(dst chan<- request.BuildStatus) error {
 	reader, err := s.worker.StreamStatusEvents(s.ctx, &workerclient.StatusEventsRequest{})
 	if err != nil {
 		return fmt.Errorf("open status events stream from wharf-cmd-worker: %w", err)

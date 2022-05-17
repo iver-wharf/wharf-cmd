@@ -38,7 +38,6 @@ func newPortForwarding(a k8sAggr, namespace, podName string) (portConnection, er
 	var forwarderErr error
 	go func() {
 		if forwarderErr = forwarder.ForwardPorts(); forwarderErr != nil {
-			log.Error().WithError(forwarderErr).Message("Error occurred when forwarding ports.")
 			close(stopCh)
 		}
 	}()

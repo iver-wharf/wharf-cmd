@@ -15,9 +15,9 @@ type logLineSource struct {
 	worker workerclient.Client
 }
 
-var _ source[request.Log] = logLineSource{}
+var _ Source[request.Log] = logLineSource{}
 
-func (s logLineSource) pushInto(dst chan<- request.Log) error {
+func (s logLineSource) PushInto(dst chan<- request.Log) error {
 	reader, err := s.worker.StreamLogs(s.ctx, &workerclient.LogsRequest{})
 	if err != nil {
 		return fmt.Errorf("open logs stream from wharf-cmd-worker: %w", err)
