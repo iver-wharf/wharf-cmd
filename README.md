@@ -1,5 +1,7 @@
 # Wharf CI
 
+[![Codacy Badge](https://api.codacy.com/project/badge/Grade/c0bee0f2588f4f02a2eee668c6a8466d)](https://app.codacy.com/gh/iver-wharf/wharf-cmd?utm_source=github.com&utm_medium=referral&utm_content=iver-wharf/wharf-cmd&utm_campaign=Badge_Grade_Settings)
+
 A command-line interface to run tasks specified in a `.wharf-ci.yml` file.
 
 ## Installation
