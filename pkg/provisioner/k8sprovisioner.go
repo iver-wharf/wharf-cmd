@@ -18,6 +18,7 @@ import (
 
 type k8sProvisioner struct {
 	k8sWorkerConf config.ProvisionerK8sWorkerConfig
+	extraEnvs     []v1.EnvVar
 	clientset     *kubernetes.Clientset
 	pods          corev1.PodInterface
 	restConfig    *rest.Config
@@ -33,8 +34,20 @@ func NewK8sProvisioner(config *config.Config, restConfig *rest.Config) (Provisio
 	if err != nil {
 		return nil, err
 	}
+	var extraEnvs []v1.EnvVar
+	for _, configEnv := range config.Provisioner.K8s.Worker.ExtraEnvs {
+		k8sEnv, err := configEnv.AsV1()
+		if err != nil {
+			return nil, fmt.Errorf("parse config extraEnvs: env %q: %w", configEnv.Name, err)
+		}
+		if k8sEnv == nil {
+			continue
+		}
+		extraEnvs = append(extraEnvs, *k8sEnv)
+	}
 	return k8sProvisioner{
 		k8sWorkerConf: config.Provisioner.K8s.Worker,
+		extraEnvs:     extraEnvs,
 		clientset:     clientset,
 		pods:          clientset.CoreV1().Pods(config.K8s.Namespace),
 		restConfig:    restConfig,
@@ -98,6 +111,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		sshVolumeName       = "ssh"
 		certVolumeName      = "cert"
 		certVolumeMountPath = "/mnt/cert"
+		configVolumeName    = "config"
+		configVolumePath    = "/etc/iver-wharf/wharf-cmd"
 	)
 	workerInstanceID := typ.Coal(args.WharfInstanceID, p.instanceID)
 	labels := map[string]string{
@@ -110,12 +125,50 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		"wharf.iver.com/build-ref":     uitoa(args.BuildID),
 		"wharf.iver.com/project-id":    uitoa(args.ProjectID),
 	}
+
+	volumes := []v1.Volume{
+		{
+			Name: repoVolumeName,
+			VolumeSource: v1.VolumeSource{
+				EmptyDir: &v1.EmptyDirVolumeSource{},
+			},
+		},
+		{
+			Name: sshVolumeName,
+			VolumeSource: v1.VolumeSource{
+				Secret: &v1.SecretVolumeSource{
+					SecretName:  "wharf-cmd-worker-git-ssh",
+					DefaultMode: typ.Ref[int32](0600),
+					Optional:    typ.Ref(true),
+				},
+			},
+		},
+	}
+
 	volumeMounts := []v1.VolumeMount{
 		{
 			Name:      repoVolumeName,
 			MountPath: repoVolumeMountPath,
 		},
 	}
+
+	if p.k8sWorkerConf.ConfigMapName != "" {
+		volumes = append(volumes, v1.Volume{
+			Name: configVolumeName,
+			VolumeSource: v1.VolumeSource{
+				ConfigMap: &v1.ConfigMapVolumeSource{
+					LocalObjectReference: v1.LocalObjectReference{
+						Name: p.k8sWorkerConf.ConfigMapName,
+					},
+				},
+			},
+		})
+		volumeMounts = append(volumeMounts, v1.VolumeMount{
+			Name:      configVolumeName,
+			MountPath: configVolumePath,
+		})
+	}
+
 	gitVolumeMounts := append(volumeMounts, v1.VolumeMount{
 		Name:      sshVolumeName,
 		ReadOnly:  true,
@@ -152,6 +205,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		wharfArgs = append(wharfArgs, "--", relSubDir)
 	}
 
+	wharfArgs = append(wharfArgs, p.k8sWorkerConf.ExtraArgs...)
+
 	wharfEnvs := []v1.EnvVar{
 		{
 			Name:  "WHARF_KUBERNETES_OWNER_ENABLE",
@@ -176,6 +231,8 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 			},
 		},
 	}
+
+	wharfEnvs = append(wharfEnvs, p.extraEnvs...)
 
 	for k, v := range args.AdditionalVars {
 		wharfEnvs = append(wharfEnvs, v1.EnvVar{
@@ -212,24 +269,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Env:             wharfEnvs,
 				},
 			},
-			Volumes: []v1.Volume{
-				{
-					Name: repoVolumeName,
-					VolumeSource: v1.VolumeSource{
-						EmptyDir: &v1.EmptyDirVolumeSource{},
-					},
-				},
-				{
-					Name: sshVolumeName,
-					VolumeSource: v1.VolumeSource{
-						Secret: &v1.SecretVolumeSource{
-							SecretName:  "wharf-cmd-worker-git-ssh",
-							DefaultMode: typ.Ref[int32](0600),
-							Optional:    typ.Ref(true),
-						},
-					},
-				},
-			},
+			Volumes: volumes,
 		},
 	}
 }
