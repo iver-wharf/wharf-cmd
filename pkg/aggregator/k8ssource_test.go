@@ -44,17 +44,17 @@ func TestSource(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			buffer := make(chan string)
+			dst := make(chan string)
 			go func() {
-				tc.source.PushInto(buffer)
-				close(buffer)
+				tc.source.PushInto(dst)
+				close(dst)
 			}()
-			var dst []string
-			for s := range buffer {
-				dst = append(dst, s)
+			var result []string
+			for v, ok := <-dst; ok; v, ok = <-dst {
+				result = append(result, v)
 			}
-			assert.Len(t, dst, mockSourceFinalLength)
-			assert.EqualValues(t, tc.wantValues, dst)
+			assert.Len(t, result, mockSourceFinalLength)
+			assert.EqualValues(t, tc.wantValues, result)
 		})
 	}
 }

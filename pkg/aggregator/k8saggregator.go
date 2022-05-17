@@ -9,7 +9,6 @@ import (
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
-	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -116,13 +115,15 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			continue
 		}
 		for _, pod := range pods {
-			if err := a.handlePod(ctx, pod); err != nil {
-				log.Error().
-					WithError(err).
-					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-					WithString("phase", string(pod.Status.Phase)).
-					Message("Error handling pod.")
-			}
+			go func(pod v1.Pod) {
+				if err := a.handlePod(ctx, pod); err != nil {
+					log.Error().
+						WithError(err).
+						WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+						WithString("phase", string(pod.Status.Phase)).
+						Message("Error handling pod.")
+				}
+			}(pod)
 		}
 		time.Sleep(pollDelay)
 	}
@@ -168,11 +169,6 @@ func (a k8sAggr) handlePod(ctx context.Context, pod v1.Pod) error {
 		WithString("status", string(pod.Status.Phase)).
 		Message("Pod found.")
 
-	worker, err := newScopedWorker(a, pod.Name, buildID)
-	if err != nil {
-		return err
-	}
-
 	apiLogStream, err := newScopedLogStream(ctx, a.wharfapi)
 	if err != nil {
 		return fmt.Errorf("open logs stream to wharf-api: %w", err)
@@ -180,26 +176,32 @@ func (a k8sAggr) handlePod(ctx context.Context, pod v1.Pod) error {
 
 	switch pod.Status.Phase {
 	case v1.PodRunning:
-		go a.relayWithLogging(ctx, pod, func() error {
-			return a.handleRunningPod(ctx, apiLogStream, worker, pod)
+		worker, err := newScopedWorker(a, pod.Name, buildID)
+		if err != nil {
+			return err
+		}
+		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
+			return handleRunningPod(ctx, a.namespace, a.wharfapi, apiLogStream, worker, pod)
 		})
 	case v1.PodFailed:
-		go a.relayWithLogging(ctx, pod, func() error {
-			return relay[request.Log](k8sRawLogSource{ctx, buildID, pod, a.pods}, func(v request.Log) error {
+		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
+			source := k8sRawLogSource{ctx, buildID, pod, a.pods}
+			return relay[request.Log](source, func(v request.Log) error {
 				return apiLogStream.Send(v)
 			})
 		})
 	default:
-		go a.relayWithLogging(ctx, pod, func() error {
-			return relay[request.Log](k8sEventsSource{ctx, buildID, pod, a.clientset.CoreV1().Events(a.namespace)}, func(v request.Log) error {
+		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
+			events := a.clientset.CoreV1().Events(a.namespace)
+			source := k8sEventsSource{ctx, buildID, pod, events}
+			return relay[request.Log](source, func(v request.Log) error {
 				return apiLogStream.Send(v)
 			})
 		})
 	}
-	return nil
 }
 
-func (a k8sAggr) relayWithLogging(ctx context.Context, pod v1.Pod, f func() error) error {
+func (a k8sAggr) relayAndTerminateOnSuccess(ctx context.Context, pod v1.Pod, f func() error) error {
 	err := f()
 	if err != nil {
 		return err
@@ -210,87 +212,9 @@ func (a k8sAggr) relayWithLogging(ctx context.Context, pod v1.Pod, f func() erro
 	return nil
 }
 
-func (a k8sAggr) handleRunningPod(ctx context.Context, apiLogStream wharfapi.CreateBuildLogStream, worker workerclient.Client, pod v1.Pod) error {
-	if err := worker.Ping(ctx); err != nil {
-		log.Debug().
-			WithStringf("pod", "%s/%s", a.namespace, pod.Name).
-			Message("Failed to ping worker pod. Assuming it's not running yet. Skipping.")
-		return nil
-	}
-	pg := parallel.Group{}
-	pg.AddFunc("logs", func(pod v1.Pod) parallel.Func {
-		return func(ctx context.Context) error {
-			err := relay[request.Log](logLineSource{ctx, worker}, func(v request.Log) error {
-				return apiLogStream.Send(v)
-			})
-			if err != nil {
-				log.Error().WithError(err).
-					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-					Message("Relay logs error.")
-			}
-			return err
-		}
-	}(pod))
-	pg.AddFunc("status events", func(pod v1.Pod) parallel.Func {
-		return func(ctx context.Context) error {
-			previousStatus := request.BuildScheduling
-			updateStatus := func(newStatus request.BuildStatus) error {
-				statusUpdate := request.LogOrStatusUpdate{Status: newStatus}
-				if _, err := a.wharfapi.UpdateBuildStatus(worker.BuildID(), statusUpdate); err != nil {
-					return err
-				}
-				log.Info().
-					WithString("new", string(newStatus)).
-					WithString("previous", string(previousStatus)).
-					Message("Updated build status.")
-				previousStatus = newStatus
-				return nil
-			}
-			err := relay[request.BuildStatus](statusSource{ctx, worker}, func(reqNewStatus request.BuildStatus) error {
-				if reqNewStatus == request.BuildFailed || reqNewStatus == request.BuildCompleted {
-					return updateStatus(reqNewStatus)
-				}
-				if reqNewStatus == request.BuildRunning && previousStatus == request.BuildScheduling {
-					if err := updateStatus(request.BuildRunning); err != nil {
-						return err
-					}
-				}
-				return nil
-			})
-			if previousStatus != request.BuildCompleted && previousStatus != request.BuildFailed {
-				if err := updateStatus(request.BuildFailed); err != nil {
-					return err
-				}
-			}
-			if err != nil {
-				log.Error().WithError(err).
-					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-					Message("Relay statuses error.")
-			}
-			return err
-		}
-	}(pod))
-	pg.AddFunc("artifact events", func(pod v1.Pod) parallel.Func {
-		return func(ctx context.Context) error {
-			err := relay[*workerclient.ArtifactEvent](artifactSource{ctx, worker}, func(v *workerclient.ArtifactEvent) error {
-				// No way to send to wharf DB through stream currently
-				// so we're just logging it here.
-				log.Debug().
-					WithUint64("step", v.StepID).
-					WithString("name", v.Name).
-					WithUint64("id", v.ArtifactID).
-					Message("Received artifact event.")
-				return nil
-			})
-			return err
-		}
-	}(pod))
-	return pg.RunCancelEarly(ctx)
-}
-
-func (a k8sAggr) newWorkerClient(portConn portConnection, buildID uint) (workerclient.Client, error) {
+func (a k8sAggr) newWorkerClient(workerPort uint16, buildID uint) (workerclient.Client, error) {
 	// Intentionally "localhost" because we're port-forwarding
-	return workerclient.New(fmt.Sprintf("http://localhost:%d", portConn.Local), workerclient.Options{
+	return workerclient.New(fmt.Sprintf("http://localhost:%d", workerPort), workerclient.Options{
 		// Skipping security because we've already authenticated with Kubernetes
 		// and are communicating through a secured port-forwarding tunnel.
 		// Don't need to add TLS on top of TLS.

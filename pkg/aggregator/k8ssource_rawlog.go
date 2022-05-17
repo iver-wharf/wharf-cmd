@@ -35,7 +35,6 @@ func (s k8sRawLogSource) PushInto(dst chan<- request.Log) error {
 	scanner := bufio.NewScanner(readCloser)
 	for scanner.Scan() {
 		txt := scanner.Text()
-		log.Debug().Message(txt)
 		idx := strings.LastIndexByte(txt, '\r')
 		if idx != -1 {
 			txt = txt[idx+1:]
