@@ -21,6 +21,7 @@ type HelmPackage struct {
 	Version     string
 	ChartPath   string
 	Destination string
+	Secret      string
 
 	podSpec v1.PodSpec
 }
@@ -49,6 +50,12 @@ func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice
 		s.Destination = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
 	}
 
+	if v.HasNode("secret") {
+		errSlice.Add(v.VisitString("secret", &s.Secret))
+	} else {
+		errSlice.Add(v.LookupStringFromVarSub("HELM_REG_SECRET", &s.Secret))
+	}
+
 	// Visiting
 	errSlice.Add(
 		v.VisitString("version", &s.Version),
@@ -67,12 +74,6 @@ func (s HelmPackage) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
-	var regUser, regPass string
-	errSlice.Add(
-		v.RequireStringFromVarSub("REG_USER", &regUser),
-		v.RequireStringFromVarSub("REG_PASS", &regPass),
-	)
-
 	cont := v1.Container{
 		Name:       commonContainerName,
 		Image:      "wharfse/helm:v3.8.1",
@@ -84,11 +85,13 @@ func (s HelmPackage) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 			{Name: "CHART_PATH", Value: s.ChartPath},
 			{Name: "CHART_REPO", Value: s.Destination},
 			{Name: "CHART_VERSION", Value: s.Version},
-			{Name: "REG_USER", Value: regUser},
-			{Name: "REG_PASS", Value: regPass},
 		},
 		Command: []string{"/bin/bash", "-c"},
 		Args:    []string{helmPackageScript},
+	}
+
+	if s.Secret != "" {
+		addHelmSecretVolume(s.Secret, &podSpec, &cont)
 	}
 
 	podSpec.Containers = append(podSpec.Containers, cont)

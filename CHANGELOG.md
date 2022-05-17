@@ -277,6 +277,25 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   Now all variable naming formats are supported inside the `${my-variable}`
   syntax. (#154)
 
+- Removed `REG_USER` and `REG_PASS` support in favor of `HELM_REG_SECRET`. This
+  is because the Wharf built-in variables should not contain any secrets by
+  themselves, but instead only refer to secrets, allowing their confidentiality
+  to be more easily maintained. (#162)
+
+- Added `HELM_REG_SECRET` for the `helm` and `helm-package` step types, which
+  functions the same way as `REG_SECRET` does for the `docker` step type. (#162)
+
+  The secret should contain a `config.json`, which can be created by running
+  `helm registry login` locally, and then creating a Kubernetes secret from
+  that:
+
+  ```sh
+  helm registry login harbor.example.com
+
+  kubectl create secret generic helm-registry \
+    --from-file=config.json=$HOME/.config/helm/registry/config.json
+  ```
+
 ## v0.7.0 (scrapped)
 
 - Added parsing of `"environments"` fields in `.wharf-ci.yml` files. (!2)

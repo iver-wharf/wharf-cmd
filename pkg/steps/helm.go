@@ -24,6 +24,7 @@ type Helm struct {
 	ChartVersion string
 	HelmVersion  string
 	Cluster      string
+	Secret       string
 
 	config  *config.HelmStepConfig
 	podSpec v1.PodSpec
@@ -54,6 +55,12 @@ func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 			errSlice.Add(fmt.Errorf(`eval "repo" default: %w`, err))
 		}
 		s.Repo = fmt.Sprintf("%s/%s", chartRepo, repoGroup)
+	}
+
+	if v.HasNode("secret") {
+		errSlice.Add(v.VisitString("secret", &s.Secret))
+	} else {
+		errSlice.Add(v.LookupStringFromVarSub("HELM_REG_SECRET", &s.Secret))
 	}
 
 	// Visiting
@@ -118,16 +125,11 @@ func (s Helm) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 		cmd = append(cmd, "--values", file)
 	}
 
-	var regUser, regPass string
-	errSlice.Add(
-		v.LookupStringFromVarSub("REG_USER", &regUser),
-		v.LookupStringFromVarSub("REG_PASS", &regPass),
-	)
-	if regUser != "" {
-		cmd = append(cmd, "--username", regUser, "--password", regPass)
-	}
-
 	cont.Command = cmd
+
+	if s.Secret != "" {
+		addHelmSecretVolume(s.Secret, &podSpec, &cont)
+	}
 
 	podSpec.Containers = append(podSpec.Containers, cont)
 	podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
@@ -142,4 +144,30 @@ func (s Helm) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	})
 
 	return podSpec, errSlice
+}
+
+func addHelmSecretVolume(secretName string, podSpec *v1.PodSpec, cont *v1.Container) {
+	const volumeName = "helm-secrets"
+	podSpec.Volumes = append(podSpec.Volumes, v1.Volume{
+		Name: volumeName,
+		VolumeSource: v1.VolumeSource{
+			Secret: &v1.SecretVolumeSource{
+				SecretName: secretName,
+				Items: []v1.KeyToPath{
+					{Key: "config.json"},
+				},
+			},
+		},
+	})
+	cont.VolumeMounts = append(cont.VolumeMounts, v1.VolumeMount{
+		Name:      volumeName,
+		MountPath: "/etc/helm/registry",
+	})
+	// Override the config path. If the user uses a rootless image, then
+	// the path wont be at the otherwise default location
+	//   /root/.config/helm/registry/config.json
+	cont.Env = append(cont.Env, v1.EnvVar{
+		Name:  "HELM_REGISTRY_CONFIG",
+		Value: "/etc/helm/registry/config.json",
+	})
 }

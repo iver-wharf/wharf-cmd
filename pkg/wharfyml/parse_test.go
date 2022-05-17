@@ -20,8 +20,6 @@ var testVarSource = varsub.SourceMap{
 	"REG_URL":    varsub.Val{Value: "http://harbor.example.com"},
 	"REG_SECRET": varsub.Val{Value: "docker-secret"},
 	"CHART_REPO": varsub.Val{Value: "http://charts.example.com"},
-	"REG_USER":   varsub.Val{Value: "admin"},
-	"REG_PASS":   varsub.Val{Value: "nimda"},
 }
 
 var testArgs = wharfyml.Args{
