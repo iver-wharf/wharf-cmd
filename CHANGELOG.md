@@ -204,7 +204,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
-  - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
@@ -226,7 +225,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed versions of numerous dependencies:
 
+  <!--lint ignore maximum-line-length-->
+
   - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
+  - `github.com/iver-wharf/wharf-api-client-go` from v1.2.0 to v2.2.1 (#62, #157)
   - `github.com/spf13/cobra` v1.1.3 to v1.3.0 (#64)
   - `github.com/stretchr/testify` v1.7.0 to v1.7.1 (#116)
   - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
