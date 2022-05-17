@@ -12,8 +12,6 @@ set -euo pipefail
 : ${CHART_PATH:?"Missing required Helm chart path"}
 : ${CHART_VERSION?"Missing required Helm chart version"}
 : ${CHART_REPO:?"Missing required Helm registry URL"}
-: ${REG_USER:?"Missing required Helm registry username"}
-: ${REG_PASS:?"Missing required Helm registry password"}
 
 VERSION_FLAG=""
 
@@ -25,5 +23,5 @@ fi
 echo "\$ helm package $CHART_PATH $VERSION_FLAG"
 helm package "$CHART_PATH" "$VERSION_FLAG"
 
-echo "\$ helm push *.tgz $CHART_REPO --insecure --username *REDACTED* --password *REDACTED*"
-helm push *.tgz "$CHART_REPO" --insecure --username "$REG_USER" --password "$REG_PASS"
+echo "\$ helm push *.tgz $CHART_REPO --insecure"
+helm push *.tgz "$CHART_REPO" --insecure
