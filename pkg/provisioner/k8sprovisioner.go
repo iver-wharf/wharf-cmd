@@ -269,9 +269,22 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 					Env:             wharfEnvs,
 				},
 			},
-			Volumes: volumes,
+			ImagePullSecrets: convLocalObjectReferences(p.k8sWorkerConf.ImagePullSecrets),
+			Volumes:          volumes,
 		},
 	}
+}
+
+func convLocalObjectReferences(refs []config.K8sLocalObjectReference) []v1.LocalObjectReference {
+	var k8sRefs []v1.LocalObjectReference
+	for _, r := range refs {
+		k8sRef := r.AsV1()
+		if k8sRef == nil {
+			continue
+		}
+		k8sRefs = append(k8sRefs, *k8sRef)
+	}
+	return k8sRefs
 }
 
 func uitoa(i uint) string {

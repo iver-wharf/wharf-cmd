@@ -143,6 +143,12 @@ type ProvisionerK8sWorkerConfig struct {
 	//
 	// Added in v0.8.0.
 	Container K8sContainerConfig
+	// ImagePullSecrets is an optional list of references to secrets in the same
+	// namespace to use for pulling either the wharf-cmd-worker init container
+	// or app container.
+	//
+	// More info: https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod
+	ImagePullSecrets []K8sLocalObjectReference
 	// ConfigMapName is the name of a Kubernetes ConfigMap to mount into the
 	// wharf-cmd-worker Pod. The ConfigMap can have the following keys, that
 	// corresponds to their respective files:
