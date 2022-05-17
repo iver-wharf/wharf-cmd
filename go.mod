@@ -9,7 +9,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.7.7
-	github.com/iver-wharf/wharf-api-client-go/v2 v2.0.1-0.20220303151222-6073acc9b23f
+	github.com/iver-wharf/wharf-api-client-go/v2 v2.2.1
 	github.com/iver-wharf/wharf-core v1.3.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cobra v1.3.0
@@ -32,6 +32,7 @@ require (
 	github.com/KyleBanks/depth v1.2.1 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/danwakefield/fnmatch v0.0.0-20160403171240-cbb64ac3d964 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
