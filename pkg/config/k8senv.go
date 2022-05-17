@@ -189,3 +189,21 @@ func (e *K8sSecretKeySelector) AsV1() *v1.SecretKeySelector {
 		Optional: e.Optional,
 	}
 }
+
+// K8sLocalObjectReference contains enough information to let you locate the
+// referenced object inside the same namespace.
+type K8sLocalObjectReference struct {
+	// Name of the referent.
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+	Name string
+}
+
+// AsV1 returns the Kubernetes k8s.io/api/core/v1 type for this config.
+func (e *K8sLocalObjectReference) AsV1() *v1.LocalObjectReference {
+	if e == nil {
+		return nil
+	}
+	return &v1.LocalObjectReference{
+		Name: e.Name,
+	}
+}
