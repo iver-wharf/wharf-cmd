@@ -51,7 +51,7 @@ func parseDryRun(value string) (DryRun, error) {
 	case "server":
 		return DryRunServer, nil
 	default:
-		return "", errors.New("must be one of 'none', 'client', or 'server'")
+		return "", errors.New(`must be one of "none", "client", or "server"`)
 	}
 }
 

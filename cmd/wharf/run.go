@@ -163,7 +163,7 @@ func init() {
 
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
-	runCmd.Flags().Var(&runFlags.dryRun, "dry-run", "Must be one of 'none', 'client', or 'server'")
+	runCmd.Flags().Var(&runFlags.dryRun, "dry-run", `Must be one of "none", "client", or "server"`)
 	runCmd.RegisterFlagCompletionFunc("dry-run", flagtypes.CompleteDryRun)
 
 	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
