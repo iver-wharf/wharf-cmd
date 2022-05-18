@@ -11,13 +11,22 @@ option (go.lint).initialisms = "ID";
 
 option go_package = "github.com/iver-wharf/wharf-cmd/api/workerapi/v1";
 
+// Worker is the service for streaming build results from the wharf-cmd-worker.
 service Worker {
+  // StreamLogs opens a stream of all logs from the wharf-cmd-worker. The
+  // responses may be mixed between multiple build steps.
   rpc StreamLogs(StreamLogsRequest)
     returns (stream StreamLogsResponse);
 
+  // StreamStatusEvents opens a stream of all build status events. Every time
+  // a build step's status is changed, a new event is sent.
   rpc StreamStatusEvents(StreamStatusEventsRequest)
     returns (stream StreamStatusEventsResponse);
 
+  // StreamArtifactEvents opens a stream of all build artifact events. The
+  // actual artifact BLOB data cannot be accessed via this service, but must
+  // instead be downloaded via the HTTP REST API. This RPC should only be used
+  // to get a notification when a new artifact is available to download.
   rpc StreamArtifactEvents(StreamArtifactEventsRequest)
     returns (stream StreamArtifactEventsResponse);
 }
@@ -34,6 +43,7 @@ message StreamStatusEventsRequest {
 message StreamArtifactEventsRequest {
 }
 
+// StreamLogsResponse is a single log-line from a build step.
 message StreamLogsResponse {
   // LogID is the worker's own ID of the log line. It's unique per build step
   // for a given build, but may have collisions across multiple steps or builds.
@@ -49,6 +59,7 @@ message StreamLogsResponse {
   string message = 4;
 }
 
+// StreamStatusEventsResponse is a single build step status update.
 message StreamStatusEventsResponse {
   // EventID is the worker's own ID of the event the status.
   uint64 event_id = 1;
@@ -58,6 +69,7 @@ message StreamStatusEventsResponse {
   Status status = 3;
 }
 
+// StreamArtifactEventsResponse is a single build artifact event.
 message StreamArtifactEventsResponse {
   // ArtifactID is the worker's own ID of the artifact. It's unique per build
   // step for a given build, but may have collisions across multiple steps or
@@ -70,13 +82,29 @@ message StreamArtifactEventsResponse {
   string name = 3;
 }
 
+// Status is an enum of different statuses for the build steps.
 enum Status {
+  // StatusUnspecified is the default value for this enum, and should be
+  // treated as an erroneous status.
   STATUS_UNSPECIFIED = 0;
+  // StatusPending means the build step is waiting to be scheduled, such as if
+  // it's build stage hasen't started yet due to the former build stage still
+  // running.
   STATUS_PENDING = 1;
+  // StatusScheduling means this build step has been scheduled, such as the
+  // Kubernetes Pod has been created, but the container has not yet started
+  // running. E.g if the Docker image is still being pulled.
   STATUS_SCHEDULING = 2;
+  // StatusInitializing means the build step has started, but the initialization
+  // steps are not complete yet. E.g the repository is still being transferred.
   STATUS_INITIALIZING = 3;
+  // StatusRunning means this build step is actively running.
   STATUS_RUNNING = 4;
+  // StatusSuccess means this build step has completed successfully.
   STATUS_SUCCESS = 5;
+  // StatusFailed means this build step has failed. E.g there was some
+  // user error in the build definition.
   STATUS_FAILED = 6;
+  // StatusCancelled means this build was cancelled.
   STATUS_CANCELLED = 7;
 }
