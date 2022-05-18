@@ -63,15 +63,12 @@ func (s HelmPackage) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice
 		v.VisitString("destination", &s.Destination),
 	)
 
-	podSpec, errs := s.applyStep(v)
-	s.podSpec = podSpec
-	errSlice.Add(errs...)
+	s.podSpec = s.applyStep()
 
 	return s, errSlice
 }
 
-func (s HelmPackage) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
-	var errSlice errutil.Slice
+func (s HelmPackage) applyStep() v1.PodSpec {
 	podSpec := newBasePodSpec()
 
 	cont := v1.Container{
@@ -95,5 +92,5 @@ func (s HelmPackage) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 	}
 
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return podSpec, errSlice
+	return podSpec
 }
