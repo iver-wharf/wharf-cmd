@@ -36,7 +36,7 @@ func (l *LogLevel) String() string {
 	}
 }
 
-// Set implements the pflag.Value interface.
+// String implements the pflag.Value interface.
 // This parses the loglevel string and updates the loglevel variable.
 func (l *LogLevel) Set(val string) error {
 	newLevel, err := parseLevel(val)

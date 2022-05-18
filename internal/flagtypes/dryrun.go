@@ -25,7 +25,7 @@ const (
 	DryRunServer DryRun = "server"
 )
 
-// Set implements the pflag.Value and fmt.Stringer interfaces.
+// String implements the pflag.Value and fmt.Stringer interfaces.
 // This returns a human-readable representation of the dry-run flag.
 func (d *DryRun) String() string {
 	return fmt.Sprintf(`"%s"`, string(*d))
