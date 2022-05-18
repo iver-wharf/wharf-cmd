@@ -38,6 +38,18 @@ var (
 	errIllegalParentDirAccess = errors.New("illegal parent directory access")
 )
 
+// DryRun is an enum of dry-run settings
+type DryRun byte
+
+const (
+	// DryRunNone disables dry-run. The build will be performed as usual
+	DryRunNone DryRun = iota
+	// DryRunClient only logs what would be run, without contacting Kubernetes
+	DryRunClient
+	// DryRunServer submits server-side dry-run requests to Kubernetes
+	DryRunServer
+)
+
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
 type K8sRunnerOptions struct {
 	BuildOptions
@@ -48,6 +60,7 @@ type K8sRunnerOptions struct {
 	VarSource     varsub.Source
 	SkipGitIgnore bool
 	CurrentDir    string
+	DryRun        DryRun
 }
 
 // NewK8s is a helper function that creates a new builder using the
@@ -123,8 +136,12 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 			WithString("step", r.step.Name).
 			WithString("pod", r.target.name)
 	}
-	if err := r.dryRunStepError(ctx); err != nil {
-		return nil, fmt.Errorf("dry-run: %w", err)
+	if r.DryRun != DryRunNone {
+		// We skip running dry-run here, as it will be run later in the actual
+		// step run. Otherwise it would dry-run twice
+		if err := r.dryRunStep(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return r, nil
 }
@@ -210,7 +227,7 @@ func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	ctx = contextWithStepName(ctx, r.step.Name)
 	start := time.Now()
 	status := workermodel.StatusSuccess
-	err := r.runStepError(ctx)
+	err := r.runStep(ctx)
 	if errors.Is(ctx.Err(), context.Canceled) {
 		status = workermodel.StatusCancelled
 	} else if err != nil {
@@ -226,25 +243,43 @@ func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	}
 }
 
-func (r k8sStepRunner) dryRunStepError(ctx context.Context) error {
+func (r k8sStepRunner) runStep(ctx context.Context) error {
+	if r.DryRun != DryRunNone {
+		return r.dryRunStep(ctx)
+	}
+	return r.liveRunStep(ctx)
+}
+
+func (r k8sStepRunner) dryRunStep(ctx context.Context) error {
+	if r.DryRun == DryRunClient {
+		log.Debug().
+			WithString("step", r.step.Name).
+			WithString("pod", r.pod.GenerateName).
+			Message("DRY RUN (CLIENT): Creating pod.")
+		log.Debug().
+			WithString("step", r.step.Name).
+			WithString("pod", r.pod.GenerateName).
+			Message("DRY RUN (CLIENT): Created pod.")
+		return nil
+	}
 	log.Debug().
 		WithString("step", r.step.Name).
 		WithString("pod", r.pod.GenerateName).
-		Message("DRY RUN: Creating pod.")
+		Message("DRY RUN (SERVER): Creating pod.")
 	newPod, err := r.pods.Create(ctx, r.pod, metav1.CreateOptions{
 		DryRun: []string{"All"},
 	})
 	if err != nil {
-		return fmt.Errorf("create pod: %w", err)
+		return fmt.Errorf("dry-run: create pod: %w", err)
 	}
 	log.Debug().
 		WithString("step", r.step.Name).
 		WithString("pod", newPod.Name).
-		Message("DRY RUN: Created pod.")
+		Message("DRY RUN (SERVER): Created pod.")
 	return nil
 }
 
-func (r k8sStepRunner) runStepError(ctx context.Context) error {
+func (r k8sStepRunner) liveRunStep(ctx context.Context) error {
 	log.Debug().
 		WithString("step", r.step.Name).
 		WithString("pod", r.pod.GenerateName).
