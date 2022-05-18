@@ -10,6 +10,9 @@ import (
 // FS is a filesystem with ability to open files in either append-only,
 // write-only, or read only mode.
 type FS interface {
+	// Path returns the root directory of this FS. This is only used in logging,
+	// and may return any helpful information.
+	Path() string
 	// OpenAppend creates or opens a file in append-only mode, meaning all written
 	// data is appended to the end.
 	OpenAppend(name string) (io.WriteCloser, error)
@@ -33,6 +36,10 @@ func NewFS(dir string) FS {
 
 type osFS struct {
 	dir string
+}
+
+func (fs osFS) Path() string {
+	return fs.dir
 }
 
 func (fs osFS) OpenAppend(name string) (io.WriteCloser, error) {

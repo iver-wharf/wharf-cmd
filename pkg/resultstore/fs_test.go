@@ -29,6 +29,10 @@ type mockFS struct {
 	listDirEntries func(name string) ([]fs.DirEntry, error)
 }
 
+func (fs mockFS) Path() string {
+	return "mock-fs"
+}
+
 func (fs mockFS) OpenAppend(name string) (io.WriteCloser, error) {
 	return fs.openAppend(name)
 }

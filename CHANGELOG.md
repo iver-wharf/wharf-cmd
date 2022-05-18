@@ -148,6 +148,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
 
+- Added so build results (logs, status updates) are stored in
+  `/tmp/wharf-cmd-build-00123-xxxxxxx` directory using a unique generated
+  build ID, or using the build ID provided by the `--build-id` flag on
+  the `wharf run` command. (#172)
+
 - Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
   This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
   among other things. (#63)
@@ -214,6 +219,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/rogpeppe/go-internal` v1.8.1 (#172)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
