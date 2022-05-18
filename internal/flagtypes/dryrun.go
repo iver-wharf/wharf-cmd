@@ -26,13 +26,13 @@ const (
 )
 
 // Set implements the pflag.Value and fmt.Stringer interfaces.
-// This returns a human-readable representation of the loglevel.
+// This returns a human-readable representation of the dry-run flag.
 func (d *DryRun) String() string {
 	return fmt.Sprintf(`"%s"`, string(*d))
 }
 
 // Set implements the pflag.Value interface.
-// This parses the loglevel string and updates the loglevel variable.
+// This parses the dry-run string and updates the dry-run variable.
 func (d *DryRun) Set(value string) error {
 	dryRun, err := parseDryRun(value)
 	if err != nil {
