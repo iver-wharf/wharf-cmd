@@ -169,17 +169,19 @@ func (a k8sAggr) handlePod(ctx context.Context, pod v1.Pod) error {
 		WithString("status", string(pod.Status.Phase)).
 		Message("Pod found.")
 
-	apiLogStream, err := newScopedLogStream(ctx, a.wharfapi)
+	apiLogStream, err := wharfapi.CreateBuildLogStream(ctx)
 	if err != nil {
 		return fmt.Errorf("open logs stream to wharf-api: %w", err)
 	}
+	defer closeLogStream(apiLogStream)
 
 	switch pod.Status.Phase {
 	case v1.PodRunning:
-		worker, err := newScopedWorker(a, pod.Name, buildID)
+		worker, err := newPortForwardedWorker(a, pod.Name, buildID)
 		if err != nil {
 			return err
 		}
+		defer worker.Close()
 		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
 			return handleRunningPod(ctx, a.namespace, a.wharfapi, apiLogStream, worker, pod)
 		})
