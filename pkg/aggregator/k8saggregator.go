@@ -283,7 +283,7 @@ func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
 	return a.terminatePod(ctx, pod)
 }
 
-func (a k8sAggr) getEvents(ctx context.Context, pod workerPod) string {
+func (a k8sAggr) getEvents(pod workerPod) string {
 	eventsList, err := a.clientset.CoreV1().Events(pod.Namespace).Search(scheme.Scheme, &pod.Pod)
 	if err != nil {
 		return fmt.Sprintf("Failed reading events: %v", err)
