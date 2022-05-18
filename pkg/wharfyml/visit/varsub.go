@@ -1,10 +1,11 @@
-package wharfyml
+package visit
 
 import (
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"gopkg.in/yaml.v3"
 )
@@ -25,15 +26,17 @@ func (v VarSubNode) String() string {
 	return v.Node.Value
 }
 
-func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
+// VarSubNodeRec will perform variable substitution recursively on a YAML node
+// tree.
+func VarSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	if source == nil {
 		return node, nil
 	}
 	if node.Kind == yaml.ScalarNode {
-		if node.Tag != shortTagString {
+		if node.Tag != ShortTagString {
 			return node, nil
 		}
-		return varSubStringNode(strNode{node, node.Value}, source)
+		return VarSubStringNode(StringNode{node, node.Value}, source)
 	}
 	if len(node.Content) == 0 {
 		return node, nil
@@ -41,7 +44,7 @@ func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	clone := *node
 	clone.Content = make([]*yaml.Node, len(node.Content))
 	for i, child := range node.Content {
-		child, err := varSubNodeRec(child, source)
+		child, err := VarSubNodeRec(child, source)
 		if err != nil {
 			return nil, err
 		}
@@ -50,33 +53,37 @@ func varSubNodeRec(node *yaml.Node, source varsub.Source) (*yaml.Node, error) {
 	return &clone, nil
 }
 
-func varSubStringNode(str strNode, source varsub.Source) (*yaml.Node, error) {
-	val, err := varsub.Substitute(str.value, source)
+// VarSubStringNode will perform variable substitution on a string node and
+// return a new node with the substituted value.
+func VarSubStringNode(str StringNode, source varsub.Source) (*yaml.Node, error) {
+	val, err := varsub.Substitute(str.Value, source)
 	if err != nil {
-		return nil, wrapPosErrorNode(err, str.node)
+		return nil, errutil.NewPosFromNode(err, str.Node)
 	}
-	return newNodeWithValue(str.node, val)
+	return NewNodeWithValue(str.Node, val)
 }
 
-func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
+// NewNodeWithValue creates a new YAML node with the correct kind and tag
+// depending on the reflected type.
+func NewNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 	clone := *node
 	clone.Kind = yaml.ScalarNode
 	switch val := val.(type) {
 	case nil:
-		clone.Tag = shortTagNull
+		clone.Tag = ShortTagNull
 		clone.Value = ""
 	case int, int8, int16, int32, int64,
 		uint, uint8, uint16, uint32, uint64:
-		clone.Tag = shortTagInt
+		clone.Tag = ShortTagInt
 		clone.Value = fmt.Sprint(val)
 	case float32, float64:
-		clone.Tag = shortTagFloat
+		clone.Tag = ShortTagFloat
 		clone.Value = fmt.Sprint(val)
 	case time.Time:
-		clone.Tag = shortTagTimestamp
+		clone.Tag = ShortTagTimestamp
 		clone.Value = val.Format(time.RFC3339Nano)
 	case bool:
-		clone.Tag = shortTagBool
+		clone.Tag = ShortTagBool
 		if val {
 			clone.Value = "true"
 		} else {
@@ -92,7 +99,14 @@ func newNodeWithValue(node *yaml.Node, val any) (*yaml.Node, error) {
 		clone.SetString(val.String())
 	default:
 		err := fmt.Errorf("%w: %T", ErrUnsupportedVarSubType, val)
-		return nil, wrapPosErrorNode(err, node)
+		return nil, errutil.NewPosFromNode(err, node)
 	}
 	return &clone, nil
+}
+
+func safeLookupVar(source varsub.Source, name string) (varsub.Var, bool) {
+	if source == nil {
+		return varsub.Var{}, false
+	}
+	return source.Lookup(name)
 }

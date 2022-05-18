@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,9 +17,9 @@ var (
 
 // Env is an environments definition. Used in the root of the definition.
 type Env struct {
-	Source Pos
+	Source visit.Pos
 	Name   string
-	Vars   map[string]VarSubNode
+	Vars   map[string]visit.VarSubNode
 }
 
 // VarSource returns a varsub.Source compliant value of the environment
@@ -36,62 +38,62 @@ func (e Env) VarSource() varsub.Source {
 
 // EnvRef is a reference to an environments definition. Used in stages.
 type EnvRef struct {
-	Source Pos
+	Source visit.Pos
 	Name   string
 }
 
-func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, Errors) {
-	nodes, errs := visitMapSlice(node)
-	var errSlice Errors
-	errSlice.add(errs...)
+func visitDocEnvironmentsNode(node *yaml.Node) (map[string]Env, errutil.Slice) {
+	nodes, errs := visit.MapSlice(node)
+	var errSlice errutil.Slice
+	errSlice.Add(errs...)
 	envs := make(map[string]Env, len(nodes))
 	for _, n := range nodes {
-		env, errs := visitEnvironmentNode(n.key, n.value)
-		envs[n.key.value] = env
-		errSlice.add(wrapPathErrorSlice(errs, n.key.value)...)
+		env, errs := visitEnvironmentNode(n.Key, n.Value)
+		envs[n.Key.Value] = env
+		errSlice.Add(errutil.ScopeSlice(errs, n.Key.Value)...)
 	}
 	return envs, errSlice
 }
 
-func visitEnvironmentNode(nameNode strNode, node *yaml.Node) (env Env, errSlice Errors) {
+func visitEnvironmentNode(nameNode visit.StringNode, node *yaml.Node) (env Env, errSlice errutil.Slice) {
 	env = Env{
-		Name:   nameNode.value,
-		Vars:   make(map[string]VarSubNode),
-		Source: newPosNode(node),
+		Name:   nameNode.Value,
+		Vars:   make(map[string]visit.VarSubNode),
+		Source: visit.NewPosFromNode(node),
 	}
-	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+	nodes, errs := visit.MapSlice(node)
+	errSlice.Add(errs...)
 	for _, n := range nodes {
-		if err := verifyEnvironmentVariableNode(n.value); err != nil {
-			errSlice.add(wrapPathError(err, n.key.value))
+		if err := verifyEnvironmentVariableNode(n.Value); err != nil {
+			errSlice.Add(errutil.Scope(err, n.Key.Value))
 		}
-		env.Vars[n.key.value] = VarSubNode{n.value}
+		env.Vars[n.Key.Value] = visit.VarSubNode{n.Value}
 	}
 	return
 }
 
 func verifyEnvironmentVariableNode(node *yaml.Node) error {
-	return verifyKind(node, "string, boolean, or number", yaml.ScalarNode)
+	return visit.VerifyKind(node, "string, boolean, or number", yaml.ScalarNode)
 }
 
-func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice Errors) {
-	nodes, err := visitSequence(node)
+func visitStageEnvironmentsNode(node *yaml.Node) (envs []EnvRef, errSlice errutil.Slice) {
+	nodes, err := visit.Sequence(node)
 	if err != nil {
-		return nil, Errors{err}
+		return nil, errutil.Slice{err}
 	}
 	envs = make([]EnvRef, 0, len(nodes))
 	for _, envNode := range nodes {
-		env, err := visitString(envNode)
+		env, err := visit.String(envNode)
 		if err != nil {
-			errSlice.add(err)
+			errSlice.Add(err)
 			continue
 		}
 		if env == "" {
-			errSlice.add(wrapPosErrorNode(ErrStageEnvEmpty, envNode))
+			errSlice.Add(errutil.NewPosFromNode(ErrStageEnvEmpty, envNode))
 			continue
 		}
 		envs = append(envs, EnvRef{
-			Source: newPosNode(envNode),
+			Source: visit.NewPosFromNode(envNode),
 			Name:   env,
 		})
 	}

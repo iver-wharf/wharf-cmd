@@ -3,7 +3,9 @@ package wharfyml
 import (
 	"errors"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -15,32 +17,34 @@ var (
 
 // Step holds the step type and name of this Wharf build step.
 type Step struct {
-	Pos  Pos
+	Pos  visit.Pos
 	Name string
 	Type StepType
+	Meta StepTypeMeta
 }
 
-func visitStepNode(name strNode, node *yaml.Node, source varsub.Source) (step Step, errSlice Errors) {
-	step.Pos = newPosNode(node)
-	step.Name = name.value
-	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+func visitStepNode(name visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (step Step, errSlice errutil.Slice) {
+	step.Pos = visit.NewPosFromNode(node)
+	step.Name = name.Value
+	nodes, errs := visit.MapSlice(node)
+	errSlice.Add(errs...)
 	if len(nodes) == 0 {
-		errSlice.add(wrapPosErrorNode(ErrStepEmpty, node))
+		errSlice.Add(errutil.NewPosFromNode(ErrStepEmpty, node))
 		return
 	}
 	if len(nodes) > 1 {
-		errSlice.add(wrapPosErrorNode(ErrStepMultipleStepTypes, node))
-		// Continue, its not a fatal issue
+		errSlice.Add(errutil.NewPosFromNode(ErrStepMultipleStepTypes, node))
+		// Continue, it's not a fatal issue
 	}
 	for _, stepTypeNode := range nodes {
-		stepType, errs := visitStepTypeNode(
-			name.value, stepTypeNode.key, stepTypeNode.value, source)
+		stepType, meta, errs := visitStepTypeNode(
+			name.Value, stepTypeNode.Key, stepTypeNode.Value, args, source)
 		step.Type = stepType
+		step.Meta = meta
 		if stepType != nil {
-			errSlice.add(wrapPathErrorSlice(errs, stepType.StepTypeName())...)
+			errSlice.Add(errutil.ScopeSlice(errs, stepType.StepTypeName())...)
 		} else {
-			errSlice.add(errs...)
+			errSlice.Add(errs...)
 		}
 	}
 	return

@@ -83,9 +83,18 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   # => [ "myVar": "bar" ]
   ```
 
+- Added `--dry-run` flag to `wharf run` command. The flag supports 3 different
+  values: (#170)
+
+  <!--lint ignore maximum-line-length-->
+
+  - `--dry-run none`: Disables dry-run. The build will be performed as usual
+  - `--dry-run client`: Only logs what would be run, without contacting Kubernetes
+  - `--dry-run server`: Submits server-side dry-run requests to Kubernetes
+
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
-  line & column of each parse error. (#48, #58)
+  line & column of each parse error. (#48, #58, #147, #153, #171)
 
 - Added support for a new file type: `.wharf-vars.yml`. It is used to define
   built-in variables, and wharf looks for it in multiple files in the
@@ -114,7 +123,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added ability to configure values, and wharf looks for it in multiple files in
   the following order, where former files take precedence over latter files on a
-  per-variable basis: (#116, #133, #134)
+  per-variable basis: (#116, #133, #134, #150, #156, #159)
 
   - Environment variables, prefixed with `WHARF_`
   - File from environment variable: `WHARF_CONFIG`
@@ -204,7 +213,6 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
-  - `github.com/iver-wharf/wharf-api-client-go/v2` v2.0.0 (#62)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
@@ -226,7 +234,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed versions of numerous dependencies:
 
+  <!--lint ignore maximum-line-length-->
+
   - `github.com/gin-gonic/gin` from v1.7.1 to v1.7.7 (#59)
+  - `github.com/iver-wharf/wharf-api-client-go` from v1.2.0 to v2.2.1 (#62, #157)
   - `github.com/spf13/cobra` v1.1.3 to v1.3.0 (#64)
   - `github.com/stretchr/testify` v1.7.0 to v1.7.1 (#116)
   - `k8s.io/api` from v0.0.0 to v0.23.3 (#8)
@@ -240,6 +251,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Changed to trim away everything before the last CR (carriage return)
   character in a log line from a Kubernetes pod. (#49)
+
+- Changed so `wharf run` logs the parsed log message provided by Kubernetes,
+  without the timestamp. (#148)
 
 - Changed location of packages and code files: (#44, #87)
 
@@ -267,6 +281,29 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `os.Interrupt`
   - `syscall.SIGTERM`
   - `syscall.SIGHUP`
+
+- Fixed variable substitution not recognizing kebab-cased variables.
+  Now all variable naming formats are supported inside the `${my-variable}`
+  syntax. (#154)
+
+- Removed `REG_USER` and `REG_PASS` support in favor of `HELM_REG_SECRET`. This
+  is because the Wharf built-in variables should not contain any secrets by
+  themselves, but instead only refer to secrets, allowing their confidentiality
+  to be more easily maintained. (#162)
+
+- Added `HELM_REG_SECRET` for the `helm` and `helm-package` step types, which
+  functions the same way as `REG_SECRET` does for the `docker` step type. (#162)
+
+  The secret should contain a `config.json`, which can be created by running
+  `helm registry login` locally, and then creating a Kubernetes secret from
+  that:
+
+  ```sh
+  helm registry login harbor.example.com
+
+  kubectl create secret generic helm-registry \
+    --from-file=config.json=$HOME/.config/helm/registry/config.json
+  ```
 
 ## v0.7.0 (scrapped)
 

@@ -37,11 +37,26 @@ import (
 // case-insensitive. Keeping camelCasing in YAML config files is recommended
 // for consistency.
 type Config struct {
-	K8s         K8sConfig
-	Worker      WorkerConfig
+	// K8s holds Kubernetes-specific settings.
+	//
+	// Added in v0.8.0.
+	K8s K8sConfig
+	// Worker holds settings specific to the wharf-cmd-worker.
+	//
+	// Added in v0.8.0.
+	Worker WorkerConfig
+	// Provisioner holds settings specific to the wharf-cmd-provisioner.
+	//
+	// Added in v0.8.0.
 	Provisioner ProvisionerConfig
-	Aggregator  AggregatorConfig
-	Watchdog    WatchdogConfig
+	// Aggregator holds settings specific to the wharf-cmd-aggregator.
+	//
+	// Added in v0.8.0.
+	Aggregator AggregatorConfig
+	// Watchdog holds settings specific to the wharf-cmd-watchdog.
+	//
+	// Added in v0.8.0.
+	Watchdog WatchdogConfig
 
 	// InstanceID may be an arbitrary string that is used to identify different
 	// Wharf installations from each other. Needed when you use multiple Wharf
@@ -67,14 +82,28 @@ type K8sConfig struct {
 
 // WorkerConfig holds settings for the worker.
 type WorkerConfig struct {
+	// Steps holds settings specific to all different step types.
+	//
+	// Added in v0.8.0.
 	Steps StepsConfig
 }
 
 // StepsConfig holds settings for the different types of steps.
 type StepsConfig struct {
-	Docker  DockerStepConfig
+	// Docker holds settings for the docker step type. (Building docker images)
+	//
+	// Added in v0.8.0.
+	Docker DockerStepConfig
+	// Kubectl holds settings for the kubectl step type. (Applying Kubernetes
+	// YAML manifests)
+	//
+	// Added in v0.8.0.
 	Kubectl KubectlStepConfig
-	Helm    HelmStepConfig
+	// Helm holds settings for the helm step type. (Installing or upgrading
+	// Helm releases)
+	//
+	// Added in v0.8.0.
+	Helm HelmStepConfig
 
 	// TODO: Add ContainerStepConfig, see pkg/worker/k8spodtemplating.go
 	// TODO: Add HelmPackageStepConfig, see pkg/worker/k8spodtemplating.go
@@ -119,12 +148,24 @@ type HelmStepConfig struct {
 
 // ProvisionerConfig holds settings for the provisioner.
 type ProvisionerConfig struct {
+	// HTTP holds settings for the wharf-cmd-provisioner's HTTP server
+	// (gRPC & REST).
+	//
+	// Added in v0.8.0.
 	HTTP HTTPConfig
-	K8s  ProvisionerK8sConfig
+	// K8s holds settings for how the wharf-cmd-provisioner acts towards
+	// Kubernetes.
+	//
+	// Added in v0.8.0.
+	K8s ProvisionerK8sConfig
 }
 
 // ProvisionerK8sConfig holds kubernetes specific settings for the provisioner.
 type ProvisionerK8sConfig struct {
+	// Worker holds settings for how the wharf-cmd-provisioner provisions
+	// wharf-cmd-workers to Kubernetes.
+	//
+	// Added in v0.8.0.
 	Worker ProvisionerK8sWorkerConfig
 }
 
@@ -143,6 +184,51 @@ type ProvisionerK8sWorkerConfig struct {
 	//
 	// Added in v0.8.0.
 	Container K8sContainerConfig
+	// ImagePullSecrets is an optional list of references to secrets in the same
+	// namespace to use for pulling either the wharf-cmd-worker init container
+	// or app container.
+	//
+	// More info: https://kubernetes.io/docs/concepts/containers/images#specifying-imagepullsecrets-on-a-pod
+	//
+	// Added in v0.8.0.
+	ImagePullSecrets []K8sLocalObjectReference
+	// ConfigMapName is the name of a Kubernetes ConfigMap to mount into the
+	// wharf-cmd-worker Pod. The ConfigMap can have the following keys, that
+	// corresponds to their respective files:
+	//
+	//  wharf-cmd-config.yml
+	//  wharf-vars.yml
+	//
+	// Sample ConfigMap manifest:
+	//
+	//  apiVersion: v1
+	//  kind: ConfigMap
+	//  metadata:
+	//    name: wharf-cmd-worker-config
+	//  data:
+	//    wharf-cmd-config.yml: |
+	//      instanceId: dev
+	//    wharf-vars.yml: |
+	//      vars:
+	//        REG_SECRET: docker-registry
+	//
+	// With the above manifest created in the same namespace as where the
+	// wharf-cmd-worker pods are created, you would then set this field to
+	//
+	//  wharf-cmd-worker-config
+	//
+	// Added in v0.8.0.
+	ConfigMapName string
+	// ExtraEnvs is an array of additional environment variables to set on the
+	// wharf-cmd-worker Pod.
+	//
+	// Added in v0.8.0.
+	ExtraEnvs []K8sEnvVar
+	// ExtraArgs is an array of additional command-line arguments to add to the
+	// wharf-cmd-worker Pod.
+	//
+	// Added in v0.8.0.
+	ExtraArgs []string
 }
 
 // K8sContainerConfig holds settings for a kubernetes container.
@@ -175,6 +261,9 @@ type K8sContainerConfig struct {
 
 // HTTPConfig holds settings for the HTTP server.
 type HTTPConfig struct {
+	// CORS holds settings regarding HTTP CORS (Cross-Origin Resource Sharing).
+	//
+	// Added in v0.8.0.
 	CORS CORSConfig
 	// BindAddress is the IP-address and port, separated by a colon, to bind
 	// the HTTP server to. An IP-address of 0.0.0.0 will bind to all

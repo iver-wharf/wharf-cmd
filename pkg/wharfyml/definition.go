@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,22 +35,22 @@ func (d *Definition) ListAllSteps() []Step {
 	return steps
 }
 
-func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) {
-	nodes, errs := visitMapSlice(node)
-	errSlice.add(errs...)
+func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice errutil.Slice) {
+	nodes, errs := visit.MapSlice(node)
+	errSlice.Add(errs...)
 	envSourceNode := node
 
 	for _, n := range nodes {
-		switch n.key.value {
+		switch n.Key.Value {
 		case propEnvironments:
-			var errs Errors
-			def.Envs, errs = visitDocEnvironmentsNode(n.value)
-			errSlice.add(wrapPathErrorSlice(errs, propEnvironments)...)
-			envSourceNode = n.value
+			var errs errutil.Slice
+			def.Envs, errs = visitDocEnvironmentsNode(n.Value)
+			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
+			envSourceNode = n.Value
 		case propInputs:
-			var errs Errors
-			def.Inputs, errs = visitInputsNode(n.value)
-			errSlice.add(wrapPathErrorSlice(errs, propInputs)...)
+			var errs errutil.Slice
+			def.Inputs, errs = visitInputsNode(n.Value)
+			errSlice.Add(errutil.ScopeSlice(errs, propInputs)...)
 		}
 	}
 
@@ -56,16 +58,16 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 
 	inputsSource, errs := visitInputsArgs(def.Inputs, args.Inputs)
 	sources = append(sources, inputsSource)
-	errSlice.add(errs...)
+	errSlice.Add(errs...)
 
 	sources = append(sources, def.Inputs.DefaultsVarSource())
 
 	// Add environment varsub.Source first, as it should have priority
 	targetEnv, err := getTargetEnv(def.Envs, args.Env)
 	if err != nil {
-		err = wrapPosErrorNode(err, envSourceNode)
-		err = wrapPathError(err, propEnvironments)
-		errSlice.add(err) // Non fatal error
+		err = errutil.NewPosFromNode(err, envSourceNode)
+		err = errutil.Scope(err, propEnvironments)
+		errSlice.Add(err) // Non fatal error
 	} else if targetEnv != nil {
 		def.Env = targetEnv
 		sources = append(sources, targetEnv.VarSource())
@@ -75,10 +77,10 @@ func visitDefNode(node *yaml.Node, args Args) (def Definition, errSlice Errors) 
 		sources = append(sources, args.VarSource)
 	}
 
-	stages, errs := visitDefStageNodes(nodes, sources)
+	stages, errs := visitDefStageNodes(nodes, args, sources)
 	def.Stages = stages
-	errSlice.add(errs...)
-	errSlice.add(validateDefEnvironmentUsage(def)...)
+	errSlice.Add(errs...)
+	errSlice.Add(validateDefEnvironmentUsage(def)...)
 	if !args.SkipStageFiltering {
 		// filtering intentionally performed after validation
 		def.Stages = filterStagesOnEnv(def.Stages, args.Env)
@@ -98,34 +100,34 @@ func getTargetEnv(envs map[string]Env, envName string) (*Env, error) {
 	return &env, nil
 }
 
-func visitDefStageNodes(nodes []mapItem, source varsub.Source) (stages []Stage, errSlice Errors) {
+func visitDefStageNodes(nodes []visit.MapItem, args Args, source varsub.Source) (stages []Stage, errSlice errutil.Slice) {
 	for _, n := range nodes {
-		switch n.key.value {
+		switch n.Key.Value {
 		case propEnvironments, propInputs:
 			// Do nothing, they've already been visited.
 			continue
 		}
-		stageNode, err := varSubNodeRec(n.value, source)
+		stageNode, err := visit.VarSubNodeRec(n.Value, source)
 		if err != nil {
-			errSlice.add(err)
+			errSlice.Add(err)
 			continue
 		}
-		stage, errs := visitStageNode(n.key, stageNode, source)
+		stage, errs := visitStageNode(n.Key, stageNode, args, source)
 		stages = append(stages, stage)
-		errSlice.add(wrapPathErrorSlice(errs, n.key.value)...)
+		errSlice.Add(errutil.ScopeSlice(errs, n.Key.Value)...)
 	}
 	return
 }
 
-func validateDefEnvironmentUsage(def Definition) Errors {
-	var errSlice Errors
+func validateDefEnvironmentUsage(def Definition) errutil.Slice {
+	var errSlice errutil.Slice
 	for _, stage := range def.Stages {
 		for _, env := range stage.Envs {
 			if _, ok := def.Envs[env.Name]; !ok {
 				err := fmt.Errorf("%w: %q", ErrUseOfUndefinedEnv, env.Name)
-				err = wrapPosError(err, env.Source)
-				err = wrapPathError(err, stage.Name, propEnvironments)
-				errSlice.add(err)
+				err = errutil.NewPos(err, env.Source.Line, env.Source.Column)
+				err = errutil.Scope(err, stage.Name, propEnvironments)
+				errSlice.Add(err)
 			}
 		}
 	}
@@ -135,16 +137,19 @@ func validateDefEnvironmentUsage(def Definition) Errors {
 func filterStagesOnEnv(stages []Stage, envFilter string) []Stage {
 	var filtered []Stage
 	for _, stage := range stages {
-		if containsEnvFilter(stage.Envs, envFilter) {
+		if stageShouldBeIncluded(stage.Envs, envFilter) {
 			filtered = append(filtered, stage)
 		}
 	}
 	return filtered
 }
 
-func containsEnvFilter(envRefs []EnvRef, envFilter string) bool {
-	if envFilter == "" && len(envRefs) == 0 {
+func stageShouldBeIncluded(envRefs []EnvRef, envFilter string) bool {
+	if len(envRefs) == 0 {
 		return true
+	}
+	if len(envRefs) > 0 && envFilter == "" {
+		return false
 	}
 	for _, ref := range envRefs {
 		if ref.Name == envFilter {

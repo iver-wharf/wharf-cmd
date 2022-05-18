@@ -21,11 +21,12 @@ type VarMatch struct {
 	Name string
 	// FullMatch is the entire match, including the variable syntax of ${}.
 	FullMatch string
+	// IsVar is true if this was a match on a variable, or false if it was
+	// just a match on the delimiting string
+	IsVar bool
 }
 
-var varSyntaxPattern = regexp.MustCompile(`\${\s*(%*[\w_\s]*%*)\s*}`)
-var paramNamePattern = regexp.MustCompile(`\s*(\w*[\s_]*\w+)\s*`)
-var escapedParamPattern = regexp.MustCompile(`%(\s*[\w_\s]*\s*)%`)
+var varSyntaxPattern = regexp.MustCompile(`\${\s*([^}]*)\s*}`)
 
 // Substitute will replace all variables in the string using the variable
 // substution source. Variables are looked up recursively.
@@ -34,39 +35,56 @@ func Substitute(value string, source Source) (any, error) {
 }
 
 func substituteRec(value string, source Source, usedParams []string) (any, error) {
-	result := value
-	matches := Matches(value)
+	matches := Split(value)
+	var sb strings.Builder
 	for _, match := range matches {
-		var matchVal any
-		if match.Name == "%" {
-			matchVal = "${}"
-		} else if escapedParamPattern.MatchString(match.Name) {
-			matchVal = escapedParamPattern.ReplaceAllString(match.Name, "${$1}")
-		} else {
-			if slices.Contains(usedParams, match.Name) {
-				return nil, ErrRecursiveLoop
-			}
-			v, ok := source.Lookup(match.Name)
-			if !ok {
-				continue
-			}
-			matchVal = v.Value
-			if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
-				var err error
-				matchVal, err = substituteRec(str, source, append(usedParams, match.Name))
-				if err != nil {
-					return nil, err
-				}
+		if !match.IsVar {
+			sb.WriteString(match.FullMatch)
+			continue
+		}
+
+		if unescaped, ok := unescapeFullMatch(match.FullMatch); ok {
+			sb.WriteString(unescaped)
+			continue
+		}
+
+		if slices.Contains(usedParams, match.Name) {
+			return nil, ErrRecursiveLoop
+		}
+
+		v, ok := source.Lookup(match.Name)
+		if !ok {
+			sb.WriteString(match.FullMatch)
+			continue
+		}
+
+		matchVal := v.Value
+		if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
+			var err error
+			matchVal, err = substituteRec(str, source, append(usedParams, match.Name))
+			if err != nil {
+				return nil, err
 			}
 		}
-		if len(matches) == 1 && len(value) == len(match.FullMatch) {
+		if len(matches) == 1 {
 			// keep the value as-is if it matches the whole value
 			return matchVal, nil
 		}
 		matchValStr := stringify(matchVal)
-		result = strings.Replace(result, match.FullMatch, matchValStr, 1)
+		sb.WriteString(matchValStr)
 	}
-	return result, nil
+	return sb.String(), nil
+}
+
+func unescapeFullMatch(fullMatch string) (string, bool) {
+	if fullMatch == "${%}" {
+		return "${}", true
+	}
+	if !strings.HasPrefix(fullMatch, "${%") || !strings.HasSuffix(fullMatch, "%}") {
+		return fullMatch, false
+	}
+	s := strings.TrimPrefix(strings.TrimSuffix(fullMatch, "%}"), "${%")
+	return fmt.Sprintf("${%s}", s), true
 }
 
 func stringify(val any) string {
@@ -80,27 +98,31 @@ func stringify(val any) string {
 	}
 }
 
-// Matches returns all variable substitution-prone matches from a string.
-func Matches(value string) []VarMatch {
-	matches := varSyntaxPattern.FindAllStringSubmatch(value, -1)
-	var params []VarMatch
-
-	for _, match := range matches {
-		paramName := match[1]
-
-		if paramName == "" {
-			continue
+// Split up a string on its variable and non-variable matches.
+func Split(value string) []VarMatch {
+	matches := varSyntaxPattern.FindAllStringSubmatchIndex(value, -1)
+	if len(matches) == 0 {
+		return []VarMatch{{Name: "", FullMatch: value, IsVar: false}}
+	}
+	var vars []VarMatch
+	var lastEnd int
+	for _, m := range matches {
+		if m[0] > lastEnd {
+			vars = append(vars, VarMatch{
+				FullMatch: value[lastEnd:m[0]],
+			})
 		}
-
-		if paramName[0] != '%' {
-			paramName = paramNamePattern.ReplaceAllString(paramName, "$1")
-		}
-
-		params = append(params, VarMatch{
-			Name:      paramName,
-			FullMatch: match[0],
+		vars = append(vars, VarMatch{
+			FullMatch: value[m[0]:m[1]],
+			Name:      strings.TrimSpace(value[m[2]:m[3]]),
+			IsVar:     true,
+		})
+		lastEnd = m[1]
+	}
+	if len(value) > lastEnd {
+		vars = append(vars, VarMatch{
+			FullMatch: value[lastEnd:],
 		})
 	}
-
-	return params
+	return vars
 }

@@ -7,10 +7,13 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"gopkg.in/typ.v4/slices"
@@ -84,6 +87,8 @@ func parseVarSources(currentDir string, additionalSource varsub.Source) (varsub.
 }
 
 func parseBuildDefinition(currentDir string, ymlArgs wharfyml.Args) (wharfyml.Definition, error) {
+	ymlArgs.StepTypeFactory = steps.NewFactory(&rootConfig)
+
 	varSource, err := parseVarSources(currentDir, ymlArgs.VarSource)
 	if err != nil {
 		return wharfyml.Definition{}, err
@@ -110,21 +115,27 @@ func parseInputArgs(inputs flagtypes.KeyValueArray) map[string]any {
 	return m
 }
 
-func logParseErrors(errs wharfyml.Errors, currentDir string) {
+func logParseErrors(errs errutil.Slice, currentDir string) {
 	log.Warn().WithInt("errors", len(errs)).Message("Cannot run build due to parsing errors.")
+	log.Warn().Message("")
 	for _, err := range errs {
-		var posErr wharfyml.PosError
+		scopePrefix := errutil.AsScope(err)
+		if scopePrefix != "" {
+			scopePrefix += ": "
+		}
+		var posErr errutil.Pos
 		if errors.As(err, &posErr) {
-			log.Warn().Messagef("%4d:%-4d%s",
-				posErr.Source.Line, posErr.Source.Column, err.Error())
+			log.Warn().Messagef("%4d:%-4d %s%s",
+				posErr.Line, posErr.Column, scopePrefix, err.Error())
 		} else {
-			log.Warn().Messagef("   -:-   %s", err.Error())
+			log.Warn().Messagef("   -:-    %s%s", scopePrefix, err.Error())
 		}
 	}
+	log.Warn().Message("")
 
 	containsMissingBuiltin := false
 	for _, err := range errs {
-		if errors.Is(err, wharfyml.ErrMissingBuiltinVar) {
+		if errors.Is(err, visit.ErrMissingBuiltinVar) {
 			containsMissingBuiltin = true
 			break
 		}

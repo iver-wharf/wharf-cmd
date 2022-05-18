@@ -25,17 +25,33 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Status is an enum of different statuses for the build steps.
 type Status int32
 
 const (
-	StatusUnspecified  Status = 0
-	StatusPending      Status = 1
-	StatusScheduling   Status = 2
+	// StatusUnspecified is the default value for this enum, and should be
+	// treated as an erroneous status.
+	StatusUnspecified Status = 0
+	// StatusPending means the build step is waiting to be scheduled, such as if
+	// it's build stage hasen't started yet due to the former build stage still
+	// running.
+	StatusPending Status = 1
+	// StatusScheduling means this build step has been scheduled, such as the
+	// Kubernetes Pod has been created, but the container has not yet started
+	// running. E.g if the Docker image is still being pulled.
+	StatusScheduling Status = 2
+	// StatusInitializing means the build step has started, but the initialization
+	// steps are not complete yet. E.g the repository is still being transferred.
 	StatusInitializing Status = 3
-	StatusRunning      Status = 4
-	StatusSuccess      Status = 5
-	StatusFailed       Status = 6
-	StatusCancelled    Status = 7
+	// StatusRunning means this build step is actively running.
+	StatusRunning Status = 4
+	// StatusSuccess means this build step has completed successfully.
+	StatusSuccess Status = 5
+	// StatusFailed means this build step has failed. E.g there was some
+	// user error in the build definition.
+	StatusFailed Status = 6
+	// StatusCancelled means this build was cancelled.
+	StatusCancelled Status = 7
 )
 
 // Enum value maps for Status.
@@ -206,6 +222,7 @@ func (*StreamArtifactEventsRequest) Descriptor() ([]byte, []int) {
 	return file_api_workerapi_v1_worker_proto_rawDescGZIP(), []int{2}
 }
 
+// StreamLogsResponse is a single log-line from a build step.
 type StreamLogsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -285,6 +302,7 @@ func (x *StreamLogsResponse) GetMessage() string {
 	return ""
 }
 
+// StreamStatusEventsResponse is a single build step status update.
 type StreamStatusEventsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -351,6 +369,7 @@ func (x *StreamStatusEventsResponse) GetStatus() Status {
 	return StatusUnspecified
 }
 
+// StreamArtifactEventsResponse is a single build artifact event.
 type StreamArtifactEventsResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

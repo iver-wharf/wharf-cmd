@@ -18,6 +18,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
+	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -34,10 +35,19 @@ import (
 )
 
 var (
-	podInitWaitArgs     = []string{"/bin/sh", "-c", "sleep infinite || true"}
-	podInitContinueArgs = []string{"killall", "-s", "SIGINT", "sleep"}
-
 	errIllegalParentDirAccess = errors.New("illegal parent directory access")
+)
+
+// DryRun is an enum of dry-run settings.
+type DryRun byte
+
+const (
+	// DryRunNone disables dry-run. The build will be performed as usual.
+	DryRunNone DryRun = iota
+	// DryRunClient only logs what would be run, without contacting Kubernetes.
+	DryRunClient
+	// DryRunServer submits server-side dry-run requests to Kubernetes.
+	DryRunServer
 )
 
 // K8sRunnerOptions is a struct of options for a Kubernetes step runner.
@@ -50,6 +60,7 @@ type K8sRunnerOptions struct {
 	VarSource     varsub.Source
 	SkipGitIgnore bool
 	CurrentDir    string
+	DryRun        DryRun
 }
 
 // NewK8s is a helper function that creates a new builder using the
@@ -125,8 +136,12 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 			WithString("step", r.step.Name).
 			WithString("pod", r.target.name)
 	}
-	if err := r.dryRunStepError(ctx); err != nil {
-		return nil, fmt.Errorf("dry-run: %w", err)
+	if r.DryRun != DryRunNone {
+		// We skip running dry-run here, as it will be run later in the actual
+		// step run. Otherwise it would dry-run twice.
+		if err := r.dryRunStep(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return r, nil
 }
@@ -212,7 +227,7 @@ func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	ctx = contextWithStepName(ctx, r.step.Name)
 	start := time.Now()
 	status := workermodel.StatusSuccess
-	err := r.runStepError(ctx)
+	err := r.runStep(ctx)
 	if errors.Is(ctx.Err(), context.Canceled) {
 		status = workermodel.StatusCancelled
 	} else if err != nil {
@@ -228,25 +243,43 @@ func (r k8sStepRunner) RunStep(ctx context.Context) StepResult {
 	}
 }
 
-func (r k8sStepRunner) dryRunStepError(ctx context.Context) error {
+func (r k8sStepRunner) runStep(ctx context.Context) error {
+	if r.DryRun != DryRunNone {
+		return r.dryRunStep(ctx)
+	}
+	return r.liveRunStep(ctx)
+}
+
+func (r k8sStepRunner) dryRunStep(ctx context.Context) error {
+	if r.DryRun == DryRunClient {
+		log.Debug().
+			WithString("step", r.step.Name).
+			WithString("pod", r.pod.GenerateName).
+			Message("DRY RUN (CLIENT): Creating pod.")
+		log.Debug().
+			WithString("step", r.step.Name).
+			WithString("pod", r.pod.GenerateName).
+			Message("DRY RUN (CLIENT): Created pod.")
+		return nil
+	}
 	log.Debug().
 		WithString("step", r.step.Name).
 		WithString("pod", r.pod.GenerateName).
-		Message("DRY RUN: Creating pod.")
+		Message("DRY RUN (SERVER): Creating pod.")
 	newPod, err := r.pods.Create(ctx, r.pod, metav1.CreateOptions{
 		DryRun: []string{"All"},
 	})
 	if err != nil {
-		return fmt.Errorf("create pod: %w", err)
+		return fmt.Errorf("dry-run: create pod: %w", err)
 	}
 	log.Debug().
 		WithString("step", r.step.Name).
 		WithString("pod", newPod.Name).
-		Message("DRY RUN: Created pod.")
+		Message("DRY RUN (SERVER): Created pod.")
 	return nil
 }
 
-func (r k8sStepRunner) runStepError(ctx context.Context) error {
+func (r k8sStepRunner) liveRunStep(ctx context.Context) error {
 	log.Debug().
 		WithString("step", r.step.Name).
 		WithString("pod", r.pod.GenerateName).
@@ -393,11 +426,13 @@ func (r k8sStepRunner) readLogs(ctx context.Context, opts *v1.PodLogOptions) err
 		if idx != -1 {
 			txt = txt[idx+1:]
 		}
-		r.log.Info().Message(txt)
 		if writer != nil {
-			if err := writer.WriteLogLine(txt); err != nil {
-				r.log.Error().WithError(err).Message("Failed to write log line.")
+			line, err := writer.WriteLogLine(txt)
+			if err != nil {
+				r.log.Error().WithError(err).Message("Failed to write log line. No further logs will be written.")
+				return err
 			}
+			r.log.Info().Message(line.Message)
 		}
 	}
 	return scanner.Err()
@@ -424,24 +459,24 @@ func (r k8sStepRunner) stopPodNow(ctx context.Context) {
 
 func (r k8sStepRunner) transferDataToPod(ctx context.Context) error {
 	log.Debug().WithFunc(r.logFunc).Message("Transferring repo to init container.")
-	if err := r.copyDirToPod(ctx, commonRepoVolumeMount.MountPath); err != nil {
+	if err := r.copyDirToPod(ctx, steps.PodRepoVolumeMountPath); err != nil {
 		return fmt.Errorf("transfer repo: %w", err)
 	}
 	log.Debug().WithFunc(r.logFunc).Message("Transferred repo to init container.")
 
-	if step, ok := r.step.Type.(wharfyml.StepDocker); ok && step.AppendCert {
+	if step, ok := r.step.Type.(steps.Docker); ok && step.AppendCert {
 		if err := r.transferModifiedDockerfileToPod(ctx, step); err != nil {
 			return fmt.Errorf("transfer modified dockerfile: %w", err)
 		}
 
-		if err := r.copyCertToAppContainer(ctx, step); err != nil {
+		if err := r.copyCertToAppContainer(); err != nil {
 			return fmt.Errorf("transfer cert: %w", err)
 		}
 	}
 	return nil
 }
 
-func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
+func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step steps.Docker) error {
 	log.Debug().WithFunc(r.logFunc).Message("Transferring modified Dockerfile to init container.")
 	dockerfilePath := filepath.Join(r.CurrentDir, step.File)
 	if isIllegalParentDirAccess(dockerfilePath) {
@@ -457,7 +492,7 @@ func (r k8sStepRunner) transferModifiedDockerfileToPod(ctx context.Context, step
 	return nil
 }
 
-func (r k8sStepRunner) copyCertToAppContainer(ctx context.Context, step wharfyml.StepDocker) error {
+func (r k8sStepRunner) copyCertToAppContainer() error {
 	log.Debug().WithFunc(r.logFunc).Message("Copying cert file from init container to app container.")
 	exec, err := execInPodPipeStdout(
 		r.RestConfig,
@@ -474,7 +509,7 @@ func (r k8sStepRunner) copyCertToAppContainer(ctx context.Context, step wharfyml
 }
 
 func (r k8sStepRunner) continueInitContainer() error {
-	exec, err := execInPodPipeStdout(r.RestConfig, r.target, podInitContinueArgs)
+	exec, err := execInPodPipeStdout(r.RestConfig, r.target, steps.PodInitContinueArgs)
 	if err != nil {
 		return err
 	}
@@ -495,13 +530,13 @@ func (r k8sStepRunner) copyDirToPod(ctx context.Context, destPath string) error 
 	return r.copyToPodStdin(ctx, tarReader, args)
 }
 
-func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step wharfyml.StepDocker) error {
+func (r k8sStepRunner) copyDockerfileToPod(ctx context.Context, step steps.Docker) error {
 	srcPath := filepath.Join(r.CurrentDir, step.File)
 	if isIllegalParentDirAccess(srcPath) {
 		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, srcPath)
 	}
 
-	destPath := path.Join(commonRepoVolumeMount.MountPath, step.File)
+	destPath := path.Join(steps.PodRepoVolumeMountPath, step.File)
 	if isIllegalParentDirAccess(destPath) {
 		return fmt.Errorf("%w: %q", errIllegalParentDirAccess, destPath)
 	}

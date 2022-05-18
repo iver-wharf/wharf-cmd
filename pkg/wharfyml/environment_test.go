@@ -3,27 +3,30 @@ package wharfyml
 import (
 	"testing"
 
+	"github.com/iver-wharf/wharf-cmd/internal/errtesting"
+	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
+	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestVisitDefEnvironments_ErrIfNotMap(t *testing.T) {
-	_, errs := visitDocEnvironmentsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrInvalidFieldType)
+	_, errs := visitDocEnvironmentsNode(yamltesting.NewNode(t, `123`))
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitDefEnvironments_ErrIfKeyNotString(t *testing.T) {
-	_, errs := visitDocEnvironmentsNode(getNode(t, `123: {}`))
-	requireContainsErr(t, errs, ErrKeyNotString)
+	_, errs := visitDocEnvironmentsNode(yamltesting.NewNode(t, `123: {}`))
+	errtesting.RequireContainsErr(t, errs, visit.ErrKeyNotString)
 }
 
 func TestVisitDefEnvironments_ErrIfKeyEmpty(t *testing.T) {
-	_, errs := visitDocEnvironmentsNode(getNode(t, `"": {}`))
-	requireContainsErr(t, errs, ErrKeyEmpty)
+	_, errs := visitDocEnvironmentsNode(yamltesting.NewNode(t, `"": {}`))
+	errtesting.RequireContainsErr(t, errs, visit.ErrKeyEmpty)
 }
 
 func TestVisitDefEnvironments_ValidMapOfEnvs(t *testing.T) {
-	envs, _ := visitDocEnvironmentsNode(getNode(t, `
+	envs, _ := visitDocEnvironmentsNode(yamltesting.NewNode(t, `
 myEnv1: {}
 myEnv2: {}
 myEnv3: {}
@@ -38,25 +41,25 @@ myEnv3: {}
 }
 
 func TestVisitEnvironment_SetsName(t *testing.T) {
-	env, _ := visitEnvironmentNode(getKeyedNode(t, `myEnv: {}`))
+	env, _ := visitEnvironmentNode(yamltesting.NewKeyedNode(t, `myEnv: {}`))
 	assert.Equal(t, "myEnv", env.Name)
 }
 
 func TestVisitEnvironment_ErrIfEnvNotMap(t *testing.T) {
-	_, errs := visitEnvironmentNode(getKeyedNode(t, `myEnv: 123`))
-	requireContainsErr(t, errs, ErrInvalidFieldType)
+	_, errs := visitEnvironmentNode(yamltesting.NewKeyedNode(t, `myEnv: 123`))
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitEnvironment_ErrIfInvalidVarType(t *testing.T) {
-	_, errs := visitEnvironmentNode(getKeyedNode(t, `
+	_, errs := visitEnvironmentNode(yamltesting.NewKeyedNode(t, `
 myEnv:
   myVar: [123]
 `))
-	requireContainsErr(t, errs, ErrInvalidFieldType)
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitEnvironment_ValidVarTypes(t *testing.T) {
-	env, errs := visitEnvironmentNode(getKeyedNode(t, `
+	env, errs := visitEnvironmentNode(yamltesting.NewKeyedNode(t, `
 myEnv:
   myIntNeg: -123
   myIntPos: 123
@@ -64,7 +67,7 @@ myEnv:
   myString: foo bar
   myBool: true
 `))
-	requireNotContainsErr(t, errs, ErrInvalidFieldType)
+	errtesting.RequireNotContainsErr(t, errs, visit.ErrInvalidFieldType)
 	want := map[string]any{
 		"myIntNeg": -123,
 		"myIntPos": 123,
@@ -73,17 +76,17 @@ myEnv:
 		"myBool":   true,
 	}
 	for k, wantValue := range want {
-		assertVarSubNode(t, wantValue, env.Vars[k], "env.Vars[%q]", k)
+		yamltesting.AssertVarSubNode(t, wantValue, env.Vars[k], "env.Vars[%q]", k)
 	}
 }
 
 func TestVisitStageEnvironments_ErrIfNotArray(t *testing.T) {
-	_, errs := visitStageEnvironmentsNode(getNode(t, `123`))
-	requireContainsErr(t, errs, ErrInvalidFieldType)
+	_, errs := visitStageEnvironmentsNode(yamltesting.NewNode(t, `123`))
+	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitStageEnvironments_Valid(t *testing.T) {
-	envs, errs := visitStageEnvironmentsNode(getNode(t, `[a, b, c]`))
+	envs, errs := visitStageEnvironmentsNode(yamltesting.NewNode(t, `[a, b, c]`))
 	if len(errs) > 0 {
 		t.Logf("errs: %v", errs)
 	}

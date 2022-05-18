@@ -1,0 +1,5 @@
+lint:
+  rules:
+    all_default: true
+    remove:
+      - FILE_HAS_COMMENT
