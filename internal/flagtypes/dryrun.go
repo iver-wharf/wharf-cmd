@@ -2,6 +2,7 @@ package flagtypes
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -27,7 +28,7 @@ const (
 // Set implements the pflag.Value and fmt.Stringer interfaces.
 // This returns a human-readable representation of the loglevel.
 func (d *DryRun) String() string {
-	return string(*d)
+	return fmt.Sprintf(`"%s"`, string(*d))
 }
 
 // Set implements the pflag.Value interface.
