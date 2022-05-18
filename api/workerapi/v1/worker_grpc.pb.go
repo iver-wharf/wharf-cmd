@@ -19,8 +19,16 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type WorkerClient interface {
+	// StreamLogs opens a stream of all logs from the wharf-cmd-worker. The
+	// responses may be mixed between multiple build steps.
 	StreamLogs(ctx context.Context, in *StreamLogsRequest, opts ...grpc.CallOption) (Worker_StreamLogsClient, error)
+	// StreamStatusEvents opens a stream of all build status events. Every time
+	// a build step's status is changed, a new event is sent.
 	StreamStatusEvents(ctx context.Context, in *StreamStatusEventsRequest, opts ...grpc.CallOption) (Worker_StreamStatusEventsClient, error)
+	// StreamArtifactEvents opens a stream of all build artifact events. The
+	// actual artifact BLOB data cannot be accessed via this service, but must
+	// instead be downloaded via the HTTP REST API. This RPC should only be used
+	// to get a notification when a new artifact is available to download.
 	StreamArtifactEvents(ctx context.Context, in *StreamArtifactEventsRequest, opts ...grpc.CallOption) (Worker_StreamArtifactEventsClient, error)
 }
 
@@ -132,8 +140,16 @@ func (x *workerStreamArtifactEventsClient) Recv() (*StreamArtifactEventsResponse
 // All implementations must embed UnimplementedWorkerServer
 // for forward compatibility
 type WorkerServer interface {
+	// StreamLogs opens a stream of all logs from the wharf-cmd-worker. The
+	// responses may be mixed between multiple build steps.
 	StreamLogs(*StreamLogsRequest, Worker_StreamLogsServer) error
+	// StreamStatusEvents opens a stream of all build status events. Every time
+	// a build step's status is changed, a new event is sent.
 	StreamStatusEvents(*StreamStatusEventsRequest, Worker_StreamStatusEventsServer) error
+	// StreamArtifactEvents opens a stream of all build artifact events. The
+	// actual artifact BLOB data cannot be accessed via this service, but must
+	// instead be downloaded via the HTTP REST API. This RPC should only be used
+	// to get a notification when a new artifact is available to download.
 	StreamArtifactEvents(*StreamArtifactEventsRequest, Worker_StreamArtifactEventsServer) error
 	mustEmbedUnimplementedWorkerServer()
 }

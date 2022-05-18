@@ -40,6 +40,7 @@ deps-go:
 	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.1
 	go install github.com/alta/protopatch/cmd/protoc-gen-go-patch@v0.5.0
 	go install github.com/swaggo/swag/cmd/swag@v1.8.1
+	go install github.com/yoheimuta/protolint/cmd/protolint@v0.37.1
 
 .PHONY: deps-npm
 deps-npm:
@@ -52,7 +53,7 @@ check: swag
 .PHONY: proto
 proto: api/workerapi/v1/worker.pb.go
 
-api/workerapi/v1/worker.pb.go:
+api/workerapi/v1/worker.pb.go: api/workerapi/v1/worker.proto
 	protoc -I . \
 		-I `go list -m -f {{.Dir}} github.com/alta/protopatch` \
 		-I `go list -m -f {{.Dir}} google.golang.org/protobuf` \
@@ -110,10 +111,10 @@ pkg/workerapi/workerserver/docs:
 		--instanceName workerapi
 
 .PHONY: lint lint-fix \
-	lint-md lint-go \
-	lint-fix-md lint-fix-go
-lint: lint-md lint-go
-lint-fix: lint-fix-md lint-fix-go
+	lint-md lint-go lint-proto \
+	lint-fix-md lint-fix-go lint-fix-proto
+lint: lint-md lint-go lint-proto
+lint-fix: lint-fix-md lint-fix-go lint-fix-proto
 
 lint-md:
 	npx remark . .github
@@ -129,3 +130,9 @@ lint-go:
 lint-fix-go:
 	@echo goimports -d -w '**/*.go'
 	@goimports -d -w $(shell git ls-files "*.go")
+
+lint-proto:
+	protolint lint api/workerapi
+
+lint-fix-proto:
+	protolint lint -fix api/workerapi

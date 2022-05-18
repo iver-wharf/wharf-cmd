@@ -54,6 +54,7 @@ make lint
 
 make lint-go # only lint Go code
 make lint-md # only lint Markdown files
+make lint-proto # only lint Protobuf (gRPC) files
 ```
 
 Some errors can be fixed automatically. Keep in mind that this updates the
@@ -64,6 +65,7 @@ make lint-fix
 
 make lint-fix-go # only lint and fix Go files
 make lint-fix-md # only lint and fix Markdown files
+make lint-fix-proto # only lint and fix Protobuf (gRPC) files
 ```
 
 ---

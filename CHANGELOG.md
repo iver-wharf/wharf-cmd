@@ -83,9 +83,18 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   # => [ "myVar": "bar" ]
   ```
 
+- Added `--dry-run` flag to `wharf run` command. The flag supports 3 different
+  values: (#170)
+
+  <!--lint ignore maximum-line-length-->
+
+  - `--dry-run none`: Disables dry-run. The build will be performed as usual
+  - `--dry-run client`: Only logs what would be run, without contacting Kubernetes
+  - `--dry-run server`: Submits server-side dry-run requests to Kubernetes
+
 - Added new implementation for `.wharf-ci.yml` file parsing that now supports
   returning multiple errors for the whole parsing as well as keep track of the
-  line & column of each parse error. (#48, #58, #147, #153)
+  line & column of each parse error. (#48, #58, #147, #153, #171)
 
 - Added support for a new file type: `.wharf-vars.yml`. It is used to define
   built-in variables, and wharf looks for it in multiple files in the
