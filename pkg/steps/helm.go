@@ -86,15 +86,12 @@ func (s Helm) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) {
 		v.ValidateRequiredString("namespace"),
 	)
 
-	podSpec, errs := s.applyStep(v)
-	s.podSpec = podSpec
-	errSlice.Add(errs...)
+	s.podSpec = s.applyStep()
 
 	return s, errSlice
 }
 
-func (s Helm) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
-	var errSlice errutil.Slice
+func (s Helm) applyStep() v1.PodSpec {
 	podSpec := newBasePodSpec()
 
 	cont := v1.Container{
@@ -143,7 +140,7 @@ func (s Helm) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 		},
 	})
 
-	return podSpec, errSlice
+	return podSpec
 }
 
 func addHelmSecretVolume(secretName string, podSpec *v1.PodSpec, cont *v1.Container) {
