@@ -23,7 +23,10 @@ var runFlags = struct {
 	serve       bool
 	noGitIgnore bool
 	inputs      flagtypes.KeyValueArray
-}{}
+	dryRun      flagtypes.DryRun
+}{
+	dryRun: flagtypes.DryRunNone,
+}
 
 var runCmd = &cobra.Command{
 	Use:   "run [path]",
@@ -95,6 +98,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				SkipGitIgnore: runFlags.noGitIgnore,
 				TarStore:      tarStore,
 				VarSource:     def.VarSource,
+				DryRun:        convDryRunFlag(runFlags.dryRun),
 			})
 		if err != nil {
 			return err
@@ -159,9 +163,22 @@ func init() {
 
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
+	runCmd.Flags().Var(&runFlags.dryRun, "dry-run", `Must be one of "none", "client", or "server"`)
+	runCmd.RegisterFlagCompletionFunc("dry-run", flagtypes.CompleteDryRun)
 
 	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
 	addWharfYmlEnvFlag(runCmd, runCmd.Flags(), &runFlags.env)
 	addWharfYmlInputsFlag(runCmd, runCmd.Flags(), &runFlags.inputs)
 	addKubernetesFlags(runCmd.Flags())
+}
+
+func convDryRunFlag(dryRun flagtypes.DryRun) worker.DryRun {
+	switch dryRun {
+	case flagtypes.DryRunClient:
+		return worker.DryRunClient
+	case flagtypes.DryRunServer:
+		return worker.DryRunServer
+	default:
+		return worker.DryRunNone
+	}
 }
