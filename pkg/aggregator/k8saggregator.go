@@ -193,6 +193,13 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, pod workerPod) error {
 	}
 	defer worker.CloseAll()
 
+	if err := worker.Ping(ctx); err != nil {
+		log.Debug().
+			WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+			Message("Failed to ping worker pod. Assuming it's not running yet. Skipping.")
+		return nil
+	}
+
 	pg := parallel.Group{}
 	pg.AddFunc("logs", func(ctx context.Context) error {
 		logsPiper, err := newLogsPiper(ctx, a.wharfapi, worker, pod.buildID)
