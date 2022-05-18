@@ -20,6 +20,16 @@ func k8sParsePodBuildID(podMeta metav1.ObjectMeta) (uint, error) {
 	return uint(buildID), nil
 }
 
+func k8sShouldSkipPod(pod v1.Pod) bool {
+	if pod.ObjectMeta.DeletionTimestamp != nil {
+		return true
+	}
+	if pod.Status.Phase == v1.PodPending && k8sPodNotErrored(pod) {
+		return true
+	}
+	return false
+}
+
 func k8sPodNotErrored(pod v1.Pod) bool {
 	for _, s := range pod.Status.InitContainerStatuses {
 		if s.State.Waiting != nil {

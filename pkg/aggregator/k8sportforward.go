@@ -5,13 +5,43 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
 
+type portForwardedWorker struct {
+	workerclient.Client
+	portConn portConnection
+	podName  string
+}
+
 type portConnection struct {
 	portforward.ForwardedPort
 	stopCh chan struct{}
+}
+
+func newPortForwardedWorker(a k8sAggr, podName string, buildID uint) (portForwardedWorker, error) {
+	portConn, err := newPortForwarding(a, a.namespace, podName)
+	if err != nil {
+		return portForwardedWorker{}, err
+	}
+	worker, err := a.newWorkerClient(portConn.Local, buildID)
+	if err != nil {
+		portConn.Close()
+		return portForwardedWorker{}, err
+	}
+	pfWorker := portForwardedWorker{
+		Client:   worker,
+		portConn: portConn,
+		podName:  podName,
+	}
+	return pfWorker, nil
+}
+
+func (w portForwardedWorker) CloseAll() {
+	w.Client.Close()
+	w.portConn.Close()
 }
 
 func (pc portConnection) Close() error {

@@ -1,14 +1,17 @@
 package aggregator
 
 import (
+	"bufio"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 
-	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
@@ -21,6 +24,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -74,7 +78,8 @@ type k8sAggr struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 
-	restConfig             *rest.Config
+	restConfig *rest.Config
+
 	upgrader               spdy.Upgrader
 	httpClient             *http.Client
 	instanceID             string
@@ -103,7 +108,7 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 		// Would prevent pod listing and opening a tunnel to each pod each
 		// iteration.
 
-		pods, err := a.fetchPods(ctx)
+		running, failed, err := a.fetchRunningAndFailedPods(ctx)
 		if err != nil {
 			if errors.Is(ctx.Err(), context.Canceled) {
 				return ctx.Err()
@@ -114,104 +119,215 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			time.Sleep(pollDelay)
 			continue
 		}
-		for _, pod := range pods {
-			go func(pod v1.Pod) {
-				if err := a.handlePod(ctx, pod); err != nil {
-					log.Error().
-						WithError(err).
-						WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-						WithString("phase", string(pod.Status.Phase)).
-						Message("Error handling pod.")
-				}
-			}(pod)
-		}
+
+		a.handleRunningPods(ctx, running)
+		a.handleFailedPods(ctx, failed)
+
 		time.Sleep(pollDelay)
 	}
 }
 
-func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
-	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
-	if err != nil {
-		return nil, err
-	}
-	var pods []v1.Pod
-	for _, pod := range list.Items {
-		// Skip terminating pods
-		if pod.ObjectMeta.DeletionTimestamp != nil {
-			continue
-		}
-
-		if pod.Status.Phase == v1.PodPending && k8sPodNotErrored(pod) {
-			continue
-		}
-
-		pods = append(pods, pod)
-	}
-	return pods, nil
+type workerPod struct {
+	v1.Pod
+	buildID uint
 }
 
-func (a k8sAggr) handlePod(ctx context.Context, pod v1.Pod) error {
-	buildID, err := k8sParsePodBuildID(pod.ObjectMeta)
+func (a k8sAggr) fetchRunningAndFailedPods(ctx context.Context) (running []workerPod, failed []workerPod, err error) {
+	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
 	if err != nil {
-		log.Warn().WithError(err).
+		return
+	}
+	for _, pod := range list.Items {
+		if k8sShouldSkipPod(pod) {
+			continue
+		}
+
+		if !a.inProgress.Add(pod.UID) {
+			continue
+		}
+
+		log.Debug().
 			WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-			Message("Failed to parse worker's build ID.")
-		return nil
+			WithString("status", string(pod.Status.Phase)).
+			Message("Pod found.")
+
+		buildID, err := k8sParsePodBuildID(pod.ObjectMeta)
+		if err != nil {
+			log.Warn().
+				WithError(err).
+				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+				Message("Failed parsing build ID from pod. Skipping.")
+			a.inProgress.Remove(pod.UID)
+			continue
+		}
+
+		p := workerPod{pod, buildID}
+		if pod.Status.Phase == v1.PodRunning {
+			running = append(running, p)
+		} else {
+			failed = append(failed, p)
+		}
 	}
-	if !a.inProgress.Add(pod.UID) {
-		// Failed to add => Already being processed
-		return nil
+	return
+}
+
+func (a k8sAggr) handleRunningPods(ctx context.Context, pods []workerPod) {
+	for _, pod := range pods {
+		go func(pod workerPod) {
+			if err := a.handleRunningPod(ctx, pod); err != nil {
+				log.Error().
+					WithError(err).
+					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+					Message("Error handling running pod.")
+			}
+		}(pod)
 	}
+}
+
+func (a k8sAggr) handleRunningPod(ctx context.Context, pod workerPod) error {
 	defer a.inProgress.Remove(pod.UID)
 
-	log.Debug().
-		WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-		WithString("status", string(pod.Status.Phase)).
-		Message("Pod found.")
-
-	apiLogStream, err := wharfapi.CreateBuildLogStream(ctx)
-	if err != nil {
-		return fmt.Errorf("open logs stream to wharf-api: %w", err)
+	worker, err := newPortForwardedWorker(a, pod.Name, pod.buildID)
+	if err != nil && pod.Status.Phase == v1.PodRunning {
+		return err
 	}
-	defer closeLogStream(apiLogStream)
+	defer worker.CloseAll()
 
-	switch pod.Status.Phase {
-	case v1.PodRunning:
-		worker, err := newPortForwardedWorker(a, pod.Name, buildID)
+	pg := parallel.Group{}
+	pg.AddFunc("logs", func(ctx context.Context) error {
+		logsPiper, err := newLogsPiper(ctx, a.wharfapi, worker, pod.buildID)
 		if err != nil {
 			return err
 		}
-		defer worker.Close()
-		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
-			return handleRunningPod(ctx, a.namespace, a.wharfapi, apiLogStream, worker, pod)
-		})
-	case v1.PodFailed:
-		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
-			source := k8sRawLogSource{ctx, buildID, pod, a.pods}
-			return relay[request.Log](source, func(v request.Log) error {
-				return apiLogStream.Send(v)
-			})
-		})
-	default:
-		return a.relayAndTerminateOnSuccess(ctx, pod, func() error {
-			events := a.clientset.CoreV1().Events(a.namespace)
-			source := k8sEventsSource{ctx, buildID, pod, events}
-			return relay[request.Log](source, func(v request.Log) error {
-				return apiLogStream.Send(v)
-			})
-		})
-	}
-}
-
-func (a k8sAggr) relayAndTerminateOnSuccess(ctx context.Context, pod v1.Pod, f func() error) error {
-	err := f()
+		return a.pipeAndClose(logsPiper)
+	})
+	pg.AddFunc("status events", func(ctx context.Context) error {
+		statusEventsPiper, err := newStatusEventsPiper(ctx, a.wharfapi, worker)
+		if err != nil {
+			return err
+		}
+		return a.pipeAndClose(statusEventsPiper)
+	})
+	pg.AddFunc("artifact events", func(ctx context.Context) error {
+		artifactEventsPiper, err := newArtifactEventsPiper(ctx, a.wharfapi, worker)
+		if err != nil {
+			return err
+		}
+		return a.pipeAndClose(artifactEventsPiper)
+	})
+	err = pg.RunCancelEarly(ctx)
+	worker.Close()
 	if err != nil {
 		return err
 	}
-	if err := a.terminatePod(ctx, pod); err != nil {
-		log.Error().WithError(err).Message("Failed terminating pod.")
+	return a.terminatePod(ctx, pod)
+}
+
+func (a k8sAggr) handleFailedPods(ctx context.Context, pods []workerPod) {
+	for _, pod := range pods {
+		go func(pod workerPod) {
+			if err := a.handleFailedPod(ctx, pod); err != nil {
+				log.Error().
+					WithError(err).
+					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+					Message("Error handling failed pod.")
+			}
+		}(pod)
 	}
-	return nil
+}
+
+func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
+	defer a.inProgress.Remove(pod.UID)
+
+	logsPiper, err := newLogsPiper(ctx, a.wharfapi, nil, pod.buildID)
+	if err != nil {
+		return err
+	}
+
+	if err := logsPiper.writeString(fmt.Sprintf("[aggregator] Pod '%s/%s' failed.", pod.Namespace, pod.Name)); err != nil {
+		return err
+	}
+
+	if err := logsPiper.writeString("[aggregator] Logging kubernetes events:"); err != nil {
+		return err
+	}
+	events := a.getEvents(ctx, pod)
+	for _, s := range strings.Split(events, "\n") {
+		if err := logsPiper.writeString(s); err != nil {
+			return err
+		}
+	}
+
+	if err := logsPiper.writeString("[aggregator] Logging kubernetes logs from init container:"); err != nil {
+		return err
+	}
+	initLogs := a.getLogs(ctx, pod, pod.Spec.InitContainers[0])
+	for _, s := range strings.Split(initLogs, "\n") {
+		if err := logsPiper.writeString(s); err != nil {
+			return err
+		}
+	}
+
+	if err := logsPiper.writeString("[aggregator] Logging kubernetes logs from app container:"); err != nil {
+		return err
+	}
+	appLogs := a.getLogs(ctx, pod, pod.Spec.Containers[0])
+	for _, s := range strings.Split(appLogs, "\n") {
+		if err := logsPiper.writeString(s); err != nil {
+			return err
+		}
+	}
+
+	logsPiper.Close()
+
+	return a.terminatePod(ctx, pod)
+}
+
+func (a k8sAggr) getEvents(ctx context.Context, pod workerPod) string {
+	eventsList, err := a.clientset.CoreV1().Events(pod.Namespace).Search(scheme.Scheme, &pod.Pod)
+	if err != nil {
+		return fmt.Sprintf("Failed reading events: %v", err)
+	}
+	return describeEvents(eventsList)
+}
+
+func (a k8sAggr) getLogs(ctx context.Context, pod workerPod, container v1.Container) string {
+	req := a.pods.GetLogs(pod.Name, &v1.PodLogOptions{
+		Container: container.Name,
+	})
+	readCloser, err := req.Stream(ctx)
+	if err != nil {
+		return fmt.Sprintf("Failed reading logs: %v", err)
+	}
+	defer readCloser.Close()
+	sb := strings.Builder{}
+	scanner := bufio.NewScanner(readCloser)
+	for scanner.Scan() {
+		txt := scanner.Text()
+		idx := strings.LastIndexByte(txt, '\r')
+		if idx != -1 {
+			txt = txt[idx+1:]
+		}
+		sb.WriteString(txt)
+		sb.WriteRune('\n')
+	}
+	if sb.Len() == 0 {
+		return "<none>"
+	}
+	return sb.String()
+}
+
+func (a k8sAggr) pipeAndClose(p Piper) error {
+	for {
+		err := p.PipeMessage()
+		if err != nil {
+			p.Close()
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
 }
 
 func (a k8sAggr) newWorkerClient(workerPort uint16, buildID uint) (workerclient.Client, error) {
@@ -225,19 +341,17 @@ func (a k8sAggr) newWorkerClient(workerPort uint16, buildID uint) (workerclient.
 	})
 }
 
-func (a k8sAggr) terminatePod(ctx context.Context, pod v1.Pod) error {
+func (a k8sAggr) terminatePod(ctx context.Context, pod workerPod) error {
 	log.Debug().
 		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
 		Message("Done relaying. Terminating pod.")
 
 	if err := a.pods.Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("terminate pod after done with relay build results: %w", err)
+		return fmt.Errorf("terminate pod: %w", err)
 	}
 
 	log.Info().
 		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
 		Message("Done with worker.")
-
-	a.inProgress.Remove(pod.UID)
 	return nil
 }
