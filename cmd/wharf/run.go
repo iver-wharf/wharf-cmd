@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
+	"github.com/iver-wharf/wharf-cmd/internal/lastbuild"
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/tarstore"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -23,6 +24,7 @@ var runFlags = struct {
 	serve       bool
 	noGitIgnore bool
 	inputs      flagtypes.KeyValueArray
+	buildID     uint
 }{}
 
 var runCmd = &cobra.Command{
@@ -62,12 +64,20 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 
-		// TODO: Change to build ID-based path, e.g /tmp/iver-wharf/wharf-cmd/builds/123/...
-		//
-		// May require setting of owner and SUID on wharf-cmd binary to access /tmp or similar.
-		// e.g.: (root should not be used in prod)
-		//  chown root $(which wharf-cmd) && chmod +4000 $(which wharf-cmd)
-		store := resultstore.NewStore(resultstore.NewFS("./build_logs"))
+		buildID := runFlags.buildID
+		if buildID == 0 {
+			buildID, err = lastbuild.Next()
+			if err != nil {
+				return err
+			}
+		}
+
+		store, err := resultstore.NewStoreForBuildID(buildID)
+		if err != nil {
+			return err
+		}
+		log.Debug().WithString("path", store.Path()).
+			Message("Created result store.")
 
 		go func() {
 			<-rootContext.Done()
@@ -108,7 +118,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		}
 
 		log.Debug().Message("Successfully created builder.")
-		log.Info().Message("Starting build.")
+		log.Info().WithUint("buildId", buildID).Message("Starting build.")
 		res, err := b.Build(ctx)
 		if err != nil {
 			return err
@@ -120,7 +130,8 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		log.Info().
 			WithDuration("dur", res.Duration.Truncate(time.Second)).
 			WithStringer("status", res.Status).
-			Message("Done with build.")
+			Messagef("Done with build.\n\nBuild results are available at:\n  %s\n\n",
+				store.Path())
 
 		if err := store.Freeze(); err != nil {
 			return fmt.Errorf("freeze result store: %w", err)
@@ -157,8 +168,15 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 func init() {
 	rootCmd.AddCommand(runCmd)
 
+	buildIDHelp := "Sets build ID"
+	path, err := lastbuild.Path()
+	if err == nil {
+		buildIDHelp = fmt.Sprintf("%s (default loaded from %q)", buildIDHelp, path)
+	}
+
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
+	runCmd.Flags().UintVar(&runFlags.buildID, "build-id", 0, buildIDHelp)
 
 	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
 	addWharfYmlEnvFlag(runCmd, runCmd.Flags(), &runFlags.env)

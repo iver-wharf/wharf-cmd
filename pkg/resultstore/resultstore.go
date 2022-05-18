@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"sync"
 	"time"
@@ -75,6 +76,10 @@ type ArtifactEvent struct {
 // Store is the interface for storing build results and accessing them as they
 // are created.
 type Store interface {
+	// Path returns the path where this Store is saving all build results.
+	// This is only used for logging, and can return any helpful information.
+	Path() string
+
 	// OpenLogWriter opens a file handle abstraction for writing log lines. Logs
 	// will be automatically parsed when written and published to any active
 	// subscriptions.
@@ -168,6 +173,24 @@ type LogLineReadCloser interface {
 	ReadLastLogLine() (LogLine, error)
 }
 
+// NewStoreForBuildID creates a new store using a newly created temporary
+// directory. The location depends on the OS, e.g:
+//
+//  - Linux:   /tmp/wharf-cmd-build-00123-xxxx
+//  - Windows: C:/Temp/wharf-cmd-build-00123-xxxx
+//
+// It gets this path via os.TempDir, which itself is OS dependent:
+//
+//  - Unix:    $TMPDIR or "/tmp"
+//  - Windows: GetTempPath syscall, which uses %TMP%, %TEMP%, %USERPROFILE%
+func NewStoreForBuildID(buildID uint) (Store, error) {
+	tmpDir, err := os.MkdirTemp("", fmt.Sprintf("wharf-cmd-build-%05d-", buildID))
+	if err != nil {
+		return nil, err
+	}
+	return NewStore(NewFS(tmpDir)), nil
+}
+
 // NewStore creates a new store using a given filesystem.
 func NewStore(fs FS) Store {
 	return &store{
@@ -193,6 +216,10 @@ type store struct {
 
 	frozen bool
 	closed bool
+}
+
+func (s *store) Path() string {
+	return s.fs.Path()
 }
 
 func (s *store) Freeze() error {
