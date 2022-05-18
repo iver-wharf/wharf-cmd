@@ -210,6 +210,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
   - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/rogpeppe/go-internal` v1.8.1 (#172)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)
   - `github.com/swaggo/gin-swagger` v1.4.1 (#59)
