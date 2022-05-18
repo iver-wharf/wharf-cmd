@@ -137,16 +137,19 @@ func validateDefEnvironmentUsage(def Definition) errutil.Slice {
 func filterStagesOnEnv(stages []Stage, envFilter string) []Stage {
 	var filtered []Stage
 	for _, stage := range stages {
-		if containsEnvFilter(stage.Envs, envFilter) {
+		if stageShouldBeIncluded(stage.Envs, envFilter) {
 			filtered = append(filtered, stage)
 		}
 	}
 	return filtered
 }
 
-func containsEnvFilter(envRefs []EnvRef, envFilter string) bool {
-	if envFilter == "" && len(envRefs) == 0 {
+func stageShouldBeIncluded(envRefs []EnvRef, envFilter string) bool {
+	if len(envRefs) == 0 {
 		return true
+	}
+	if len(envRefs) > 0 && envFilter == "" {
+		return false
 	}
 	for _, ref := range envRefs {
 		if ref.Name == envFilter {
