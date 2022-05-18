@@ -38,15 +38,15 @@ var (
 	errIllegalParentDirAccess = errors.New("illegal parent directory access")
 )
 
-// DryRun is an enum of dry-run settings
+// DryRun is an enum of dry-run settings.
 type DryRun byte
 
 const (
-	// DryRunNone disables dry-run. The build will be performed as usual
+	// DryRunNone disables dry-run. The build will be performed as usual.
 	DryRunNone DryRun = iota
-	// DryRunClient only logs what would be run, without contacting Kubernetes
+	// DryRunClient only logs what would be run, without contacting Kubernetes.
 	DryRunClient
-	// DryRunServer submits server-side dry-run requests to Kubernetes
+	// DryRunServer submits server-side dry-run requests to Kubernetes.
 	DryRunServer
 )
 
@@ -138,7 +138,7 @@ func (f k8sStepRunnerFactory) NewStepRunner(
 	}
 	if r.DryRun != DryRunNone {
 		// We skip running dry-run here, as it will be run later in the actual
-		// step run. Otherwise it would dry-run twice
+		// step run. Otherwise it would dry-run twice.
 		if err := r.dryRunStep(ctx); err != nil {
 			return nil, err
 		}

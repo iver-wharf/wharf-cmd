@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// ensure they conform to the interfaces
+// ensure they conform to the interfaces.
 var dryRun = DryRunNone
 var _ pflag.Value = &dryRun
 
@@ -17,11 +17,11 @@ var _ pflag.Value = &dryRun
 type DryRun string
 
 const (
-	// DryRunNone disables dry-run. The build will be performed as usual
+	// DryRunNone disables dry-run. The build will be performed as usual.
 	DryRunNone DryRun = "none"
-	// DryRunClient only logs what would be run, without contacting Kubernetes
+	// DryRunClient only logs what would be run, without contacting Kubernetes.
 	DryRunClient DryRun = "client"
-	// DryRunServer submits server-side dry-run requests to Kubernetes
+	// DryRunServer submits server-side dry-run requests to Kubernetes.
 	DryRunServer DryRun = "server"
 )
 
