@@ -17,7 +17,7 @@ func (l LogLevel) Level() logger.Level {
 	return logger.Level(l)
 }
 
-// Set implements the pflag.Value and fmt.Stringer interfaces.
+// String implements the pflag.Value and fmt.Stringer interfaces.
 // This returns a human-readable representation of the loglevel.
 func (l *LogLevel) String() string {
 	switch l.Level() {
@@ -36,7 +36,7 @@ func (l *LogLevel) String() string {
 	}
 }
 
-// String implements the pflag.Value interface.
+// Set implements the pflag.Value interface.
 // This parses the loglevel string and updates the loglevel variable.
 func (l *LogLevel) Set(val string) error {
 	newLevel, err := parseLevel(val)
