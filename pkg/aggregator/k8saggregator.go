@@ -251,7 +251,7 @@ func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
 	if err := logsPiper.writeString("[aggregator] Logging kubernetes events:"); err != nil {
 		return err
 	}
-	events := a.getEvents(ctx, pod)
+	events := a.getEvents(pod)
 	for _, s := range strings.Split(events, "\n") {
 		if err := logsPiper.writeString(s); err != nil {
 			return err
