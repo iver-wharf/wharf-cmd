@@ -151,7 +151,10 @@ func addHelmSecretVolume(secretName string, podSpec *v1.PodSpec, cont *v1.Contai
 			Secret: &v1.SecretVolumeSource{
 				SecretName: secretName,
 				Items: []v1.KeyToPath{
-					{Key: "config.json"},
+					{
+						Key:  "config.json",
+						Path: "config.json",
+					},
 				},
 			},
 		},
