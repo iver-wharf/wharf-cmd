@@ -58,8 +58,12 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 			continue
 		}
 
+		if strings.Contains(match.Name, "spark-version") {
+			fmt.Printf("## Looking up spark-version: %q => %q\n", match.FullMatch, v)
+		}
+
 		matchVal := v.Value
-		if str, ok := matchVal.(string); ok && strings.Contains(str, "${") {
+		if str, ok := asString(matchVal); ok && strings.Contains(str, "${") {
 			var err error
 			matchVal, err = substituteRec(str, source, append(usedParams, match.Name))
 			if err != nil {
@@ -74,6 +78,17 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 		sb.WriteString(matchValStr)
 	}
 	return sb.String(), nil
+}
+
+func asString(v any) (string, bool) {
+	switch v := v.(type) {
+	case string:
+		return v, true
+	case fmt.Stringer:
+		return v.String(), true
+	default:
+		return "", false
+	}
 }
 
 func unescapeFullMatch(fullMatch string) (string, bool) {

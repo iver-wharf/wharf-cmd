@@ -176,6 +176,15 @@ func TestSubstitute_recursive(t *testing.T) {
 			want:  "001122221100",
 		},
 		{
+			name: "stringer",
+			source: SourceMap{
+				"one": Val{Value: testStringer{str: "11${two}11"}},
+				"two": Val{Value: testStringer{"2222"}},
+			},
+			value: "00${one}00",
+			want:  "001122221100",
+		},
+		{
 			name: "typed",
 			source: SourceMap{
 				"one": Val{Value: "${two}"},
@@ -193,6 +202,14 @@ func TestSubstitute_recursive(t *testing.T) {
 			assert.Equal(t, tc.want, got)
 		})
 	}
+}
+
+type testStringer struct {
+	str string
+}
+
+func (t testStringer) String() string {
+	return t.str
 }
 
 func TestSubstitute_errIfRecursiveLoop(t *testing.T) {
