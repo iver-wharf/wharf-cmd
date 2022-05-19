@@ -11,6 +11,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/internal/lastbuild"
+	"github.com/iver-wharf/wharf-cmd/internal/pathutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -249,9 +250,8 @@ func newBuildIDVarSource(buildID uint) varsub.Source {
 	}
 	sourceName := "flag --build-id"
 	if path, err := lastbuild.Path(); err == nil {
-		sourceName = fmt.Sprintf("%s, or next ID from %s",
-			sourceName,
-			prettyPath(path))
+		sourceName = fmt.Sprintf(
+			"%s, or next ID from %s", sourceName, pathutil.ShorthandHome(path))
 	}
 	return varsub.SourceVar{
 		Key:    "BUILD_REF",
@@ -268,19 +268,4 @@ func addBuildIDFlag(flags *pflag.FlagSet, value *uint) {
 		}
 	}
 	flags.UintVar(value, "build-id", 0, buildIDHelp)
-}
-
-func prettyPath(path string) string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return path
-	}
-	return useShorthandHomePrefix(path, home)
-}
-
-func useShorthandHomePrefix(path, home string) string {
-	if !strings.HasPrefix(path, home) {
-		return path
-	}
-	return "~" + strings.TrimPrefix(path, home)
 }

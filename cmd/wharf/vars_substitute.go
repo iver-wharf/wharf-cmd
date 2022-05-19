@@ -5,9 +5,7 @@ import (
 	"os"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/spf13/cobra"
-	"gopkg.in/typ.v4/slices"
 )
 
 var varsSubstituteCmd = &cobra.Command{
@@ -29,15 +27,7 @@ Can be chained to make a new file with variables substituted, like so:
 		return nil, cobra.ShellCompDirectiveDefault
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		currentDir, err := parseCurrentDir(slices.SafeGet(args, 0))
-		if err != nil {
-			return err
-		}
-		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:       varsFlags.env,
-			Inputs:    parseInputArgs(varsFlags.inputs),
-			VarSource: newBuildIDVarSource(varsFlags.buildID),
-		})
+		def, err := varsCmdParseBuildDef(args)
 		if err != nil {
 			return err
 		}

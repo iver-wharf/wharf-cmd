@@ -5,9 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
+	"github.com/iver-wharf/wharf-cmd/internal/pathutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"gopkg.in/yaml.v3"
@@ -126,18 +126,7 @@ func (f VarFile) PrettyPath(currentDir string) string {
 			return rel
 		}
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return f.Path
-	}
-	return useShorthandHomePrefix(f.Path, home)
-}
-
-func useShorthandHomePrefix(path, home string) string {
-	if !strings.HasPrefix(path, home) {
-		return path
-	}
-	return "~" + strings.TrimPrefix(path, home)
+	return pathutil.ShorthandHome(f.Path)
 }
 
 // ListPossibleVarsFiles returns all paths where we look for wharf-vars.yml and
