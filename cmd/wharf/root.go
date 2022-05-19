@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -29,7 +30,18 @@ const (
 	cancelGracePeriod = 10 * time.Second
 )
 
-var isLoggingInitialized bool
+var (
+	isLoggingInitialized bool
+
+	rootContext, rootCancel = context.WithCancel(context.Background())
+
+	k8sOverridesFlags clientcmd.ConfigOverrides
+
+	rootConfig     config.Config
+	runAfterConfig []func()
+
+	toCloseBeforeForceQuit []io.Closer
+)
 
 var rootFlags = struct {
 	loglevel flagtypes.LogLevel
@@ -47,15 +59,6 @@ var rootCmd = &cobra.Command{
 		go handleCancelSignals(rootCancel)
 	},
 }
-
-var (
-	rootContext, rootCancel = context.WithCancel(context.Background())
-
-	k8sOverridesFlags clientcmd.ConfigOverrides
-
-	rootConfig     config.Config
-	runAfterConfig []func()
-)
 
 func addKubernetesFlags(flagSet *pflag.FlagSet) {
 	runAfterConfig = append(runAfterConfig, func() {
@@ -156,17 +159,29 @@ func initLogging() {
 func handleCancelSignals(cancel context.CancelFunc) {
 	ch := newCancelSignalChan()
 	<-ch
-	log.Info().WithDuration("gracePeriod", cancelGracePeriod).Message("Cancelling build. Press ^C again to force quit.")
+	log.Info().WithDuration("gracePeriod", cancelGracePeriod).
+		Message("Cancelling build. Press ^C again to force quit.")
 	cancel()
 
 	select {
 	case <-ch:
 		log.Warn().Message("Received second interrupt. Force quitting now.")
-		os.Exit(exitCodeCancelForceQuit)
+		forceQuit(exitCodeCancelForceQuit)
 	case <-time.After(cancelGracePeriod):
 		log.Warn().Message("Failed to cancel within grace period. Force quitting now.")
-		os.Exit(exitCodeCancelTimeout)
+		forceQuit(exitCodeCancelTimeout)
 	}
+}
+
+func forceQuit(exitCode int) {
+	for _, closer := range toCloseBeforeForceQuit {
+		closer.Close()
+	}
+	os.Exit(exitCode)
+}
+
+func closeBeforeForceQuit(closer io.Closer) {
+	toCloseBeforeForceQuit = append(toCloseBeforeForceQuit, closer)
 }
 
 func newCancelSignalChan() <-chan os.Signal {

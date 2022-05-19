@@ -41,15 +41,7 @@ in multiple sources.`,
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		currentDir, err := parseCurrentDir(slices.SafeGet(args, 0))
-		if err != nil {
-			return err
-		}
-
-		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    varsFlags.env,
-			Inputs: parseInputArgs(varsFlags.inputs),
-		})
+		def, err := varsCmdParseBuildDef(args)
 		if err != nil {
 			return err
 		}
@@ -153,5 +145,5 @@ environment variables, such as:
 func init() {
 	varsCmd.AddCommand(varsListCmd)
 
-	varsListCmd.PersistentFlags().BoolVarP(&varsListFlags.showAll, "all", "a", false, "Show overridden variables")
+	varsListCmd.Flags().BoolVarP(&varsListFlags.showAll, "all", "a", false, "Show overridden variables")
 }

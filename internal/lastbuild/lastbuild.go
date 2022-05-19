@@ -12,6 +12,30 @@ import (
 	"github.com/rogpeppe/go-internal/lockedfile"
 )
 
+// GuessNext returns the approximated next build ID to use. It calculates this
+// by reading the build ID file, bumping it by +1, then releasing the file lock.
+//
+// This function does not mutate the next value.
+//
+// This means the guess from this function is not guaranteed to be the same
+// value as returned by Next, so the return from this function should only be
+// used to give approximations to the user.
+func GuessNext() (uint, error) {
+	file, err := editFile()
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	last, err := readLast(file)
+	if err != nil {
+		return 0, err
+	}
+	next := last + 1
+
+	return next, nil
+}
+
 // Next returns the next build ID to use. It calculates this by locking the
 // build ID file, reading its current value, bumping it by +1, then writing
 // the new value, and then releasing the file lock.
