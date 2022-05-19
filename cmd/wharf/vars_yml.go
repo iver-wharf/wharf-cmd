@@ -11,7 +11,8 @@ import (
 )
 
 var varsYMLFlags = struct {
-	stage string
+	stage   string
+	showAll bool
 }{}
 
 var varsYMLCmd = &cobra.Command{
@@ -31,8 +32,9 @@ how it would be used if all values were inlined.`,
 		}
 
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    varsFlags.env,
-			Inputs: parseInputArgs(varsFlags.inputs),
+			Env:                varsFlags.env,
+			Inputs:             parseInputArgs(varsFlags.inputs),
+			SkipStageFiltering: varsYMLFlags.showAll,
 		})
 		if err != nil {
 			return err
@@ -40,6 +42,11 @@ how it would be used if all values were inlined.`,
 
 		writer := os.Stdout
 		for _, stage := range def.Stages {
+			if !varsYMLFlags.showAll &&
+				varsYMLFlags.stage != "" &&
+				varsYMLFlags.stage != stage.Name {
+				continue
+			}
 			enc := yaml.NewEncoder(writer)
 			enc.SetIndent(2)
 			enc.Encode(yaml.Node{
@@ -63,4 +70,5 @@ func init() {
 	varsCmd.AddCommand(varsYMLCmd)
 
 	addWharfYmlStageFlag(varsYMLCmd, varsYMLCmd.Flags(), &varsYMLFlags.stage)
+	varsYMLCmd.Flags().BoolVarP(&varsYMLFlags.showAll, "all", "a", false, "Show all stages, skipping stage and environment filtering")
 }
