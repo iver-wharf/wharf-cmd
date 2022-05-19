@@ -58,10 +58,6 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 			continue
 		}
 
-		if strings.Contains(match.Name, "spark-version") {
-			fmt.Printf("## Looking up spark-version: %q => %q\n", match.FullMatch, v)
-		}
-
 		matchVal := v.Value
 		if str, ok := asString(matchVal); ok && strings.Contains(str, "${") {
 			var err error
