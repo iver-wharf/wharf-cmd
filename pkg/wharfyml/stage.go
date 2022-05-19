@@ -22,16 +22,22 @@ type Stage struct {
 	Envs    []EnvRef
 	EnvsPos visit.Pos
 	Steps   []Step
+
+	Node visit.MapItem
 }
 
-func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (stage Stage, errSlice errutil.Slice) {
-	stage.Pos = visit.NewPosFromNode(node)
-	stage.Name = nameNode.Value
+func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (Stage, errutil.Slice) {
+	var errSlice errutil.Slice
+	stage := Stage{
+		Pos:  visit.NewPosFromNode(node),
+		Name: nameNode.Value,
+		Node: visit.MapItem{Key: nameNode, Value: node},
+	}
 	nodes, errs := visit.MapSlice(node)
 	errSlice.Add(errs...)
 	if len(nodes) == 0 {
 		errSlice.Add(errutil.NewPosFromNode(ErrStageEmpty, node))
-		return
+		return stage, errSlice
 	}
 	for _, stepNode := range nodes {
 		switch stepNode.Key.Value {
@@ -46,5 +52,5 @@ func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, sourc
 			errSlice.Add(errutil.ScopeSlice(errs, stepNode.Key.Value)...)
 		}
 	}
-	return
+	return stage, errSlice
 }
