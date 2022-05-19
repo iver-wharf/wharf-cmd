@@ -142,11 +142,15 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Added variable substitution support for referenced files in `kubectl` and
   `helm` step types. (#89)
 
-- Added file transfer cache, stored in `/tmp/wharf-cmd-repo-xxxxx/full.tar`,
-  that is reused by all steps in a single build. (#89)
-
 - Added build result (logs, status updates) caching via file system. New
   package in `pkg/resultstore`. (#43, #69, #70)
+
+- Added file transfer cache, stored in `/tmp/wharf-cmd-repo-xxxxx/full.tar`,
+  that is reused by all steps in a single build.
+  New package in `pkg/tarstore` (#89)
+
+- Fixed `pkg/resultstore` and `pkg/tarstore` not cleaning up on wharf-triggered
+  force exits, such as on timeout waiting for pods to terminate. (#176)
 
 - Added so build results (logs, status updates) are stored in
   `/tmp/wharf-cmd-build-00123-xxxxxxx` directory using a unique generated
