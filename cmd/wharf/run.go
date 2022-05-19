@@ -59,20 +59,26 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		if err != nil {
 			return err
 		}
-		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    runFlags.env,
-			Inputs: parseInputArgs(runFlags.inputs),
-		})
-		if err != nil {
-			return err
-		}
 
 		buildID := runFlags.buildID
 		if buildID == 0 {
-			buildID, err = lastbuild.Next()
-			if err != nil {
-				return err
+			if runFlags.dryRun == flagtypes.DryRunNone {
+				buildID, err = lastbuild.Next()
+			} else {
+				buildID, err = lastbuild.GuessNext()
 			}
+			if err != nil {
+				return fmt.Errorf("get default for --build-id flag: %w", err)
+			}
+		}
+
+		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
+			Env:       runFlags.env,
+			Inputs:    parseInputArgs(runFlags.inputs),
+			VarSource: newBuildIDVarSource(buildID),
+		})
+		if err != nil {
+			return err
 		}
 
 		store, err := resultstore.NewStoreForBuildID(buildID)
@@ -172,18 +178,12 @@ func startWorkerServerWithCancel(ctx context.Context, store resultstore.Store) (
 func init() {
 	rootCmd.AddCommand(runCmd)
 
-	buildIDHelp := "Sets build ID"
-	path, err := lastbuild.Path()
-	if err == nil {
-		buildIDHelp = fmt.Sprintf("%s (default loaded from %q)", buildIDHelp, path)
-	}
-
 	runCmd.Flags().BoolVar(&runFlags.serve, "serve", false, "Serves build results over REST & gRPC and waits until terminated (e.g via SIGTERM)")
 	runCmd.Flags().BoolVar(&runFlags.noGitIgnore, "no-gitignore", false, "Don't respect .gitignore files")
-	runCmd.Flags().UintVar(&runFlags.buildID, "build-id", 0, buildIDHelp)
 	runCmd.Flags().Var(&runFlags.dryRun, "dry-run", `Must be one of "none", "client", or "server"`)
 	runCmd.RegisterFlagCompletionFunc("dry-run", flagtypes.CompleteDryRun)
 
+	addBuildIDFlag(runCmd.Flags(), &runFlags.buildID)
 	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
 	addWharfYmlEnvFlag(runCmd, runCmd.Flags(), &runFlags.env)
 	addWharfYmlInputsFlag(runCmd, runCmd.Flags(), &runFlags.inputs)
