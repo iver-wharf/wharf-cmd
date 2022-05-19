@@ -68,7 +68,7 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 				buildID, err = lastbuild.GuessNext()
 			}
 			if err != nil {
-				return err
+				return fmt.Errorf("get default for --build-id flag: %w", err)
 			}
 		}
 
