@@ -264,7 +264,6 @@ func (s Docker) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 			1, // TODO: Use project ID
 			s.SecretName,
 		)
-		optional := true
 		for _, arg := range s.SecretArgs {
 			argName, secretKey, hasCut := strings.Cut(arg, "=")
 			if !hasCut || len(argName) == 0 || len(secretKey) == 0 {
@@ -278,8 +277,7 @@ func (s Docker) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: secretName,
 						},
-						Key:      secretKey,
-						Optional: &optional,
+						Key: secretKey,
 					},
 				},
 			})

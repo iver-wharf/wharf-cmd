@@ -108,13 +108,11 @@ func (s Container) applyStep() v1.PodSpec {
 			1, // TODO: Use project ID
 			s.SecretName,
 		)
-		optional := true
 		cont.EnvFrom = append(cont.EnvFrom, v1.EnvFromSource{
 			SecretRef: &v1.SecretEnvSource{
 				LocalObjectReference: v1.LocalObjectReference{
 					Name: secretName,
 				},
-				Optional: &optional,
 			},
 		})
 	}
