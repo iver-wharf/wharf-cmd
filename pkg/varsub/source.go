@@ -16,6 +16,8 @@ type Source interface {
 // SourceVar is a single Var that also acts as a Source.
 type SourceVar Var
 
+// Lookup compares the name and returns the variables value as well as true on
+// success, or false if the name does not match.
 func (s SourceVar) Lookup(name string) (Var, bool) {
 	if s.Key != name {
 		return Var{}, false
@@ -23,6 +25,8 @@ func (s SourceVar) Lookup(name string) (Var, bool) {
 	return Var(s), true
 }
 
+// ListVars will return a slice of only the one variable that this varsub Source
+// provides.
 func (s SourceVar) ListVars() []Var {
 	return []Var{Var(s)}
 }
