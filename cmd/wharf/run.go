@@ -62,7 +62,11 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 
 		buildID := runFlags.buildID
 		if buildID == 0 {
-			buildID, err = lastbuild.Next()
+			if runFlags.dryRun == flagtypes.DryRunNone {
+				buildID, err = lastbuild.Next()
+			} else {
+				buildID, err = lastbuild.GuessNext()
+			}
 			if err != nil {
 				return err
 			}
