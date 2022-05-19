@@ -79,23 +79,18 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		if err != nil {
 			return err
 		}
+		defer store.Close()
+		closeBeforeForceQuit(store)
 		log.Debug().WithString("path", store.Path()).
 			Message("Created result store.")
-
-		go func() {
-			<-rootContext.Done()
-			if err := store.Close(); err != nil {
-				log.Warn().WithError(err).Message("Error closing store.")
-			} else {
-				log.Debug().Message("Successfully closed store.")
-			}
-		}()
 
 		tarStore, err := tarstore.New(currentDir)
 		if err != nil {
 			return err
 		}
 		defer tarStore.Close()
+		closeBeforeForceQuit(tarStore)
+
 		b, err := worker.NewK8s(rootContext, def,
 			worker.K8sRunnerOptions{
 				BuildOptions: worker.BuildOptions{
