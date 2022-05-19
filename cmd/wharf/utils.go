@@ -254,9 +254,9 @@ func newBuildIDVarSource(buildID uint) varsub.Source {
 			"%s, or next ID from %s", sourceName, pathutil.ShorthandHome(path))
 	}
 	return varsub.SourceVar{
-		Key:    "BUILD_REF",
-		Value:  buildID,
-		Source: sourceName,
+		Key:         "BUILD_REF",
+		Value:       buildID,
+		SourceLabel: sourceName,
 	}
 }
 
