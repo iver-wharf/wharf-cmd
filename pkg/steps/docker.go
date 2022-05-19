@@ -278,6 +278,7 @@ func (s Docker) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: secretName,
 						},
+						Key:      secretKey,
 						Optional: &optional,
 					},
 				},
