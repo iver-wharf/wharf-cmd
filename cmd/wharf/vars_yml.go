@@ -3,10 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/spf13/cobra"
-	"gopkg.in/typ.v4/slices"
 	"gopkg.in/yaml.v3"
 )
 
@@ -26,16 +24,7 @@ how it would be used if all values were inlined.`,
 		return []string{"yml"}, cobra.ShellCompDirectiveFilterFileExt
 	},
 	RunE: func(cmd *cobra.Command, args []string) error {
-		currentDir, err := parseCurrentDir(slices.SafeGet(args, 0))
-		if err != nil {
-			return err
-		}
-
-		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:                varsFlags.env,
-			Inputs:             parseInputArgs(varsFlags.inputs),
-			SkipStageFiltering: varsYMLFlags.showAll,
-		})
+		def, err := varsCmdParseBuildDef(args)
 		if err != nil {
 			return err
 		}
