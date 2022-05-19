@@ -97,6 +97,28 @@ func (p MapVisitor) LookupIntFromVarSub(varLookup string, target *int) error {
 	return lookupFromVarSub(p, varLookup, target, p.VisitInt)
 }
 
+// VisitUint reads a node by string key and writes the parsed int value to
+// the pointer. An error is returned on parse error. If the node is not present,
+// then nil is returned and the pointer is untouched.
+func (p MapVisitor) VisitUint(key string, target *uint) error {
+	return visitNode(p, key, target, Uint)
+}
+
+// RequireUintFromVarSub looks up a value from the predefined varsub.Source
+// and writes the value to the pointer. An error is returned if the looked up
+// variable is not found or on type errors.
+func (p MapVisitor) RequireUintFromVarSub(varLookup string, target *uint) error {
+	return requireFromVarSub(p, varLookup, target, p.VisitUint)
+}
+
+// LookupUintFromVarSub looks up a value from the predefined varsub.Source
+// and writes the value to the pointer. An error is returned on type error.
+// If the variable is not present, then nil is returned and the pointer is
+// untouched.
+func (p MapVisitor) LookupUintFromVarSub(varLookup string, target *uint) error {
+	return lookupFromVarSub(p, varLookup, target, p.VisitUint)
+}
+
 // VisitString reads a node by string key and writes the string value to
 // the pointer. An error is returned on type error. If the node is not present,
 // then nil is returned and the pointer is untouched.

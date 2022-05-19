@@ -244,28 +244,41 @@ func parseWharfYmlForCompletions(cmd *cobra.Command, args []string) (wharfyml.De
 	return def, nil
 }
 
-func newBuildIDVarSource(buildID uint) varsub.Source {
-	if buildID == 0 {
-		return nil
-	}
-	sourceName := "flag --build-id"
-	if path, err := lastbuild.Path(); err == nil {
-		sourceName = fmt.Sprintf(
-			"%s, or next ID from %s", sourceName, pathutil.ShorthandHome(path))
-	}
-	return varsub.SourceVar{
-		Key:    "BUILD_REF",
-		Value:  buildID,
-		Source: sourceName,
-	}
+type commonVarSubFlags struct {
+	buildID   uint
+	projectID uint
 }
 
-func addBuildIDFlag(flags *pflag.FlagSet, value *uint) {
-	buildIDHelp := "Sets build ID"
+func (flags commonVarSubFlags) varSource() varsub.Source {
+	m := make(varsub.SourceMap)
+	if flags.buildID != 0 {
+		sourceName := "flag --build-id"
+		if path, err := lastbuild.Path(); err == nil {
+			sourceName = fmt.Sprintf(
+				"%s, or next ID from %s", sourceName, pathutil.ShorthandHome(path))
+		}
+		m["BUILD_REF"] = varsub.Val{
+			Value:  flags.buildID,
+			Source: sourceName,
+		}
+	}
+	if flags.projectID != 0 {
+		m["PROJECT_ID"] = varsub.Val{
+			Value:  flags.projectID,
+			Source: "flag --project-id",
+		}
+	}
+	return m
+}
+
+func addCommonVarSubFlags(flags *pflag.FlagSet, varFlags *commonVarSubFlags) {
+	flags.UintVar(&varFlags.projectID, "project-id", 0, "Overrides PROJECT_ID variable")
+
+	buildIDHelp := "Overrides BUILD_REF variable"
 	if path, err := lastbuild.Path(); err == nil {
 		if nextGuess, err := lastbuild.GuessNext(); err == nil {
 			buildIDHelp = fmt.Sprintf("%s (default %d, via %q)", buildIDHelp, nextGuess, path)
 		}
 	}
-	flags.UintVar(value, "build-id", 0, buildIDHelp)
+	flags.UintVar(&varFlags.buildID, "build-id", 0, buildIDHelp)
 }

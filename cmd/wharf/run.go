@@ -25,7 +25,7 @@ var runFlags = struct {
 	noGitIgnore bool
 	inputs      flagtypes.KeyValueArray
 	dryRun      flagtypes.DryRun
-	buildID     uint
+	varSubFlags commonVarSubFlags
 }{
 	dryRun: flagtypes.DryRunNone,
 }
@@ -60,12 +60,11 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 			return err
 		}
 
-		buildID := runFlags.buildID
-		if buildID == 0 {
+		if runFlags.varSubFlags.buildID == 0 {
 			if runFlags.dryRun == flagtypes.DryRunNone {
-				buildID, err = lastbuild.Next()
+				runFlags.varSubFlags.buildID, err = lastbuild.Next()
 			} else {
-				buildID, err = lastbuild.GuessNext()
+				runFlags.varSubFlags.buildID, err = lastbuild.GuessNext()
 			}
 			if err != nil {
 				return fmt.Errorf("get default for --build-id flag: %w", err)
@@ -75,13 +74,13 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
 			Env:       runFlags.env,
 			Inputs:    parseInputArgs(runFlags.inputs),
-			VarSource: newBuildIDVarSource(buildID),
+			VarSource: runFlags.varSubFlags.varSource(),
 		})
 		if err != nil {
 			return err
 		}
 
-		store, err := resultstore.NewStoreForBuildID(buildID)
+		store, err := resultstore.NewStoreForBuildID(runFlags.varSubFlags.buildID)
 		if err != nil {
 			return err
 		}
@@ -123,7 +122,8 @@ https://iver-wharf.github.io/#/usage-wharfyml/`,
 		}
 
 		log.Debug().Message("Successfully created builder.")
-		log.Info().WithUint("buildId", buildID).Message("Starting build.")
+		log.Info().WithUint("buildId", runFlags.varSubFlags.buildID).
+			Message("Starting build.")
 		res, err := b.Build(ctx)
 		if err != nil {
 			return err
@@ -178,7 +178,7 @@ func init() {
 	runCmd.Flags().Var(&runFlags.dryRun, "dry-run", `Must be one of "none", "client", or "server"`)
 	runCmd.RegisterFlagCompletionFunc("dry-run", flagtypes.CompleteDryRun)
 
-	addBuildIDFlag(runCmd.Flags(), &runFlags.buildID)
+	addCommonVarSubFlags(runCmd.Flags(), &runFlags.varSubFlags)
 	addWharfYmlStageFlag(runCmd, runCmd.Flags(), &runFlags.stage)
 	addWharfYmlEnvFlag(runCmd, runCmd.Flags(), &runFlags.env)
 	addWharfYmlInputsFlag(runCmd, runCmd.Flags(), &runFlags.inputs)
