@@ -10,6 +10,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
+	"github.com/iver-wharf/wharf-cmd/internal/lastbuild"
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -240,4 +241,46 @@ func parseWharfYmlForCompletions(cmd *cobra.Command, args []string) (wharfyml.De
 	// for a step type are irrelevant for the completions.
 	def, _ := wharfyml.ParseFile(ymlPath, ymlArgs)
 	return def, nil
+}
+
+func newBuildIDVarSource(buildID uint) varsub.Source {
+	if buildID == 0 {
+		return nil
+	}
+	sourceName := "flag --build-id"
+	if path, err := lastbuild.Path(); err == nil {
+		sourceName = fmt.Sprintf("%s, or next ID from %s",
+			sourceName,
+			prettyPath(path))
+	}
+	return varsub.SourceVar{
+		Key:    "BUILD_REF",
+		Value:  buildID,
+		Source: sourceName,
+	}
+}
+
+func addBuildIDFlag(flags *pflag.FlagSet, value *uint) {
+	buildIDHelp := "Sets build ID"
+	if path, err := lastbuild.Path(); err == nil {
+		if nextGuess, err := lastbuild.GuessNext(); err == nil {
+			buildIDHelp = fmt.Sprintf("%s (default %d, via %q)", buildIDHelp, nextGuess, path)
+		}
+	}
+	flags.UintVar(value, "build-id", 0, buildIDHelp)
+}
+
+func prettyPath(path string) string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	return useShorthandHomePrefix(path, home)
+}
+
+func useShorthandHomePrefix(path, home string) string {
+	if !strings.HasPrefix(path, home) {
+		return path
+	}
+	return "~" + strings.TrimPrefix(path, home)
 }

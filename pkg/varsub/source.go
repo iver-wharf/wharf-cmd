@@ -13,6 +13,20 @@ type Source interface {
 	ListVars() []Var
 }
 
+// SourceVar is a single Var that also acts as a Source.
+type SourceVar Var
+
+func (s SourceVar) Lookup(name string) (Var, bool) {
+	if s.Key != name {
+		return Var{}, false
+	}
+	return Var(s), true
+}
+
+func (s SourceVar) ListVars() []Var {
+	return []Var{Var(s)}
+}
+
 // Var is a single varsub variable, with it's Key (name), Value, and optionally
 // also a Source that declares where this variable comes from.
 type Var struct {

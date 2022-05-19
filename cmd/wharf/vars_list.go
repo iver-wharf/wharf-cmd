@@ -47,8 +47,9 @@ in multiple sources.`,
 		}
 
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    varsFlags.env,
-			Inputs: parseInputArgs(varsFlags.inputs),
+			Env:       varsFlags.env,
+			Inputs:    parseInputArgs(varsFlags.inputs),
+			VarSource: newBuildIDVarSource(varsFlags.buildID),
 		})
 		if err != nil {
 			return err
@@ -153,5 +154,5 @@ environment variables, such as:
 func init() {
 	varsCmd.AddCommand(varsListCmd)
 
-	varsListCmd.PersistentFlags().BoolVarP(&varsListFlags.showAll, "all", "a", false, "Show overridden variables")
+	varsListCmd.Flags().BoolVarP(&varsListFlags.showAll, "all", "a", false, "Show overridden variables")
 }

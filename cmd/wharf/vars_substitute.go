@@ -34,8 +34,9 @@ Can be chained to make a new file with variables substituted, like so:
 			return err
 		}
 		def, err := parseBuildDefinition(currentDir, wharfyml.Args{
-			Env:    varsFlags.env,
-			Inputs: parseInputArgs(varsFlags.inputs),
+			Env:       varsFlags.env,
+			Inputs:    parseInputArgs(varsFlags.inputs),
+			VarSource: newBuildIDVarSource(varsFlags.buildID),
 		})
 		if err != nil {
 			return err
