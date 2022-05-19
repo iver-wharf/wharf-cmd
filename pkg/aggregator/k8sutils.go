@@ -32,24 +32,28 @@ func k8sShouldSkipPod(pod v1.Pod) bool {
 
 func k8sPodNotErrored(pod v1.Pod) bool {
 	for _, s := range pod.Status.InitContainerStatuses {
-		if s.State.Waiting != nil {
-			switch s.State.Waiting.Reason {
-			case "CrashLoopBackOff", "ErrImagePull",
-				"ImagePullBackOff", "CreateContainerConfigError",
-				"InvalidImageName", "CreateContainerError":
-				return false
-			}
+		if isStuck(s.State.Waiting) {
+			return false
 		}
 	}
 	for _, s := range pod.Status.ContainerStatuses {
-		if s.State.Waiting != nil {
-			switch s.State.Waiting.Reason {
-			case "CrashLoopBackOff", "ErrImagePull",
-				"ImagePullBackOff", "CreateContainerConfigError",
-				"InvalidImageName", "CreateContainerError":
-				return false
-			}
+		if isStuck(s.State.Waiting) {
+			return false
 		}
 	}
 	return true
+}
+
+func isStuck(s *v1.ContainerStateWaiting) bool {
+	if s == nil {
+		return false
+	}
+	switch s.Reason {
+	case "CrashLoopBackOff", "ErrImagePull",
+		"ImagePullBackOff", "CreateContainerConfigError",
+		"InvalidImageName", "CreateContainerError":
+		return true
+	default:
+		return false
+	}
 }

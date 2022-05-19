@@ -6,8 +6,15 @@ import (
 	"fmt"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 )
+
+type artifactEventsPiper struct {
+	wharfapi wharfapi.Client
+	worker   workerclient.Client
+	in       v1.Worker_StreamArtifactEventsClient
+}
 
 func newArtifactEventsPiper(ctx context.Context, wharfapi wharfapi.Client, worker workerclient.Client) (artifactEventsPiper, error) {
 	in, err := worker.StreamArtifactEvents(ctx, &workerclient.ArtifactEventsRequest{})
@@ -32,6 +39,7 @@ func (p artifactEventsPiper) PipeMessage() error {
 	return nil
 }
 
+// Close closes all active streams.
 func (p artifactEventsPiper) Close() error {
 	if err := p.in.CloseSend(); err != nil {
 		log.Error().

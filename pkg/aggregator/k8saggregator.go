@@ -1,19 +1,16 @@
 package aggregator
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	"gopkg.in/typ.v4/sync2"
 	"k8s.io/client-go/kubernetes"
@@ -120,8 +117,8 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			continue
 		}
 
-		a.handleRunningPods(ctx, running)
-		a.handleFailedPods(ctx, failed)
+		a.handleRunningPodSlice(ctx, running)
+		a.handleFailedPodSlice(ctx, failed)
 
 		time.Sleep(pollDelay)
 	}
@@ -135,7 +132,7 @@ type workerPod struct {
 func (a k8sAggr) fetchRunningAndFailedPods(ctx context.Context) (running []workerPod, failed []workerPod, err error) {
 	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
 	if err != nil {
-		return
+		return nil, nil, err
 	}
 	for _, pod := range list.Items {
 		if k8sShouldSkipPod(pod) {
@@ -168,10 +165,10 @@ func (a k8sAggr) fetchRunningAndFailedPods(ctx context.Context) (running []worke
 			failed = append(failed, p)
 		}
 	}
-	return
+	return running, failed, nil
 }
 
-func (a k8sAggr) handleRunningPods(ctx context.Context, pods []workerPod) {
+func (a k8sAggr) handleRunningPodSlice(ctx context.Context, pods []workerPod) {
 	for _, pod := range pods {
 		go func(pod workerPod) {
 			if err := a.handleRunningPod(ctx, pod); err != nil {
@@ -191,7 +188,7 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, pod workerPod) error {
 	if err != nil && pod.Status.Phase == v1.PodRunning {
 		return err
 	}
-	defer worker.CloseAll()
+	defer worker.Close()
 
 	if err := worker.Ping(ctx); err != nil {
 		log.Debug().
@@ -206,31 +203,29 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, pod workerPod) error {
 		if err != nil {
 			return err
 		}
-		return a.pipeAndClose(logsPiper)
+		return pipeAndClose(logsPiper)
 	})
 	pg.AddFunc("status events", func(ctx context.Context) error {
 		statusEventsPiper, err := newStatusEventsPiper(ctx, a.wharfapi, worker)
 		if err != nil {
 			return err
 		}
-		return a.pipeAndClose(statusEventsPiper)
+		return pipeAndClose(statusEventsPiper)
 	})
 	pg.AddFunc("artifact events", func(ctx context.Context) error {
 		artifactEventsPiper, err := newArtifactEventsPiper(ctx, a.wharfapi, worker)
 		if err != nil {
 			return err
 		}
-		return a.pipeAndClose(artifactEventsPiper)
+		return pipeAndClose(artifactEventsPiper)
 	})
-	err = pg.RunCancelEarly(ctx)
-	worker.Close()
-	if err != nil {
+	if err := pg.RunCancelEarly(ctx); err != nil {
 		return err
 	}
 	return a.terminatePod(ctx, pod)
 }
 
-func (a k8sAggr) handleFailedPods(ctx context.Context, pods []workerPod) {
+func (a k8sAggr) handleFailedPodSlice(ctx context.Context, pods []workerPod) {
 	for _, pod := range pods {
 		go func(pod workerPod) {
 			if err := a.handleFailedPod(ctx, pod); err != nil {
@@ -246,106 +241,74 @@ func (a k8sAggr) handleFailedPods(ctx context.Context, pods []workerPod) {
 func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
 	defer a.inProgress.Remove(pod.UID)
 
-	logsPiper, err := newLogsPiper(ctx, a.wharfapi, nil, pod.buildID)
+	logsWriter, err := newLogsWriter(ctx, a.wharfapi, pod.buildID)
 	if err != nil {
 		return err
 	}
+	defer logsWriter.Close()
 
-	if err := logsPiper.writeString(fmt.Sprintf("[aggregator] Pod '%s/%s' failed.", pod.Namespace, pod.Name)); err != nil {
+	if err := logsWriter.write(fmt.Sprintf("[aggregator] Pod '%s/%s' failed.", pod.Namespace, pod.Name)); err != nil {
 		return err
 	}
-
-	if err := logsPiper.writeString("[aggregator] Logging kubernetes events:"); err != nil {
+	if err := logsWriter.write(""); err != nil {
 		return err
 	}
-	events := a.getEvents(pod)
-	for _, s := range strings.Split(events, "\n") {
-		if err := logsPiper.writeString(s); err != nil {
+	if err := logsWriter.write("[aggregator] Logging kubernetes events:"); err != nil {
+		return err
+	}
+	eventsReader, err := a.getEventsReader(pod)
+	if err != nil {
+		return fmt.Errorf("get events reader: %w", err)
+	}
+	if err := logsWriter.pipeAndCloseReader(eventsReader); err != nil {
+		return fmt.Errorf("write events: %w", err)
+	}
+
+	writeContainerLogs := func(c v1.Container) error {
+		if err := logsWriter.write(""); err != nil {
 			return err
 		}
-	}
-
-	if err := logsPiper.writeString("[aggregator] Logging kubernetes logs from init container:"); err != nil {
-		return err
-	}
-	initLogs := a.getLogs(ctx, pod, pod.Spec.InitContainers[0])
-	for _, s := range strings.Split(initLogs, "\n") {
-		if err := logsPiper.writeString(s); err != nil {
+		if err := logsWriter.write(fmt.Sprintf("[aggregator] Logging kubernetes logs from container %q:", c.Name)); err != nil {
 			return err
 		}
+		logsReader, err := a.getLogsReader(ctx, pod, c)
+		if err != nil {
+			return fmt.Errorf("get logs reader: %w", err)
+		}
+		return logsWriter.pipeAndCloseReader(logsReader)
 	}
 
-	if err := logsPiper.writeString("[aggregator] Logging kubernetes logs from app container:"); err != nil {
-		return err
-	}
-	appLogs := a.getLogs(ctx, pod, pod.Spec.Containers[0])
-	for _, s := range strings.Split(appLogs, "\n") {
-		if err := logsPiper.writeString(s); err != nil {
-			return err
+	for _, c := range pod.Spec.InitContainers {
+		if err := writeContainerLogs(c); err != nil {
+			return fmt.Errorf("write container logs: %w", err)
 		}
 	}
-
-	logsPiper.Close()
+	for _, c := range pod.Spec.Containers {
+		if err := writeContainerLogs(c); err != nil {
+			return fmt.Errorf("write container logs: %w", err)
+		}
+	}
 
 	return a.terminatePod(ctx, pod)
 }
 
-func (a k8sAggr) getEvents(pod workerPod) string {
+func (a k8sAggr) getEventsReader(pod workerPod) (io.ReadCloser, error) {
 	eventsList, err := a.clientset.CoreV1().Events(pod.Namespace).Search(scheme.Scheme, &pod.Pod)
 	if err != nil {
-		return fmt.Sprintf("Failed reading events: %v", err)
+		return nil, err
 	}
-	return describeEvents(eventsList)
+	return describeEvents(eventsList), nil
 }
 
-func (a k8sAggr) getLogs(ctx context.Context, pod workerPod, container v1.Container) string {
+func (a k8sAggr) getLogsReader(ctx context.Context, pod workerPod, container v1.Container) (io.ReadCloser, error) {
 	req := a.pods.GetLogs(pod.Name, &v1.PodLogOptions{
 		Container: container.Name,
 	})
 	readCloser, err := req.Stream(ctx)
 	if err != nil {
-		return fmt.Sprintf("Failed reading logs: %v", err)
+		return nil, err
 	}
-	defer readCloser.Close()
-	sb := strings.Builder{}
-	scanner := bufio.NewScanner(readCloser)
-	for scanner.Scan() {
-		txt := scanner.Text()
-		idx := strings.LastIndexByte(txt, '\r')
-		if idx != -1 {
-			txt = txt[idx+1:]
-		}
-		sb.WriteString(txt)
-		sb.WriteRune('\n')
-	}
-	if sb.Len() == 0 {
-		return "<none>"
-	}
-	return sb.String()
-}
-
-func (a k8sAggr) pipeAndClose(p Piper) error {
-	for {
-		err := p.PipeMessage()
-		if err != nil {
-			p.Close()
-			if errors.Is(err, io.EOF) {
-				return nil
-			}
-			return err
-		}
-	}
-}
-
-func (a k8sAggr) newWorkerClient(workerPort uint16, buildID uint) (workerclient.Client, error) {
-	// Intentionally "localhost" because we're port-forwarding
-	return workerclient.New(fmt.Sprintf("http://localhost:%d", workerPort), workerclient.Options{
-		// Skipping security because we've already authenticated with Kubernetes
-		// and are communicating through a secured port-forwarding tunnel.
-		// Don't need to add TLS on top of TLS.
-		InsecureSkipVerify: true,
-		BuildID:            buildID,
-	})
+	return readCloser, nil
 }
 
 func (a k8sAggr) terminatePod(ctx context.Context, pod workerPod) error {
@@ -361,4 +324,16 @@ func (a k8sAggr) terminatePod(ctx context.Context, pod workerPod) error {
 		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
 		Message("Done with worker.")
 	return nil
+}
+
+func pipeAndClose(p PipeCloser) error {
+	defer p.Close()
+	for {
+		if err := p.PipeMessage(); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
+		}
+	}
 }

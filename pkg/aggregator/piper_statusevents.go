@@ -12,6 +12,13 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 )
 
+type statusEventsPiper struct {
+	wharfapi   wharfapi.Client
+	worker     workerclient.Client
+	in         v1.Worker_StreamStatusEventsClient
+	prevStatus request.BuildStatus
+}
+
 func newStatusEventsPiper(ctx context.Context, wharfapi wharfapi.Client, worker workerclient.Client) (statusEventsPiper, error) {
 	in, err := worker.StreamStatusEvents(ctx, &workerclient.StatusEventsRequest{})
 	if err != nil {
@@ -23,13 +30,6 @@ func newStatusEventsPiper(ctx context.Context, wharfapi wharfapi.Client, worker 
 		in:         in,
 		prevStatus: request.BuildScheduling,
 	}, nil
-}
-
-type statusEventsPiper struct {
-	wharfapi   wharfapi.Client
-	worker     workerclient.Client
-	in         v1.Worker_StreamStatusEventsClient
-	prevStatus request.BuildStatus
 }
 
 func (p statusEventsPiper) PipeMessage() error {
@@ -57,6 +57,7 @@ func (p statusEventsPiper) PipeMessage() error {
 	return nil
 }
 
+// Close closes all active streams.
 func (p statusEventsPiper) Close() error {
 	if err := p.in.CloseSend(); err != nil {
 		log.Error().

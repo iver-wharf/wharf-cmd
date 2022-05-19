@@ -16,17 +16,23 @@ type portForwardedWorker struct {
 	podName  string
 }
 
-type portConnection struct {
-	portforward.ForwardedPort
-	stopCh chan struct{}
-}
+// ensure it conforms to the interface.
+var _ workerclient.Client = portForwardedWorker{}
 
 func newPortForwardedWorker(a k8sAggr, podName string, buildID uint) (portForwardedWorker, error) {
-	portConn, err := newPortForwarding(a, a.namespace, podName)
+	portConn, err := newPortConnection(a, a.namespace, podName)
 	if err != nil {
 		return portForwardedWorker{}, err
 	}
-	worker, err := a.newWorkerClient(portConn.Local, buildID)
+
+	worker, err := workerclient.New(fmt.Sprintf("http://localhost:%d", portConn.Local), workerclient.Options{
+		// Skipping security because we've already authenticated with Kubernetes
+		// and are communicating through a secured port-forwarding tunnel.
+		// Don't need to add TLS on top of TLS.
+		InsecureSkipVerify: true,
+		BuildID:            buildID,
+	})
+
 	if err != nil {
 		portConn.Close()
 		return portForwardedWorker{}, err
@@ -39,17 +45,18 @@ func newPortForwardedWorker(a k8sAggr, podName string, buildID uint) (portForwar
 	return pfWorker, nil
 }
 
-func (w portForwardedWorker) CloseAll() {
+func (w portForwardedWorker) Close() error {
 	w.Client.Close()
 	w.portConn.Close()
-}
-
-func (pc portConnection) Close() error {
-	close(pc.stopCh)
 	return nil
 }
 
-func newPortForwarding(a k8sAggr, namespace, podName string) (portConnection, error) {
+type portConnection struct {
+	portforward.ForwardedPort
+	stopCh chan struct{}
+}
+
+func newPortConnection(a k8sAggr, namespace, podName string) (portConnection, error) {
 	portForwardURL, err := newPortForwardURL(a.restConfig.Host, namespace, podName)
 	if err != nil {
 		return portConnection{}, err
@@ -98,6 +105,11 @@ func newPortForwarding(a k8sAggr, namespace, podName string) (portConnection, er
 		ForwardedPort: port,
 		stopCh:        stopCh,
 	}, nil
+}
+
+func (pc portConnection) Close() error {
+	close(pc.stopCh)
+	return nil
 }
 
 func newPortForwardURL(apiURL, namespace, podName string) (*url.URL, error) {

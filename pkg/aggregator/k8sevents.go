@@ -1,7 +1,23 @@
+// Copyright 2014 The Kubernetes Authors.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//    http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package aggregator
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -13,13 +29,14 @@ import (
 
 // Modified copy from:
 //   https://github.com/kubernetes/kubernetes/blob/b6a0718858876bbf8cedaeeb47e6de7e650a6c5b/pkg/kubectl/describe/versioned/describe.go#L3247
-func describeEvents(el *v1.EventList) string {
+func describeEvents(el *v1.EventList) io.ReadCloser {
+	var b bytes.Buffer
 	if len(el.Items) == 0 {
-		return "<none>"
+		b.WriteString("<none>")
+		return io.NopCloser(&b)
 	}
 
-	var sb strings.Builder
-	tw := tabwriter.NewWriter(&sb, 1, 4, 2, ' ', 0)
+	tw := tabwriter.NewWriter(&b, 1, 4, 2, ' ', 0)
 	fmt.Fprintln(tw)
 	fmt.Fprintln(tw, "Type\tReason\tAge\tFrom\tMessage")
 	fmt.Fprintln(tw, "----\t------\t---\t----\t-------")
@@ -39,7 +56,8 @@ func describeEvents(el *v1.EventList) string {
 		)
 	}
 	tw.Flush()
-	return sb.String()
+
+	return io.NopCloser(&b)
 }
 
 // translateTimestampSince returns the elapsed time since timestamp in
