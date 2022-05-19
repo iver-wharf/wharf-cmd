@@ -20,8 +20,9 @@ func describeEvents(el *v1.EventList) string {
 
 	var sb strings.Builder
 	tw := tabwriter.NewWriter(&sb, 1, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "\nType\tReason\tAge\tFrom\tMessage")
-	fmt.Fprintln(tw, "----\t------\t----\t----\t-------")
+	fmt.Fprintln(tw)
+	fmt.Fprintln(tw, "Type\tReason\tAge\tFrom\tMessage")
+	fmt.Fprintln(tw, "----\t------\t---\t----\t-------")
 	for _, e := range el.Items {
 		var interval string
 		if e.Count > 1 {
