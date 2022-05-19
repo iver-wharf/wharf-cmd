@@ -160,6 +160,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   build ID, or using the build ID provided by the `--build-id` flag on
   the `wharf run` command. (#172)
 
+- Added `PROJECT_ID` variable that can be overridden via the new flag
+  `--project-id`. Setting this is required when using secrets in the `docker`
+  and `container` step types. (#180)
+
 - Added all kubeconfig-related flags from `kubectl` but with a `--k8s-*` prefix.
   This allows e.g Wharf to run as a service account via the `--k8s-as` flag,
   among other things. (#63)
