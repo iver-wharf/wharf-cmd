@@ -63,6 +63,9 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `wharf vars sub` that reads from STDIN or a file and performs variable
     substitution, and then writes to STDOUT. (#110, #131)
 
+  - `wharf vars yml` that prints the parsed `.wharf-ci.yml` file to STDOUT,
+    with all variables substituted. (#179)
+
 - Added support for `.gitignore` ignored files and directories when transferring
   repo in `wharf run`. Can be disabled via new `--no-gitignore` flag. (#85)
 
