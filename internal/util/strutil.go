@@ -5,13 +5,19 @@ import (
 	"strconv"
 )
 
-// Stringify converts a value to a more expected result.
+// Stringify converts a value to a string. This functions differently than
+// the stdlib fmt.Sprint but having some custom settings for some types:
+//
+// - Nils are formatted as empty string, instead of "<nil>"
+//
+// - Floats are always formatted in decimal notation
+//
+// - Other types still use fmt.Sprint
 func Stringify(val any) string {
 	switch val := val.(type) {
 	case string:
 		return val
 
-	// fmt.Sprint returns "<nil>"; we don't want that
 	case nil:
 		return ""
 
