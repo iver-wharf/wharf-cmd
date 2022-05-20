@@ -5,7 +5,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
-	"github.com/iver-wharf/wharf-core/pkg/ginutil"
+	"github.com/iver-wharf/wharf-core/v2/pkg/ginutil"
 	"gopkg.in/yaml.v3"
 )
 

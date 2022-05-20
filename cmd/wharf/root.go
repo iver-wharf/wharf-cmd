@@ -12,9 +12,9 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
-	"github.com/iver-wharf/wharf-core/pkg/app"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"github.com/iver-wharf/wharf-core/pkg/logger/consolepretty"
+	"github.com/iver-wharf/wharf-core/v2/pkg/app"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger/consolepretty"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 	"k8s.io/client-go/rest"
@@ -151,6 +151,8 @@ func initLogging() {
 		logConfig.DisableCaller = true
 		logConfig.DisableDate = true
 		logConfig.ScopeMinLengthAuto = false
+	} else {
+		logConfig.ScopeMaxLength = 16
 	}
 	logger.AddOutput(rootFlags.loglevel.Level(), consolepretty.New(logConfig))
 	isLoggingInitialized = true

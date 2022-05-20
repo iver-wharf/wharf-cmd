@@ -11,7 +11,7 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	"gopkg.in/typ.v4/sync2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"

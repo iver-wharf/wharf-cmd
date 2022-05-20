@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/resultstore"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	"github.com/soheilhy/cmux"
 	"gopkg.in/typ.v4"
 )

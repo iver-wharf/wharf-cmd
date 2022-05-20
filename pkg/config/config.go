@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/iver-wharf/wharf-core/pkg/config"
+	"github.com/iver-wharf/wharf-core/v2/pkg/config"
 	v1 "k8s.io/api/core/v1"
 )
 

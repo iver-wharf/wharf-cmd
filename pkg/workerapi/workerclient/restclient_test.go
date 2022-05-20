@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/iver-wharf/wharf-core/pkg/problem"
+	"github.com/iver-wharf/wharf-core/v2/pkg/problem"
 	"github.com/stretchr/testify/assert"
 )
 
