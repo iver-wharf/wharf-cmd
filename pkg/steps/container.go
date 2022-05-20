@@ -115,13 +115,11 @@ func (s Container) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 			projectID,
 			s.SecretName,
 		)
-		optional := true
 		cont.EnvFrom = append(cont.EnvFrom, v1.EnvFromSource{
 			SecretRef: &v1.SecretEnvSource{
 				LocalObjectReference: v1.LocalObjectReference{
 					Name: secretName,
 				},
-				Optional: &optional,
 			},
 		})
 	}

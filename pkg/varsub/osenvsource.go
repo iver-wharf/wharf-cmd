@@ -27,9 +27,9 @@ func (s osEnvSource) Lookup(name string) (Var, bool) {
 		return Var{}, false
 	}
 	return Var{
-		Key:    name,
-		Value:  val,
-		Source: osEnvSourceName,
+		Key:         name,
+		Value:       val,
+		SourceLabel: osEnvSourceName,
 	}, true
 }
 
@@ -48,9 +48,9 @@ func (s osEnvSource) ListVars() []Var {
 			continue
 		}
 		vars = append(vars, Var{
-			Key:    trimmedKey,
-			Value:  val,
-			Source: osEnvSourceName,
+			Key:         trimmedKey,
+			Value:       val,
+			SourceLabel: osEnvSourceName,
 		})
 	}
 	return vars
