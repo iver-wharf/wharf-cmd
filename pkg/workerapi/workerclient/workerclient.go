@@ -48,6 +48,8 @@ func New(baseURL string, opts Options) (Client, error) {
 	}, nil
 }
 
+// Client is a HTTP (gRPC & REST) client that talks to wharf-cmd-worker.
+// A new instance should be created via New to initiate it correctly.
 type Client struct {
 	rest    *restClient
 	grpc    *grpcClient
@@ -93,6 +95,7 @@ func (c *Client) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRe
 	return c.grpc.client.StreamArtifactEvents(ctx, req, opts...)
 }
 
+// DownloadArtifact will open a stream to download an artifact BLOB.
 func (c *Client) DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error) {
 	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api/artifact/%d/download", c.baseURL, artifactID))
 	if err := assertResponseOK(res, err); err != nil {
@@ -101,15 +104,20 @@ func (c *Client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 	return res.Body, nil
 }
 
+// BuildID returns the worker's build ID. The value zero
+// means the worker does not have an assigned build ID.
 func (c *Client) BuildID() uint {
 	return c.buildID
 }
 
+// Ping pongs.
 func (c *Client) Ping(ctx context.Context) error {
 	res, err := c.rest.get(ctx, c.baseURL)
 	return assertResponseOK(res, err)
 }
 
+// Close will terminate all active connections.
+// Currently only gRPC streams are affected.
 func (c *Client) Close() error {
 	return c.grpc.close()
 }
