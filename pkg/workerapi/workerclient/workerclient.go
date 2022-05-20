@@ -118,7 +118,7 @@ func (c *client) BuildID() uint {
 }
 
 func (c *client) Ping(ctx context.Context) error {
-	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api", c.baseURL))
+	res, err := c.rest.get(ctx, c.baseURL)
 	return assertResponseOK(res, err)
 }
 

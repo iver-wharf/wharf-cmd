@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -45,15 +46,18 @@ func (c *restClient) get(ctx context.Context, url string) (*http.Response, error
 }
 
 func assertResponseOK(res *http.Response, err error) error {
-	if res == nil {
+	if err != nil {
 		return err
+	}
+	if res == nil {
+		return errors.New("response is nil")
 	}
 	if problem.IsHTTPResponse(res) {
 		prob, parseErr := problem.ParseHTTPResponse(res)
-		if parseErr == nil {
-			return prob
+		if parseErr != nil {
+			return parseErr
 		}
-		return parseErr
+		return prob
 	}
-	return err
+	return nil
 }

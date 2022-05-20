@@ -75,7 +75,7 @@ func TestAssertResponseOK(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			gotErr := assertResponseOK(tc.resp, tc.err)
-			assert.Equal(t, fmt.Sprintf("%v", tc.wantErr), fmt.Sprintf("%v", gotErr))
+			assert.Equal(t, fmt.Sprint(tc.wantErr), fmt.Sprint(gotErr))
 		})
 	}
 }

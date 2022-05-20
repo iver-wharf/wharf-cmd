@@ -53,6 +53,16 @@ func (c Client) DeleteWorker(workerID string) error {
 	return resp.Body.Close()
 }
 
+// Ping pongs.
+func (c Client) Ping() error {
+	u, err := buildURL(c.APIURL)
+	if err != nil {
+		return err
+	}
+	_, err = doRequest(http.MethodGet, u)
+	return err
+}
+
 func doRequest(method string, u *url.URL) (*http.Response, error) {
 	urlStr := u.String()
 	req, err := http.NewRequest(method, urlStr, nil)
