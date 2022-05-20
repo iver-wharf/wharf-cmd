@@ -32,7 +32,7 @@ import (
 func describeEvents(el *v1.EventList) io.ReadCloser {
 	var b bytes.Buffer
 	if len(el.Items) == 0 {
-		b.WriteString("<none>")
+		b.WriteString("<none>\n")
 		return io.NopCloser(&b)
 	}
 
