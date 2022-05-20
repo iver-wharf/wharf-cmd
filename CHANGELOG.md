@@ -51,7 +51,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 - Added aggregator command `wharf aggregator serve` that looks for
   wharf-cmd-worker pods and pipes build results over to the wharf-api.
-  (#77, #126, #129, #131)
+  (#77, #126, #129, #131, #163)
 
 - Added new implementation for `wharf run`. (#33, #45, #66, #84, #107)
 
@@ -196,25 +196,25 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   'cluster-config' not found" in `kubectl` steps. (#52)
 
 - Changed from `github.com/sirupsen/logrus` to
-  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
+  `github.com/iver-wharf/wharf-core/v2/pkg/logger` for logging. (#2, #7, #184)
 
-- Added gRPC server for worker in `pkg/workerapi/workerserver`: (#51)
+- Added gRPC server for worker in `pkg/worker/workerserver`: (#51)
 
   - `StreamLogs` batches logs into chunks and serves to gRPC clients.
   - `StreamStatusEvents` serves status events to gRPC clients.
   - `StreamArtifactEvents` serves artifact events to gRPC clients.
 
-- Added gRPC client in `pkg/workerapi/workerclient` to interface with a worker
+- Added gRPC client in `pkg/worker/workerclient` to interface with a worker
   gRPC server. (#51)
 
-- Added HTTP server for worker in `pkg/workerapi/workerserver`:
+- Added HTTP server for worker in `pkg/worker/workerserver`:
   (#51, #114, #117)
 
   - `GET /` to ping.
   - `GET /api/swagger/index.html` Swagger generated documentation.
   - `GET /api/artifact/:artifactId/download` Downloads an artifact.
 
-- Added HTTP client in `pkg/workerapi/workerclient` to interface with
+- Added HTTP client in `pkg/worker/workerclient` to interface with
   worker HTTP server. (#51)
 
 - Added `--version`, `-v` flag to show the version of wharf-cmd. (#76)
@@ -229,7 +229,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
-  - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/iver-wharf/wharf-core/v2` v2.0.0 (#2, #7, #184)
   - `github.com/rogpeppe/go-internal` v1.8.1 (#172)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)

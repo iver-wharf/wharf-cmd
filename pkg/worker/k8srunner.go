@@ -23,7 +23,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"

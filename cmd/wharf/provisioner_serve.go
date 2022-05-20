@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/iver-wharf/wharf-cmd/pkg/provisionerapi"
+	provisionerapi "github.com/iver-wharf/wharf-cmd/pkg/provisioner/provisionerserver"
 	"github.com/spf13/cobra"
 )
 

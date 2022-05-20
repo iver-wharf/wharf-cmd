@@ -9,7 +9,7 @@ import (
 
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
-	"github.com/iver-wharf/wharf-core/pkg/env"
+	"github.com/iver-wharf/wharf-core/v2/pkg/env"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -91,38 +91,43 @@ func sanitizePodName(name string) string {
 }
 
 func getOwnerReferences() []metav1.OwnerReference {
-	var (
-		enabled   bool
-		name, uid string
-	)
-	if err := env.BindMultiple(map[any]string{
-		&enabled: "WHARF_KUBERNETES_OWNER_ENABLE",
-		&name:    "WHARF_KUBERNETES_OWNER_NAME",
-		&uid:     "WHARF_KUBERNETES_OWNER_UID",
-	}); err != nil {
-		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_XXX environment variables.")
-		enabled = false
+	var enabled bool
+	if err := env.Bind(&enabled, "WHARF_KUBERNETES_OWNER_ENABLE"); err != nil {
+		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_ENABLE environment variable.")
+		return nil
 	}
 
-	log.Debug().
-		WithBool("enabled", enabled).
+	if !enabled {
+		log.Debug().
+			Message("Skipping Kubernetes OwnerReference because WHARF_KUBERNETES_OWNER_ENABLE was not set to 'true'.")
+		return nil
+	}
+
+	var name, uid string
+	if err := env.BindMultiple(map[*string]string{
+		&name: "WHARF_KUBERNETES_OWNER_NAME",
+		&uid:  "WHARF_KUBERNETES_OWNER_UID",
+	}); err != nil {
+		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_XXX environment variables.")
+		return nil
+	}
+
+	log.Info().
 		WithString("name", name).
 		WithString("uid", uid).
-		Message("Environment variables from owner.")
+		Message("Enabling Kubernetes OwnerReference.")
 
-	var ownerReferences []metav1.OwnerReference
-	if enabled {
-		True := true
-		ownerReferences = append(ownerReferences, metav1.OwnerReference{
+	True := true
+	return []metav1.OwnerReference{
+		{
 			APIVersion:         "v1",
 			Kind:               "Pod",
 			Name:               name,
 			UID:                types.UID(uid),
 			BlockOwnerDeletion: &True,
 			Controller:         &True,
-		})
+		},
 	}
-	return ownerReferences
 }
 
 func getOnlyFilesToTransfer(step wharfyml.Step) ([]string, bool) {

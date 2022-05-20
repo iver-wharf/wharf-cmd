@@ -10,7 +10,7 @@ require (
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.7.7
 	github.com/iver-wharf/wharf-api-client-go/v2 v2.2.1
-	github.com/iver-wharf/wharf-core v1.3.0
+	github.com/iver-wharf/wharf-core/v2 v2.0.0
 	github.com/rogpeppe/go-internal v1.8.1
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cobra v1.3.0
@@ -55,11 +55,12 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.5 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/iver-wharf/wharf-core v1.3.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
-	github.com/mailru/easyjson v0.7.6 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

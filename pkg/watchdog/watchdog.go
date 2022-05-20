@@ -9,9 +9,9 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
-	"github.com/iver-wharf/wharf-cmd/pkg/provisionerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/provisioner/provisionerclient"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 )
 
 var log = logger.NewScoped("WATCHDOG")

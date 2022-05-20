@@ -85,29 +85,30 @@ docker-run:
 
 .PHONY: clean-swag
 clean-swag:
-	rm -vrf pkg/provisionerapi/docs pkg/workerapi/workerserver/docs
+	rm -vrf pkg/provisioner/provisionerserver/docs pkg/worker/workerserver/docs
 
 .PHONY: swag-force
 swag-force: clean-swag swag
 
 .PHONY: swag
 swag: \
-	pkg/provisionerapi/docs \
-	pkg/workerapi/workerserver/docs
+	pkg/provisioner/provisionerserver/docs \
+	pkg/worker/workerserver/docs
 
-pkg/provisionerapi/docs:
+pkg/provisioner/provisionerserver/docs:
 	swag init \
-		--dir pkg/provisionerapi,pkg/provisioner,pkg/worker \
-		--generalInfo provisionerapi.go \
-		--output pkg/provisionerapi/docs \
+		--dir pkg/provisioner/provisionerserver,pkg/provisioner \
+		--parseDependency --parseDepth 1 \
+		--generalInfo provisionerserver.go \
+		--output pkg/provisioner/provisionerserver/docs \
 		--instanceName provisionerapi
 
-pkg/workerapi/workerserver/docs:
+pkg/worker/workerserver/docs:
 	swag init \
-		--dir pkg/workerapi/workerserver \
+		--dir pkg/worker/workerserver \
 		--parseDependency --parseDepth 2 \
 		--generalInfo restserver.go \
-		--output pkg/workerapi/workerserver/docs \
+		--output pkg/worker/workerserver/docs \
 		--instanceName workerapi
 
 .PHONY: lint lint-fix \

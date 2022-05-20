@@ -5,8 +5,8 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver/docs"
-	"github.com/iver-wharf/wharf-core/pkg/ginutil"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workerserver/docs"
+	"github.com/iver-wharf/wharf-core/v2/pkg/ginutil"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
