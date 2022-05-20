@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/iver-wharf/wharf-cmd/internal/strutil"
+	"github.com/iver-wharf/wharf-cmd/internal/util"
 	"gopkg.in/typ.v4/slices"
 )
 
@@ -71,7 +71,7 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 			// keep the value as-is if it matches the whole value
 			return matchVal, nil
 		}
-		matchValStr := strutil.Stringify(matchVal)
+		matchValStr := util.Stringify(matchVal)
 		sb.WriteString(matchValStr)
 	}
 	return sb.String(), nil

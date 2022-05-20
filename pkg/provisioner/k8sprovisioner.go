@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/iver-wharf/wharf-cmd/internal/strutil"
+	"github.com/iver-wharf/wharf-cmd/internal/util"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"gopkg.in/typ.v4"
 	v1 "k8s.io/api/core/v1"
@@ -240,7 +240,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	for k, v := range args.AdditionalVars {
 		wharfEnvs = append(wharfEnvs, v1.EnvVar{
 			Name:  "WHARF_VAR_" + k,
-			Value: strutil.Stringify(v),
+			Value: util.Stringify(v),
 		})
 	}
 

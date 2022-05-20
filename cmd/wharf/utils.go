@@ -11,7 +11,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/flagtypes"
 	"github.com/iver-wharf/wharf-cmd/internal/gitutil"
 	"github.com/iver-wharf/wharf-cmd/internal/lastbuild"
-	"github.com/iver-wharf/wharf-cmd/internal/pathutil"
+	"github.com/iver-wharf/wharf-cmd/internal/util"
 	"github.com/iver-wharf/wharf-cmd/pkg/steps"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
@@ -255,7 +255,7 @@ func (flags commonVarSubFlags) varSource() varsub.Source {
 		sourceName := "flag --build-id"
 		if path, err := lastbuild.Path(); err == nil {
 			sourceName = fmt.Sprintf(
-				"%s, or next ID from %s", sourceName, pathutil.ShorthandHome(path))
+				"%s, or next ID from %s", sourceName, util.ShorthandHome(path))
 		}
 		m["BUILD_REF"] = varsub.Val{
 			Value:  flags.buildID,
