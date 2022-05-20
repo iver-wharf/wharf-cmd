@@ -10,7 +10,7 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
 	"github.com/iver-wharf/wharf-cmd/internal/parallel"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workerclient"
 )
 
 // Aggregator pulls data from workers and sends them to Wharf API.
