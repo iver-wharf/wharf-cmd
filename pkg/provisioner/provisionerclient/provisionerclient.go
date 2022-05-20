@@ -19,7 +19,7 @@ type Client struct {
 	APIURL string
 }
 
-var log = logger.NewScoped("PROVISIONER-CLIENT")
+var log = logger.NewScoped("PROV-CLIENT")
 
 // ListWorkers returns a slice of all workers.
 func (c Client) ListWorkers() ([]provisioner.Worker, error) {
@@ -51,6 +51,16 @@ func (c Client) DeleteWorker(workerID string) error {
 		return err
 	}
 	return resp.Body.Close()
+}
+
+// Ping pongs.
+func (c Client) Ping() error {
+	u, err := buildURL(c.APIURL)
+	if err != nil {
+		return err
+	}
+	_, err = doRequest(http.MethodGet, u)
+	return err
 }
 
 func doRequest(method string, u *url.URL) (*http.Response, error) {

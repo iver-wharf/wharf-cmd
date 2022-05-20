@@ -93,7 +93,7 @@ func sanitizePodName(name string) string {
 func getOwnerReferences() []metav1.OwnerReference {
 	var enabled bool
 	if err := env.Bind(&enabled, "WHARF_KUBERNETES_OWNER_ENABLE"); err != nil {
-		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_ENABLE environment variables.")
+		log.Warn().WithError(err).Message("Failed binding WHARF_KUBERNETES_OWNER_ENABLE environment variable.")
 		return nil
 	}
 

@@ -3,36 +3,35 @@ package wharfyml
 import (
 	"testing"
 
-	"github.com/iver-wharf/wharf-cmd/internal/errtesting"
-	"github.com/iver-wharf/wharf-cmd/internal/yamltesting"
+	"github.com/iver-wharf/wharf-cmd/internal/testutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml/visit"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestVisitStep_ErrIfNotMap(t *testing.T) {
-	key, node := yamltesting.NewKeyedNode(t, `myStep: 123`)
+	key, node := testutil.NewKeyedNode(t, `myStep: 123`)
 	_, errs := visitStepNode(key, node, Args{}, nil)
-	errtesting.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
+	testutil.RequireContainsErr(t, errs, visit.ErrInvalidFieldType)
 }
 
 func TestVisitStep_ErrIfEmpty(t *testing.T) {
-	key, node := yamltesting.NewKeyedNode(t, `myStep: {}`)
+	key, node := testutil.NewKeyedNode(t, `myStep: {}`)
 	_, errs := visitStepNode(key, node, Args{}, nil)
-	errtesting.RequireContainsErr(t, errs, ErrStepEmpty)
+	testutil.RequireContainsErr(t, errs, ErrStepEmpty)
 }
 
 func TestVisitStep_ErrIfMultipleStepTypes(t *testing.T) {
-	key, node := yamltesting.NewKeyedNode(t, `
+	key, node := testutil.NewKeyedNode(t, `
 myStep:
   container: {}
   docker: {}
 `)
 	_, errs := visitStepNode(key, node, Args{}, nil)
-	errtesting.RequireContainsErr(t, errs, ErrStepMultipleStepTypes)
+	testutil.RequireContainsErr(t, errs, ErrStepMultipleStepTypes)
 }
 
 func TestVisitStep_Name(t *testing.T) {
-	key, node := yamltesting.NewKeyedNode(t, `
+	key, node := testutil.NewKeyedNode(t, `
 myStep:
   helm-package: {}
 `)

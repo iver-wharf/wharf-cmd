@@ -13,7 +13,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/wharfyml"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker"
 	"github.com/iver-wharf/wharf-cmd/pkg/worker/workermodel"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerserver"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workerserver"
 	"github.com/spf13/cobra"
 	"gopkg.in/typ.v4/slices"
 )

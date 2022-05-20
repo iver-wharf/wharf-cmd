@@ -7,16 +7,16 @@ import (
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workerclient"
 )
 
 type artifactEventsPiper struct {
 	wharfapi wharfapi.Client
-	worker   workerclient.Client
+	worker   portForwardedWorker
 	in       v1.Worker_StreamArtifactEventsClient
 }
 
-func newArtifactEventsPiper(ctx context.Context, wharfapi wharfapi.Client, worker workerclient.Client) (artifactEventsPiper, error) {
+func newArtifactEventsPiper(ctx context.Context, wharfapi wharfapi.Client, worker portForwardedWorker) (artifactEventsPiper, error) {
 	in, err := worker.StreamArtifactEvents(ctx, &workerclient.ArtifactEventsRequest{})
 	if err != nil {
 		return artifactEventsPiper{}, fmt.Errorf("open status events stream from wharf-cmd-worker: %w", err)

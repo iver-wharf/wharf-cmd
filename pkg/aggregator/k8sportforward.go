@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workerclient"
 	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 )
@@ -15,9 +15,6 @@ type portForwardedWorker struct {
 	portConn portConnection
 	podName  string
 }
-
-// ensure it conforms to the interface.
-var _ workerclient.Client = portForwardedWorker{}
 
 func newPortForwardedWorker(a k8sAggr, podName string, buildID uint) (portForwardedWorker, error) {
 	portConn, err := newPortConnection(a, a.namespace, podName)

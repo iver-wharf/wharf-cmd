@@ -198,23 +198,23 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 - Changed from `github.com/sirupsen/logrus` to
   `github.com/iver-wharf/wharf-core/v2/pkg/logger` for logging. (#2, #7, #184)
 
-- Added gRPC server for worker in `pkg/workerapi/workerserver`: (#51)
+- Added gRPC server for worker in `pkg/worker/workerserver`: (#51)
 
   - `StreamLogs` batches logs into chunks and serves to gRPC clients.
   - `StreamStatusEvents` serves status events to gRPC clients.
   - `StreamArtifactEvents` serves artifact events to gRPC clients.
 
-- Added gRPC client in `pkg/workerapi/workerclient` to interface with a worker
+- Added gRPC client in `pkg/worker/workerclient` to interface with a worker
   gRPC server. (#51)
 
-- Added HTTP server for worker in `pkg/workerapi/workerserver`:
+- Added HTTP server for worker in `pkg/worker/workerserver`:
   (#51, #114, #117)
 
   - `GET /` to ping.
   - `GET /api/swagger/index.html` Swagger generated documentation.
   - `GET /api/artifact/:artifactId/download` Downloads an artifact.
 
-- Added HTTP client in `pkg/workerapi/workerclient` to interface with
+- Added HTTP client in `pkg/worker/workerclient` to interface with
   worker HTTP server. (#51)
 
 - Added `--version`, `-v` flag to show the version of wharf-cmd. (#76)

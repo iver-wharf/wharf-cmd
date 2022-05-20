@@ -1,6 +1,10 @@
 package varsub
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/iver-wharf/wharf-cmd/internal/util"
+)
 
 // Source is a variable substitution source.
 type Source interface {
@@ -41,7 +45,7 @@ type Var struct {
 
 // String implements the fmt.Stringer interface.
 func (v Var) String() string {
-	return stringify(v.Value)
+	return util.Stringify(v.Value)
 }
 
 // GoString implements the fmt.GoStringer interface.
@@ -87,7 +91,7 @@ type Val struct {
 
 // String implements the fmt.Stringer interface.
 func (v Val) String() string {
-	return stringify(v.Value)
+	return util.Stringify(v.Value)
 }
 
 // SourceMap is a variable substitution source based on a map where it uses the

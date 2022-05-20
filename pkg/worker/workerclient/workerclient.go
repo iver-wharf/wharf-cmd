@@ -32,27 +32,15 @@ type ArtifactEvent = v1.StreamArtifactEventsResponse
 // ArtifactEventsRequest is an alias for workerapi/v1.StreamArtifactEventsResponse.
 type ArtifactEventsRequest = v1.StreamArtifactEventsRequest
 
-// Client is an interface with methods to communicate with a Wharf worker server.
-type Client interface {
-	StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error)
-	StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error)
-	StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error)
-	DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error)
-	Ping(ctx context.Context) error
-	BuildID() uint
-
-	Close() error
-}
-
 // New creates a new client that can communicate with a Wharf worker server.
 //
 // Implements the Closer interface.
 func New(baseURL string, opts Options) (Client, error) {
 	rest, err := newRestClient(opts)
 	if err != nil {
-		return nil, err
+		return Client{}, err
 	}
-	return &client{
+	return Client{
 		rest:    rest,
 		grpc:    newGRPCClient(baseURL, opts),
 		baseURL: baseURL,
@@ -60,7 +48,9 @@ func New(baseURL string, opts Options) (Client, error) {
 	}, nil
 }
 
-type client struct {
+// Client is a HTTP (gRPC & REST) client that talks to wharf-cmd-worker.
+// A new instance should be created via New to initiate it correctly.
+type Client struct {
 	rest    *restClient
 	grpc    *grpcClient
 	baseURL string
@@ -80,7 +70,7 @@ type Options struct {
 }
 
 // StreamLogs returns a stream that will receive log lines from the worker.
-func (c *client) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error) {
+func (c *Client) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.CallOption) (v1.Worker_StreamLogsClient, error) {
 	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
@@ -89,7 +79,7 @@ func (c *client) StreamLogs(ctx context.Context, req *LogsRequest, opts ...grpc.
 
 // StreamStatusEvents returns a stream that will receive status events from the
 // worker.
-func (c *client) StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error) {
+func (c *Client) StreamStatusEvents(ctx context.Context, req *StatusEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamStatusEventsClient, error) {
 	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
@@ -98,14 +88,15 @@ func (c *client) StreamStatusEvents(ctx context.Context, req *StatusEventsReques
 
 // StreamArtifactEvents returns a stream that will receive status events from the
 // worker.
-func (c *client) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error) {
+func (c *Client) StreamArtifactEvents(ctx context.Context, req *ArtifactEventsRequest, opts ...grpc.CallOption) (v1.Worker_StreamArtifactEventsClient, error) {
 	if err := c.grpc.ensureOpen(); err != nil {
 		return nil, err
 	}
 	return c.grpc.client.StreamArtifactEvents(ctx, req, opts...)
 }
 
-func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error) {
+// DownloadArtifact will open a stream to download an artifact BLOB.
+func (c *Client) DownloadArtifact(ctx context.Context, artifactID uint) (io.ReadCloser, error) {
 	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api/artifact/%d/download", c.baseURL, artifactID))
 	if err := assertResponseOK(res, err); err != nil {
 		return nil, err
@@ -113,15 +104,20 @@ func (c *client) DownloadArtifact(ctx context.Context, artifactID uint) (io.Read
 	return res.Body, nil
 }
 
-func (c *client) BuildID() uint {
+// BuildID returns the worker's build ID. The value zero
+// means the worker does not have an assigned build ID.
+func (c *Client) BuildID() uint {
 	return c.buildID
 }
 
-func (c *client) Ping(ctx context.Context) error {
-	res, err := c.rest.get(ctx, fmt.Sprintf("%s/api", c.baseURL))
+// Ping pongs.
+func (c *Client) Ping(ctx context.Context) error {
+	res, err := c.rest.get(ctx, c.baseURL)
 	return assertResponseOK(res, err)
 }
 
-func (c *client) Close() error {
+// Close will terminate all active connections.
+// Currently only gRPC streams are affected.
+func (c *Client) Close() error {
 	return c.grpc.close()
 }

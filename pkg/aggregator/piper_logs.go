@@ -12,17 +12,17 @@ import (
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/model/request"
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
+	"github.com/iver-wharf/wharf-cmd/pkg/worker/workerclient"
 )
 
 type logsPiper struct {
 	wharfapi wharfapi.Client
-	worker   workerclient.Client
+	worker   portForwardedWorker
 	in       v1.Worker_StreamLogsClient
 	out      logsWriter
 }
 
-func newLogsPiper(ctx context.Context, wharfapi wharfapi.Client, worker workerclient.Client, buildID uint) (logsPiper, error) {
+func newLogsPiper(ctx context.Context, wharfapi wharfapi.Client, worker portForwardedWorker, buildID uint) (logsPiper, error) {
 	out, err := newLogsWriter(ctx, wharfapi, buildID)
 	if err != nil {
 		return logsPiper{}, err
