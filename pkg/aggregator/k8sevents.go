@@ -37,7 +37,6 @@ func describeEvents(el *v1.EventList) io.ReadCloser {
 	}
 
 	tw := tabwriter.NewWriter(&b, 1, 4, 2, ' ', 0)
-	fmt.Fprintln(tw)
 	fmt.Fprintln(tw, "Type\tReason\tAge\tFrom\tMessage")
 	fmt.Fprintln(tw, "----\t------\t---\t----\t-------")
 	for _, e := range el.Items {
