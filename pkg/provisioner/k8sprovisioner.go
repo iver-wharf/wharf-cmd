@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/iver-wharf/wharf-cmd/internal/strutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"gopkg.in/typ.v4"
 	v1 "k8s.io/api/core/v1"
@@ -239,7 +240,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 	for k, v := range args.AdditionalVars {
 		wharfEnvs = append(wharfEnvs, v1.EnvVar{
 			Name:  "WHARF_VAR_" + k,
-			Value: stringify(v),
+			Value: strutil.Stringify(v),
 		})
 	}
 
@@ -291,15 +292,4 @@ func convLocalObjectReferences(refs []config.K8sLocalObjectReference) []v1.Local
 
 func uitoa(i uint) string {
 	return strconv.FormatUint(uint64(i), 10)
-}
-
-func stringify(value any) string {
-	switch value := value.(type) {
-	case string:
-		return value
-	case nil:
-		return "" // fmt.Sprint returns "<nil>", which we don't want
-	default:
-		return fmt.Sprint(value)
-	}
 }

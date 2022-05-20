@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/iver-wharf/wharf-cmd/internal/filecopy"
+	"github.com/iver-wharf/wharf-cmd/internal/strutil"
 )
 
 // NewCopier creates a copier that applies variable substitution on each line.
@@ -26,7 +27,7 @@ func (c *copier) Copy(dst io.Writer, src io.Reader) error {
 		if err != nil {
 			return fmt.Errorf("line %d: %w", line, err)
 		}
-		if _, err := fmt.Fprintln(dst, stringify(v)); err != nil {
+		if _, err := fmt.Fprintln(dst, strutil.Stringify(v)); err != nil {
 			return err
 		}
 	}

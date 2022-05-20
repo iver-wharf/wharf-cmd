@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/iver-wharf/wharf-cmd/internal/strutil"
 	"gopkg.in/typ.v4/slices"
 )
 
@@ -70,7 +71,7 @@ func substituteRec(value string, source Source, usedParams []string) (any, error
 			// keep the value as-is if it matches the whole value
 			return matchVal, nil
 		}
-		matchValStr := stringify(matchVal)
+		matchValStr := strutil.Stringify(matchVal)
 		sb.WriteString(matchValStr)
 	}
 	return sb.String(), nil
@@ -96,17 +97,6 @@ func unescapeFullMatch(fullMatch string) (string, bool) {
 	}
 	s := strings.TrimPrefix(strings.TrimSuffix(fullMatch, "%}"), "${%")
 	return fmt.Sprintf("${%s}", s), true
-}
-
-func stringify(val any) string {
-	switch val := val.(type) {
-	case string:
-		return val
-	case nil: // fmt.Sprint returns "<nil>"; we don't want that
-		return ""
-	default:
-		return fmt.Sprint(val)
-	}
 }
 
 // Split up a string on its variable and non-variable matches.
