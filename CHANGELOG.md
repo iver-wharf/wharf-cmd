@@ -12,7 +12,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
-## v0.8.0 (WIP)
+## v0.8.0 (2022-05-20)
 
 - Added provisioner commands: (#46, #59, #117, #121, #129)
 
