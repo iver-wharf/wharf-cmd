@@ -19,7 +19,7 @@ type Client struct {
 	APIURL string
 }
 
-var log = logger.NewScoped("PROVISIONER-CLIENT")
+var log = logger.NewScoped("PROV-CLIENT")
 
 // ListWorkers returns a slice of all workers.
 func (c Client) ListWorkers() ([]provisioner.Worker, error) {

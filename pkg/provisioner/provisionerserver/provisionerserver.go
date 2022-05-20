@@ -12,7 +12,7 @@ import (
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
 
-var log = logger.NewScoped("PROVISIONER-API")
+var log = logger.NewScoped("PROV-SERVER")
 
 // Serve starts an HTTP server.
 //
