@@ -26,49 +26,49 @@ func TestAssertResponseOK(t *testing.T) {
 	assert.Nil(t, err)
 	testCases := []struct {
 		name    string
-		wantErr error
 		resp    *http.Response
 		err     error
+		wantErr error
 	}{
 		{
 			name:    "no problem response gives error",
-			wantErr: errNormal,
 			resp:    &http.Response{},
 			err:     errNormal,
+			wantErr: errNormal,
 		},
 		{
 			name:    "no problem response and nil error gives nil",
-			wantErr: nil,
 			resp:    &http.Response{},
 			err:     nil,
+			wantErr: nil,
 		},
 		{
-			name:    "all nil gives nil",
-			wantErr: nil,
+			name:    "nil response gives error",
 			resp:    nil,
 			err:     nil,
+			wantErr: errors.New("response is nil"),
 		},
 		{
-			name:    "malformed problem response gives parse error",
-			wantErr: errProblem,
-			resp: &http.Response{
-				Header: http.Header{
-					"Content-Type": []string{problem.HTTPContentType},
-				},
-				Body: io.NopCloser(bytes.NewReader(probBytes)),
-			},
-			err: errNormal,
-		},
-		{
-			name:    "problem response gives problem response",
-			wantErr: errParse,
+			name: "malformed problem response gives parse error",
 			resp: &http.Response{
 				Header: http.Header{
 					"Content-Type": []string{problem.HTTPContentType},
 				},
 				Body: io.NopCloser(bytes.NewReader([]byte{})),
 			},
-			err: errNormal,
+			err:     nil,
+			wantErr: errParse,
+		},
+		{
+			name: "problem response gives problem response",
+			resp: &http.Response{
+				Header: http.Header{
+					"Content-Type": []string{problem.HTTPContentType},
+				},
+				Body: io.NopCloser(bytes.NewReader(probBytes)),
+			},
+			err:     nil,
+			wantErr: errProblem,
 		},
 	}
 
