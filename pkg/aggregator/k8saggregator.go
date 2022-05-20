@@ -4,25 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
-	"net/url"
-	"strconv"
 	"time"
 
 	"github.com/iver-wharf/wharf-api-client-go/v2/pkg/wharfapi"
+	"github.com/iver-wharf/wharf-cmd/internal/parallel"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
-	"github.com/iver-wharf/wharf-cmd/pkg/workerapi/workerclient"
 	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	"gopkg.in/typ.v4/sync2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	k8sruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
@@ -64,6 +63,8 @@ func NewK8sAggregator(config *config.Config, restConfig *rest.Config) (Aggregato
 		wharfapi: wharfapi.Client{
 			APIURL: config.Aggregator.WharfAPIURL,
 		},
+
+		inProgress: &sync2.Set[types.UID]{},
 	}, nil
 }
 
@@ -74,13 +75,16 @@ type k8sAggr struct {
 	clientset *kubernetes.Clientset
 	pods      corev1.PodInterface
 
-	restConfig             *rest.Config
+	restConfig *rest.Config
+
 	upgrader               spdy.Upgrader
 	httpClient             *http.Client
 	instanceID             string
 	listOptionsMatchLabels metav1.ListOptions
 
 	wharfapi wharfapi.Client
+
+	inProgress *sync2.Set[types.UID]
 }
 
 func (a k8sAggr) Serve(ctx context.Context) error {
@@ -95,14 +99,13 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 	// a worker while its server wasn't running.
 	k8sruntime.ErrorHandlers = []func(error){}
 
-	var inProgress sync2.Set[types.UID]
 	for {
 		// TODO: Wait for Wharf API to be up first, with sane infinite retry logic.
 		//
 		// Would prevent pod listing and opening a tunnel to each pod each
 		// iteration.
 
-		pods, err := a.fetchPods(ctx)
+		running, failed, err := a.fetchRunningAndFailedPods(ctx)
 		if err != nil {
 			if errors.Is(ctx.Err(), context.Canceled) {
 				return ctx.Err()
@@ -113,190 +116,234 @@ func (a k8sAggr) Serve(ctx context.Context) error {
 			time.Sleep(pollDelay)
 			continue
 		}
-		for _, pod := range pods {
-			if pod.Status.Phase != v1.PodRunning {
-				continue
-			}
-			buildID, err := parsePodBuildID(pod.ObjectMeta)
-			if err != nil {
-				log.Warn().WithError(err).
-					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-					Message("Failed to parse worker's build ID.")
-				continue
-			}
-			if !inProgress.Add(pod.UID) {
-				// Failed to add => Already being processed
-				continue
-			}
-			log.Debug().
-				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-				Message("Pod found.")
 
-			go func(pod v1.Pod) {
-				if err := a.relayToWharfAPI(ctx, pod.Name, buildID); err != nil {
-					log.Error().WithError(err).
-						WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
-						Message("Relay error.")
-				}
-				inProgress.Remove(pod.UID)
-			}(pod)
-		}
+		a.handleRunningPodSlice(ctx, running)
+		a.handleFailedPodSlice(ctx, failed)
+
 		time.Sleep(pollDelay)
 	}
 }
 
-func parsePodBuildID(podMeta metav1.ObjectMeta) (uint, error) {
-	buildRef, ok := podMeta.Labels["wharf.iver.com/build-ref"]
-	if !ok {
-		return 0, errors.New("missing label 'wharf.iver.com/build-ref'")
-	}
-	buildID, err := strconv.ParseUint(buildRef, 10, 0)
-	if err != nil {
-		return 0, err
-	}
-	return uint(buildID), nil
+type workerPod struct {
+	v1.Pod
+	buildID uint
 }
 
-func (a k8sAggr) fetchPods(ctx context.Context) ([]v1.Pod, error) {
+func (a k8sAggr) fetchRunningAndFailedPods(ctx context.Context) (running []workerPod, failed []workerPod, err error) {
 	list, err := a.pods.List(ctx, a.listOptionsMatchLabels)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	var pods []v1.Pod
 	for _, pod := range list.Items {
-		// Skip terminating pods
-		if pod.ObjectMeta.DeletionTimestamp != nil {
+		if k8sShouldSkipPod(pod) {
 			continue
 		}
-		// Skip failed or pending pods
-		if pod.Status.Phase != "Running" {
+
+		if !a.inProgress.Add(pod.UID) {
 			continue
 		}
-		pods = append(pods, pod)
+
+		log.Debug().
+			WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+			WithString("status", string(pod.Status.Phase)).
+			Message("Pod found.")
+
+		buildID, err := k8sParsePodBuildID(pod.ObjectMeta)
+		if err != nil {
+			log.Warn().
+				WithError(err).
+				WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+				Message("Failed parsing build ID from pod. Skipping.")
+			a.inProgress.Remove(pod.UID)
+			continue
+		}
+
+		p := workerPod{pod, buildID}
+		if pod.Status.Phase == v1.PodRunning {
+			running = append(running, p)
+		} else {
+			failed = append(failed, p)
+		}
 	}
-	return pods, nil
+	return running, failed, nil
 }
 
-func (a k8sAggr) relayToWharfAPI(ctx context.Context, podName string, buildID uint) error {
-	portConn, err := a.newPortForwarding(a.namespace, podName)
-	if err != nil {
-		return err
+func (a k8sAggr) handleRunningPodSlice(ctx context.Context, pods []workerPod) {
+	for _, pod := range pods {
+		go func(pod workerPod) {
+			if err := a.handleRunningPod(ctx, pod); err != nil {
+				log.Error().
+					WithError(err).
+					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+					Message("Error handling running pod.")
+			}
+		}(pod)
 	}
-	defer portConn.Close()
+}
 
-	worker, err := a.newWorkerClient(portConn, buildID)
-	if err != nil {
+func (a k8sAggr) handleRunningPod(ctx context.Context, pod workerPod) error {
+	defer a.inProgress.Remove(pod.UID)
+
+	worker, err := newPortForwardedWorker(a, pod.Name, pod.buildID)
+	if err != nil && pod.Status.Phase == v1.PodRunning {
 		return err
 	}
 	defer worker.Close()
 
 	if err := worker.Ping(ctx); err != nil {
 		log.Debug().
-			WithStringf("pod", "%s/%s", a.namespace, podName).
+			WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
 			Message("Failed to ping worker pod. Assuming it's not running yet. Skipping.")
 		return nil
 	}
 
-	if err := relayAll(ctx, a.wharfapi, worker); err != nil {
-		// This will not show all the errors, but that's fine.
-		return fmt.Errorf("relaying to wharf: %w", err)
+	pg := parallel.Group{}
+	pg.AddFunc("logs", func(ctx context.Context) error {
+		logsPiper, err := newLogsPiper(ctx, a.wharfapi, worker, pod.buildID)
+		if err != nil {
+			return err
+		}
+		return pipeAndClose(logsPiper)
+	})
+	pg.AddFunc("status events", func(ctx context.Context) error {
+		statusEventsPiper, err := newStatusEventsPiper(ctx, a.wharfapi, worker)
+		if err != nil {
+			return err
+		}
+		return pipeAndClose(statusEventsPiper)
+	})
+	pg.AddFunc("artifact events", func(ctx context.Context) error {
+		artifactEventsPiper, err := newArtifactEventsPiper(ctx, a.wharfapi, worker)
+		if err != nil {
+			return err
+		}
+		return pipeAndClose(artifactEventsPiper)
+	})
+	if err := pg.RunCancelEarly(ctx); err != nil {
+		return err
+	}
+	return a.terminatePod(ctx, pod)
+}
+
+func (a k8sAggr) handleFailedPodSlice(ctx context.Context, pods []workerPod) {
+	for _, pod := range pods {
+		go func(pod workerPod) {
+			if err := a.handleFailedPod(ctx, pod); err != nil {
+				log.Error().
+					WithError(err).
+					WithStringf("pod", "%s/%s", pod.Namespace, pod.Name).
+					Message("Error handling failed pod.")
+			}
+		}(pod)
+	}
+}
+
+func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
+	defer a.inProgress.Remove(pod.UID)
+
+	logsWriter, err := newLogsWriter(ctx, a.wharfapi, pod.buildID)
+	if err != nil {
+		return err
+	}
+	defer logsWriter.Close()
+
+	if err := logsWriter.write(fmt.Sprintf("[aggregator] Pod '%s/%s' failed.", pod.Namespace, pod.Name)); err != nil {
+		return err
+	}
+	if err := logsWriter.write(""); err != nil {
+		return err
+	}
+	if err := logsWriter.write("[aggregator] Logging kubernetes events:"); err != nil {
+		return err
+	}
+	if err := logsWriter.write(""); err != nil {
+		return err
+	}
+	eventsReader, err := a.getEventsReader(pod)
+	if err != nil {
+		return fmt.Errorf("get events reader: %w", err)
+	}
+	if err := logsWriter.pipeAndCloseReader(eventsReader); err != nil {
+		return fmt.Errorf("write events: %w", err)
 	}
 
+	writeContainerLogs := func(c v1.Container) error {
+		if err := logsWriter.write(fmt.Sprintf("[aggregator] Logging kubernetes logs from container %q:", c.Name)); err != nil {
+			return err
+		}
+		if err := logsWriter.write(""); err != nil {
+			return err
+		}
+		logsReader, err := a.getLogsReader(ctx, pod, c)
+		if err != nil {
+			return fmt.Errorf("get logs reader: %w", err)
+		}
+		if err := logsWriter.pipeAndCloseReader(logsReader); err != nil {
+			return err
+		}
+		return logsWriter.write("")
+	}
+
+	if err := logsWriter.write(""); err != nil {
+		return err
+	}
+
+	for _, c := range pod.Spec.InitContainers {
+		if err := writeContainerLogs(c); err != nil {
+			return fmt.Errorf("write container logs: %w", err)
+		}
+	}
+	for _, c := range pod.Spec.Containers {
+		if err := writeContainerLogs(c); err != nil {
+			return fmt.Errorf("write container logs: %w", err)
+		}
+	}
+
+	return a.terminatePod(ctx, pod)
+}
+
+func (a k8sAggr) getEventsReader(pod workerPod) (io.ReadCloser, error) {
+	eventsList, err := a.clientset.CoreV1().Events(pod.Namespace).Search(scheme.Scheme, &pod.Pod)
+	if err != nil {
+		return nil, err
+	}
+	return describeEvents(eventsList), nil
+}
+
+func (a k8sAggr) getLogsReader(ctx context.Context, pod workerPod, container v1.Container) (io.ReadCloser, error) {
+	req := a.pods.GetLogs(pod.Name, &v1.PodLogOptions{
+		Container: container.Name,
+	})
+	readCloser, err := req.Stream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return readCloser, nil
+}
+
+func (a k8sAggr) terminatePod(ctx context.Context, pod workerPod) error {
 	log.Debug().
-		WithStringf("pod", "%s/%s", a.namespace, podName).
+		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
 		Message("Done relaying. Terminating pod.")
 
-	if err := a.pods.Delete(ctx, podName, metav1.DeleteOptions{}); err != nil {
-		return fmt.Errorf("terminate pod after done with relay build results: %w", err)
+	if err := a.pods.Delete(ctx, pod.Name, metav1.DeleteOptions{}); err != nil {
+		return fmt.Errorf("terminate pod: %w", err)
 	}
 
 	log.Info().
-		WithStringf("pod", "%s/%s", a.namespace, podName).
+		WithStringf("pod", "%s/%s", a.namespace, pod.Name).
 		Message("Done with worker.")
 	return nil
 }
 
-func (a k8sAggr) newWorkerClient(portConn portConnection, buildID uint) (workerclient.Client, error) {
-	// Intentionally "localhost" because we're port-forwarding
-	return workerclient.New(fmt.Sprintf("http://localhost:%d", portConn.Local), workerclient.Options{
-		// Skipping security because we've already authenticated with Kubernetes
-		// and are communicating through a secured port-forwarding tunnel.
-		// Don't need to add TLS on top of TLS.
-		InsecureSkipVerify: true,
-		BuildID:            buildID,
-	})
-}
-
-type portConnection struct {
-	portforward.ForwardedPort
-	stopCh chan struct{}
-}
-
-func (pc portConnection) Close() error {
-	close(pc.stopCh)
-	return nil
-}
-
-func (a k8sAggr) newPortForwarding(namespace, podName string) (portConnection, error) {
-	portForwardURL, err := newPortForwardURL(a.restConfig.Host, namespace, podName)
-	if err != nil {
-		return portConnection{}, err
-	}
-
-	dialer := spdy.NewDialer(a.upgrader, a.httpClient, http.MethodGet, portForwardURL)
-	stopCh, readyCh := make(chan struct{}, 1), make(chan struct{}, 1)
-	forwarder, err := portforward.New(dialer,
-		// From random unused local port (port 0) to the worker HTTP API port.
-		[]string{fmt.Sprintf("0:%d", a.aggrConfig.WorkerAPIExternalPort)},
-		stopCh, readyCh, nil, nil)
-	if err != nil {
-		return portConnection{}, err
-	}
-
-	var forwarderErr error
-	go func() {
-		if forwarderErr = forwarder.ForwardPorts(); forwarderErr != nil {
-			log.Error().WithError(forwarderErr).Message("Error occurred when forwarding ports.")
-			close(stopCh)
+func pipeAndClose(p PipeCloser) error {
+	defer p.Close()
+	for {
+		if err := p.PipeMessage(); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return err
 		}
-	}()
-
-	select {
-	case <-readyCh:
-	case <-stopCh:
 	}
-	if forwarderErr != nil {
-		return portConnection{}, forwarderErr
-	}
-
-	ports, err := forwarder.GetPorts()
-	if err != nil {
-		log.Error().WithError(err).Message("Error getting ports.")
-		close(stopCh)
-		return portConnection{}, err
-	}
-	port := ports[0]
-
-	log.Debug().
-		WithStringf("pod", "%s/%s", a.namespace, podName).
-		WithUint("local", uint(port.Local)).
-		WithUint("remote", uint(port.Remote)).
-		Message("Connected to worker. Port-forwarding from pod.")
-
-	return portConnection{
-		ForwardedPort: port,
-		stopCh:        stopCh,
-	}, nil
-}
-
-func newPortForwardURL(apiURL, namespace, podName string) (*url.URL, error) {
-	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
-		url.PathEscape(namespace), url.PathEscape(podName))
-
-	portForwardURL, err := url.Parse(apiURL)
-	if err != nil {
-		return nil, fmt.Errorf("parse URL from kubeconfig: %w", err)
-	}
-	portForwardURL.Path += path
-	return portForwardURL, nil
 }
