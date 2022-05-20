@@ -187,6 +187,7 @@ func (p k8sProvisioner) newWorkerPod(args WorkerArgs) v1.Pod {
 		"run",
 		"--serve",
 		"--build-id", uitoa(args.BuildID),
+		"--project-id", uitoa(args.ProjectID),
 	}
 	if args.Environment != "" {
 		wharfArgs = append(wharfArgs, "--environment", args.Environment)

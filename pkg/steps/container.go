@@ -58,12 +58,15 @@ func (s Container) init(_ string, v visit.MapVisitor) (StepType, errutil.Slice) 
 		v.ValidateRequiredSlice("cmds"),
 	)
 
-	s.podSpec = s.applyStep()
+	podSpec, errs := s.applyStep(v)
+	s.podSpec = podSpec
+	errSlice.Add(errs...)
 
 	return s, errSlice
 }
 
-func (s Container) applyStep() v1.PodSpec {
+func (s Container) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
+	var errSlice errutil.Slice
 	podSpec := newBasePodSpec()
 
 	var cmds []string
@@ -103,9 +106,13 @@ func (s Container) applyStep() v1.PodSpec {
 	}
 
 	if s.SecretName != "" {
+		var projectID uint
+		if err := v.RequireUintFromVarSub("PROJECT_ID", &projectID); err != nil {
+			v.AddErrorFor("secretName", &errSlice, err)
+		}
 		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
 			s.instanceID,
-			1, // TODO: Use project ID
+			projectID,
 			s.SecretName,
 		)
 		cont.EnvFrom = append(cont.EnvFrom, v1.EnvFromSource{
@@ -119,5 +126,5 @@ func (s Container) applyStep() v1.PodSpec {
 
 	podSpec.ServiceAccountName = s.ServiceAccount
 	podSpec.Containers = append(podSpec.Containers, cont)
-	return podSpec
+	return podSpec, errSlice
 }

@@ -258,10 +258,13 @@ func (s Docker) applyStep(v visit.MapVisitor) (v1.PodSpec, errutil.Slice) {
 		// In Docker & Kaniko, adding only `--build-arg MY_ARG` will make it
 		// pull the value from an environment variable instead of from a literal.
 		// This is used to not specify the secret values in the pod manifest.
-
+		var projectID uint
+		if err := v.RequireUintFromVarSub("PROJECT_ID", &projectID); err != nil {
+			v.AddErrorFor(dockerFieldSecretName, &errSlice, err)
+		}
 		secretName := fmt.Sprintf("wharf-%s-project-%d-secretname-%s",
 			s.instanceID,
-			1, // TODO: Use project ID
+			projectID,
 			s.SecretName,
 		)
 		for _, arg := range s.SecretArgs {

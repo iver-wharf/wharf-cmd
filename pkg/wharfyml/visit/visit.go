@@ -41,6 +41,18 @@ func Int(node *yaml.Node) (int, error) {
 	return num, nil
 }
 
+// Uint will try to read this YAML node as an integer.
+func Uint(node *yaml.Node) (uint, error) {
+	if err := VerifyKindAndTag(node, "unsigned integer", yaml.ScalarNode, ShortTagInt); err != nil {
+		return 0, err
+	}
+	num, err := parseUint(node.Value)
+	if err != nil {
+		return 0, errutil.NewPosFromNode(err, node)
+	}
+	return num, nil
+}
+
 // Float64 will try to read this YAML node as a float64.
 func Float64(node *yaml.Node) (float64, error) {
 	if node.Kind == yaml.ScalarNode && node.ShortTag() == ShortTagInt {
@@ -219,6 +231,14 @@ func parseInt(str string) (int, error) {
 		return 0, err
 	}
 	return int(num), nil
+}
+
+func parseUint(str string) (uint, error) {
+	num, err := strconv.ParseUint(removeUnderscores(str), 0, 0)
+	if err != nil {
+		return 0, err
+	}
+	return uint(num), nil
 }
 
 func parseFloat64(str string) (float64, error) {

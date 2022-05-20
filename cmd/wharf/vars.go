@@ -11,9 +11,9 @@ import (
 )
 
 var varsFlags = struct {
-	env     string
-	inputs  flagtypes.KeyValueArray
-	buildID uint
+	env         string
+	inputs      flagtypes.KeyValueArray
+	varSubFlags commonVarSubFlags
 }{}
 
 var varsCmd = &cobra.Command{
@@ -23,12 +23,12 @@ var varsCmd = &cobra.Command{
 		// Intentionally not calling parent PersistentPreRunE
 		// to disable the SIGTERM signal hooks from rootCmd
 
-		if varsFlags.buildID == 0 {
+		if varsFlags.varSubFlags.buildID == 0 {
 			buildID, err := lastbuild.GuessNext()
 			if err != nil {
 				return fmt.Errorf("get default for --build-id flag: %w", err)
 			}
-			varsFlags.buildID = buildID
+			varsFlags.varSubFlags.buildID = buildID
 		}
 		return nil
 	},
@@ -37,7 +37,7 @@ var varsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(varsCmd)
 
-	addBuildIDFlag(varsCmd.PersistentFlags(), &varsFlags.buildID)
+	addCommonVarSubFlags(varsCmd.PersistentFlags(), &varsFlags.varSubFlags)
 	addWharfYmlEnvFlag(varsCmd, varsCmd.PersistentFlags(), &varsFlags.env)
 	addWharfYmlInputsFlag(varsCmd, varsCmd.PersistentFlags(), &varsFlags.inputs)
 }
@@ -51,6 +51,6 @@ func varsCmdParseBuildDef(args []string) (wharfyml.Definition, error) {
 	return parseBuildDefinition(currentDir, wharfyml.Args{
 		Env:       varsFlags.env,
 		Inputs:    parseInputArgs(varsFlags.inputs),
-		VarSource: newBuildIDVarSource(varsFlags.buildID),
+		VarSource: varsFlags.varSubFlags.varSource(),
 	})
 }
