@@ -1,4 +1,4 @@
-package yamltesting
+package testutil
 
 import (
 	"fmt"

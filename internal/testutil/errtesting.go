@@ -1,4 +1,4 @@
-package errtesting
+package testutil
 
 import (
 	"errors"
