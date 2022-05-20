@@ -196,7 +196,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   'cluster-config' not found" in `kubectl` steps. (#52)
 
 - Changed from `github.com/sirupsen/logrus` to
-  `github.com/iver-wharf/wharf-core/pkg/logger` for logging. (#2, #7)
+  `github.com/iver-wharf/wharf-core/v2/pkg/logger` for logging. (#2, #7, #184)
 
 - Added gRPC server for worker in `pkg/worker/workerserver`: (#51)
 
@@ -229,7 +229,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
   - `github.com/gin-contrib/cors` v1.3.1 (#51)
   - `github.com/gin-gonic/gin` v1.7.1 (#46)
   - `github.com/golang/protobuf` v1.5.2 (#51)
-  - `github.com/iver-wharf/wharf-core` (#2, #7)
+  - `github.com/iver-wharf/wharf-core/v2` v2.0.0 (#2, #7, #184)
   - `github.com/rogpeppe/go-internal` v1.8.1 (#172)
   - `github.com/soheilhy/cmux` v0.1.4 (#51)
   - `github.com/spf13/pflag` v1.0.5 (#63)

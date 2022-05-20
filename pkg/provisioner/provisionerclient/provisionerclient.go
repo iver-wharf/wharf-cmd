@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
-	"github.com/iver-wharf/wharf-core/pkg/problem"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/problem"
 )
 
 // Client is a HTTP client that talks to wharf-cmd-provisioner.

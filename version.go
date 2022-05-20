@@ -4,7 +4,7 @@ import (
 	_ "embed"
 	"fmt"
 
-	"github.com/iver-wharf/wharf-core/pkg/app"
+	"github.com/iver-wharf/wharf-core/v2/pkg/app"
 )
 
 //go:embed assets/version.yaml

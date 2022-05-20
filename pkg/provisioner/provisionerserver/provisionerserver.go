@@ -6,8 +6,8 @@ import (
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner/provisionerserver/docs"
-	"github.com/iver-wharf/wharf-core/pkg/ginutil"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/ginutil"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 )

@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/iver-wharf/wharf-core/pkg/problem"
+	"github.com/iver-wharf/wharf-core/v2/pkg/problem"
 )
 
 type restClient struct {

@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	"github.com/spf13/cobra"
 )
 

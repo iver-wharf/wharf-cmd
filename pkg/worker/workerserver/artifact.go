@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/iver-wharf/wharf-core/pkg/ginutil"
+	"github.com/iver-wharf/wharf-core/v2/pkg/ginutil"
 )
 
 type artifactModule struct {
