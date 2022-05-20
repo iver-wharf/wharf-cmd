@@ -135,9 +135,6 @@ func (w logsWriter) pipeAndCloseReader(reader io.ReadCloser) error {
 		if err := w.write(txt); err != nil {
 			return err
 		}
-		if err := w.write("\n"); err != nil {
-			return err
-		}
 		empty = false
 	}
 	if scanner.Err() != io.EOF {

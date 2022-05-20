@@ -256,6 +256,9 @@ func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
 	if err := logsWriter.write("[aggregator] Logging kubernetes events:"); err != nil {
 		return err
 	}
+	if err := logsWriter.write(""); err != nil {
+		return err
+	}
 	eventsReader, err := a.getEventsReader(pod)
 	if err != nil {
 		return fmt.Errorf("get events reader: %w", err)
@@ -265,17 +268,24 @@ func (a k8sAggr) handleFailedPod(ctx context.Context, pod workerPod) error {
 	}
 
 	writeContainerLogs := func(c v1.Container) error {
-		if err := logsWriter.write(""); err != nil {
+		if err := logsWriter.write(fmt.Sprintf("[aggregator] Logging kubernetes logs from container %q:", c.Name)); err != nil {
 			return err
 		}
-		if err := logsWriter.write(fmt.Sprintf("[aggregator] Logging kubernetes logs from container %q:", c.Name)); err != nil {
+		if err := logsWriter.write(""); err != nil {
 			return err
 		}
 		logsReader, err := a.getLogsReader(ctx, pod, c)
 		if err != nil {
 			return fmt.Errorf("get logs reader: %w", err)
 		}
-		return logsWriter.pipeAndCloseReader(logsReader)
+		if err := logsWriter.pipeAndCloseReader(logsReader); err != nil {
+			return err
+		}
+		return logsWriter.write("")
+	}
+
+	if err := logsWriter.write(""); err != nil {
+		return err
 	}
 
 	for _, c := range pod.Spec.InitContainers {
