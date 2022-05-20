@@ -85,21 +85,21 @@ docker-run:
 
 .PHONY: clean-swag
 clean-swag:
-	rm -vrf pkg/provisionerapi/docs pkg/workerapi/workerserver/docs
+	rm -vrf pkg/provisioner/provisionerserver/docs pkg/workerapi/workerserver/docs
 
 .PHONY: swag-force
 swag-force: clean-swag swag
 
 .PHONY: swag
 swag: \
-	pkg/provisionerapi/docs \
+	pkg/provisioner/provisionerserver/docs \
 	pkg/workerapi/workerserver/docs
 
-pkg/provisionerapi/docs:
+pkg/provisioner/provisionerserver/docs:
 	swag init \
-		--dir pkg/provisionerapi,pkg/provisioner,pkg/worker \
+		--dir pkg/provisioner/provisionerserver,pkg/provisioner,pkg/worker \
 		--generalInfo provisionerapi.go \
-		--output pkg/provisionerapi/docs \
+		--output pkg/provisioner/provisionerserver/docs \
 		--instanceName provisionerapi
 
 pkg/workerapi/workerserver/docs:

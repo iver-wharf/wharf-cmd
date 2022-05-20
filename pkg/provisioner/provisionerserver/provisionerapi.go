@@ -5,7 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/iver-wharf/wharf-cmd/pkg/config"
 	"github.com/iver-wharf/wharf-cmd/pkg/provisioner"
-	"github.com/iver-wharf/wharf-cmd/pkg/provisionerapi/docs"
+	"github.com/iver-wharf/wharf-cmd/pkg/provisioner/provisionerserver/docs"
 	"github.com/iver-wharf/wharf-core/pkg/ginutil"
 	"github.com/iver-wharf/wharf-core/pkg/logger"
 	ginSwagger "github.com/swaggo/gin-swagger"
