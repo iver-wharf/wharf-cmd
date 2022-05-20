@@ -99,7 +99,7 @@ pkg/provisioner/provisionerserver/docs:
 	swag init \
 		--dir pkg/provisioner/provisionerserver,pkg/provisioner \
 		--parseDependency --parseDepth 1 \
-		--generalInfo provisionerapi.go \
+		--generalInfo provisionerserver.go \
 		--output pkg/provisioner/provisionerserver/docs \
 		--instanceName provisionerapi
 
