@@ -98,4 +98,3 @@ require (
 	sigs.k8s.io/yaml v1.2.0 // indirect
 )
 
-replace golang.org/x/net => golang.org/x/net v0.0.0-20210119194325-5f4716e94777
