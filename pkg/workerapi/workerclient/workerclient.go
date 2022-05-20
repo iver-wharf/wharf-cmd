@@ -8,7 +8,7 @@ import (
 	"io"
 
 	v1 "github.com/iver-wharf/wharf-cmd/api/workerapi/v1"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	"google.golang.org/grpc"
 )
 

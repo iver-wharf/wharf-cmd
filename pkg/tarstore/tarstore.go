@@ -10,7 +10,7 @@ import (
 	"github.com/iver-wharf/wharf-cmd/internal/filecopy"
 	"github.com/iver-wharf/wharf-cmd/internal/ignorer"
 	"github.com/iver-wharf/wharf-cmd/internal/tarutil"
-	"github.com/iver-wharf/wharf-core/pkg/logger"
+	"github.com/iver-wharf/wharf-core/v2/pkg/logger"
 	"gopkg.in/typ.v4/sync2"
 )
 
