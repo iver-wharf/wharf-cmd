@@ -69,7 +69,7 @@ environment variables, such as:
 		}
 
 		groups := slices.GroupBy(vars, func(v varsub.Var) string {
-			return v.Source
+			return v.SourceLabel
 		})
 		slices.Reverse(groups)
 
@@ -89,8 +89,8 @@ environment variables, such as:
 			for _, value := range g.Values {
 				v, _ := def.VarSource.Lookup(value.Key)
 				vars = append(vars, variable{
-					Var:    v,
-					isUsed: v.Source == value.Source,
+					Var:    value,
+					isUsed: v.SourceLabel == value.SourceLabel,
 				})
 			}
 

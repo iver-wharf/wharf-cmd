@@ -34,9 +34,9 @@ func (s SourceVar) ListVars() []Var {
 // Var is a single varsub variable, with it's Key (name), Value, and optionally
 // also a Source that declares where this variable comes from.
 type Var struct {
-	Key    string
-	Value  any
-	Source string
+	Key         string
+	Value       any
+	SourceLabel string
 }
 
 // String implements the fmt.Stringer interface.
@@ -99,9 +99,9 @@ type SourceMap map[string]Val
 func (s SourceMap) Lookup(name string) (Var, bool) {
 	v, ok := s[name]
 	return Var{
-		Key:    name,
-		Value:  v.Value,
-		Source: v.Source,
+		Key:         name,
+		Value:       v.Value,
+		SourceLabel: v.Source,
 	}, ok
 }
 
@@ -114,9 +114,9 @@ func (s SourceMap) ListVars() []Var {
 	var vars []Var
 	for k, v := range s {
 		vars = append(vars, Var{
-			Key:    k,
-			Value:  v.Value,
-			Source: v.Source,
+			Key:         k,
+			Value:       v.Value,
+			SourceLabel: v.Source,
 		})
 	}
 	return vars

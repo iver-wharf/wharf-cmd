@@ -75,9 +75,9 @@ func (s Stats) Lookup(name string) (varsub.Var, bool) {
 		return varsub.Var{}, false
 	}
 	return varsub.Var{
-		Key:    name,
-		Value:  value,
-		Source: "git",
+		Key:         name,
+		Value:       value,
+		SourceLabel: "git",
 	}, true
 }
 
