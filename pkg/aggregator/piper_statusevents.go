@@ -32,7 +32,7 @@ func newStatusEventsPiper(ctx context.Context, wharfapi wharfapi.Client, worker 
 	}, nil
 }
 
-func (p statusEventsPiper) PipeMessage() error {
+func (p *statusEventsPiper) PipeMessage() error {
 	status, err := p.readStatus()
 	if err != nil {
 		if errors.Is(err, io.EOF) {
@@ -58,7 +58,7 @@ func (p statusEventsPiper) PipeMessage() error {
 }
 
 // Close closes all active streams.
-func (p statusEventsPiper) Close() error {
+func (p *statusEventsPiper) Close() error {
 	if err := p.in.CloseSend(); err != nil {
 		log.Error().
 			WithError(err).
@@ -67,7 +67,7 @@ func (p statusEventsPiper) Close() error {
 	return nil
 }
 
-func (p statusEventsPiper) readStatus() (*workerclient.StatusEvent, error) {
+func (p *statusEventsPiper) readStatus() (*workerclient.StatusEvent, error) {
 	if p.in == nil {
 		return nil, errors.New("input stream is nil")
 	}
@@ -78,7 +78,7 @@ func (p statusEventsPiper) readStatus() (*workerclient.StatusEvent, error) {
 	return status, nil
 }
 
-func (p statusEventsPiper) ensureStatusCompletedOrFailed() error {
+func (p *statusEventsPiper) ensureStatusCompletedOrFailed() error {
 	if p.prevStatus != request.BuildCompleted && p.prevStatus != request.BuildFailed {
 		finalStatus, _ := p.transformStatus(v1.StatusFailed)
 		if err := p.writeStatus(finalStatus); err != nil {
@@ -88,11 +88,11 @@ func (p statusEventsPiper) ensureStatusCompletedOrFailed() error {
 	return nil
 }
 
-func (p statusEventsPiper) shouldSkip(status request.BuildStatus) bool {
+func (p *statusEventsPiper) shouldSkip(status request.BuildStatus) bool {
 	return status == p.prevStatus
 }
 
-func (p statusEventsPiper) transformStatus(status v1.Status) (request.BuildStatus, error) {
+func (p *statusEventsPiper) transformStatus(status v1.Status) (request.BuildStatus, error) {
 	switch status {
 	case v1.StatusPending, v1.StatusScheduling:
 		return request.BuildScheduling, nil
@@ -107,10 +107,10 @@ func (p statusEventsPiper) transformStatus(status v1.Status) (request.BuildStatu
 	}
 }
 
-func (p statusEventsPiper) writeStatus(status request.BuildStatus) error {
+func (p *statusEventsPiper) writeStatus(status request.BuildStatus) error {
 	statusUpdate := request.LogOrStatusUpdate{Status: status}
 	_, err := p.wharfapi.UpdateBuildStatus(p.worker.BuildID(), statusUpdate)
-	if err != nil {
+	if err == nil {
 		p.prevStatus = status
 	}
 	return err

@@ -12,6 +12,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
+## v0.8.2 (WIP)
+
+- Fixed build status always being set to `Failed`. (#189)
+
 ## v0.8.1 (2022-05-20)
 
 - Removed `replace` directive from `go.mod`, making `go install ...` fail.
