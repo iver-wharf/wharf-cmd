@@ -110,7 +110,7 @@ func (p *statusEventsPiper) transformStatus(status v1.Status) (request.BuildStat
 func (p *statusEventsPiper) writeStatus(status request.BuildStatus) error {
 	statusUpdate := request.LogOrStatusUpdate{Status: status}
 	_, err := p.wharfapi.UpdateBuildStatus(p.worker.BuildID(), statusUpdate)
-	if err != nil {
+	if err == nil {
 		p.prevStatus = status
 	}
 	return err
