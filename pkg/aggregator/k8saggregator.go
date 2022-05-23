@@ -210,7 +210,7 @@ func (a k8sAggr) handleRunningPod(ctx context.Context, pod workerPod) error {
 		if err != nil {
 			return err
 		}
-		return pipeAndClose(statusEventsPiper)
+		return pipeAndClose(&statusEventsPiper)
 	})
 	pg.AddFunc("artifact events", func(ctx context.Context) error {
 		artifactEventsPiper, err := newArtifactEventsPiper(ctx, a.wharfapi, worker)
