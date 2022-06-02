@@ -1,0 +1,243 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "REST API for wharf-cmd to provision wharf-cmd-workers.",
+        "title": "Wharf provisioner API",
+        "contact": {
+            "name": "Iver wharf-cmd support",
+            "url": "https://github.com/iver-wharf/wharf-cmd/issues",
+            "email": "wharf@iver.se"
+        },
+        "license": {
+            "name": "MIT",
+            "url": "https://github.com/iver-wharf/wharf-cmd/blob/master/LICENSE"
+        }
+    },
+    "paths": {
+        "/": {
+            "get": {
+                "description": "Pong.\nAdded in v0.8.0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "meta"
+                ],
+                "summary": "Ping",
+                "operationId": "ping",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/provisionerapi.Ping"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/worker": {
+            "get": {
+                "description": "Added in v0.8.0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "worker"
+                ],
+                "summary": "List provisioned wharf-cmd-workers",
+                "operationId": "listWorkers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/provisioner.Worker"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Failed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "Added in v0.8.0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "worker"
+                ],
+                "summary": "Creates a new wharf-cmd-worker",
+                "operationId": "createWorker",
+                "parameters": [
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "example": 123,
+                        "description": "Build reference ID",
+                        "name": "BUILD_REF",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Which Wharf environment to use, as defined in the `.wharf-ci.yml` file.",
+                        "name": "ENVIRONMENT",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "master",
+                        "description": "Git branch",
+                        "name": "GIT_BRANCH",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "ssh://git@github.com/iver-wharf/wharf-cmd.git",
+                        "description": "Full Git clone'able URL",
+                        "name": "GIT_FULLURL",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Name of Git clone credentials secret",
+                        "name": "GIT_TOKEN",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "master",
+                        "description": "Git branch",
+                        "name": "REPO_BRANCH",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "iver-wharf",
+                        "description": "Repository group name",
+                        "name": "REPO_GROUP",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "example": "wharf-cmd",
+                        "description": "Repository name",
+                        "name": "REPO_NAME",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "default": "ALL",
+                        "example": "deploy",
+                        "description": "Which stages to run",
+                        "name": "RUN_STAGES",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Input variable values, as a JSON or YAML formatted map of variable names (as defined in the project's `.wharf-ci.yml` file) as keys paired with their string, boolean, or numeric value.",
+                        "name": "VARS",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Wharf instance ID",
+                        "name": "WHARF_INSTANCE",
+                        "in": "query"
+                    },
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "example": 456,
+                        "description": "Wharf project ID",
+                        "name": "WHARF_PROJECT_ID",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/provisioner.Worker"
+                        }
+                    },
+                    "500": {
+                        "description": "Failed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/worker/{workerId}": {
+            "delete": {
+                "description": "Added in v0.8.0.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "worker"
+                ],
+                "summary": "Deletes a wharf-cmd-worker",
+                "operationId": "deleteWorker",
+                "parameters": [
+                    {
+                        "minimum": 0,
+                        "type": "integer",
+                        "description": "ID of worker to delete",
+                        "name": "workerId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "OK"
+                    },
+                    "500": {
+                        "description": "Failed",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "provisioner.Worker": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer"
+                },
+                "workerId": {
+                    "type": "string"
+                }
+            }
+        },
+        "provisionerapi.Ping": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string",
+                    "example": "pong"
+                }
+            }
+        }
+    }
+}
