@@ -12,7 +12,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
-## v0.8.3 (WIP)
+## v0.8.3 (2022-06-02)
 
 - Fixed installing via `go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest`
   not working. (#192)
