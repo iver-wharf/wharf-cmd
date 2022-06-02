@@ -1,0 +1,171 @@
+definitions:
+  provisioner.Worker:
+    properties:
+      createdAt:
+        type: string
+      name:
+        type: string
+      status:
+        type: integer
+      workerId:
+        type: string
+    type: object
+  provisionerapi.Ping:
+    properties:
+      message:
+        example: pong
+        type: string
+    type: object
+info:
+  contact:
+    email: wharf@iver.se
+    name: Iver wharf-cmd support
+    url: https://github.com/iver-wharf/wharf-cmd/issues
+  description: REST API for wharf-cmd to provision wharf-cmd-workers.
+  license:
+    name: MIT
+    url: https://github.com/iver-wharf/wharf-cmd/blob/master/LICENSE
+  title: Wharf provisioner API
+paths:
+  /:
+    get:
+      description: |-
+        Pong.
+        Added in v0.8.0.
+      operationId: ping
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/provisionerapi.Ping'
+      summary: Ping
+      tags:
+      - meta
+  /api/worker:
+    get:
+      description: Added in v0.8.0.
+      operationId: listWorkers
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/provisioner.Worker'
+            type: array
+        "500":
+          description: Failed
+          schema:
+            type: string
+      summary: List provisioned wharf-cmd-workers
+      tags:
+      - worker
+    post:
+      description: Added in v0.8.0.
+      operationId: createWorker
+      parameters:
+      - description: Build reference ID
+        example: 123
+        in: query
+        minimum: 0
+        name: BUILD_REF
+        required: true
+        type: integer
+      - description: Which Wharf environment to use, as defined in the `.wharf-ci.yml`
+          file.
+        in: query
+        name: ENVIRONMENT
+        type: string
+      - description: Git branch
+        example: master
+        in: query
+        name: GIT_BRANCH
+        type: string
+      - description: Full Git clone'able URL
+        example: ssh://git@github.com/iver-wharf/wharf-cmd.git
+        in: query
+        name: GIT_FULLURL
+        required: true
+        type: string
+      - description: Name of Git clone credentials secret
+        in: query
+        name: GIT_TOKEN
+        type: string
+      - description: Git branch
+        example: master
+        in: query
+        name: REPO_BRANCH
+        type: string
+      - description: Repository group name
+        example: iver-wharf
+        in: query
+        name: REPO_GROUP
+        type: string
+      - description: Repository name
+        example: wharf-cmd
+        in: query
+        name: REPO_NAME
+        type: string
+      - default: ALL
+        description: Which stages to run
+        example: deploy
+        in: query
+        name: RUN_STAGES
+        type: string
+      - description: Input variable values, as a JSON or YAML formatted map of variable
+          names (as defined in the project's `.wharf-ci.yml` file) as keys paired
+          with their string, boolean, or numeric value.
+        in: query
+        name: VARS
+        type: string
+      - description: Wharf instance ID
+        in: query
+        name: WHARF_INSTANCE
+        type: string
+      - description: Wharf project ID
+        example: 456
+        in: query
+        minimum: 0
+        name: WHARF_PROJECT_ID
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/provisioner.Worker'
+        "500":
+          description: Failed
+          schema:
+            type: string
+      summary: Creates a new wharf-cmd-worker
+      tags:
+      - worker
+  /api/worker/{workerId}:
+    delete:
+      description: Added in v0.8.0.
+      operationId: deleteWorker
+      parameters:
+      - description: ID of worker to delete
+        in: path
+        minimum: 0
+        name: workerId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: OK
+        "500":
+          description: Failed
+          schema:
+            type: string
+      summary: Deletes a wharf-cmd-worker
+      tags:
+      - worker
+swagger: "2.0"
