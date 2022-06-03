@@ -30,6 +30,9 @@ go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest
 
 - Kubernetes access using [k8s.io/client-go](https://github.com/kubernetes/client-go)
 
+- Git interface using external `git` binary accessible via `PATH` environment
+  variable.
+
 ## Development
 
 1. Install
