@@ -36,6 +36,7 @@ go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest
 
    - Go 1.18 or later (for compilation): <https://golang.org/>
    - NodeJS & NPM (for markdown linting): <https://nodejs.org/en/>
+   - Protobuf runtime (for regenerating protobuf/gRPC files): <https://developers.google.com/protocol-buffers/>
 
 2. Install formatters, protobuf dependencies, and linters:
 
