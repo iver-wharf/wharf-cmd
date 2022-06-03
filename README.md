@@ -24,11 +24,11 @@ go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest
 - HTTP API using the [gin-gonic/gin](https://github.com/gin-gonic/gin)
   web framework.
 
+- gRPC API using [grpc/grpc-go](https://github.com/grpc/grpc-go).
+
 - Command-line parsing using [spf13/cobra](https://github.com/spf13/cobra)
 
 - Kubernetes access using [k8s.io/client-go](https://github.com/kubernetes/client-go)
-
-- Git interface using [go-git/go-git](https://github.com/go-git/go-git)
 
 ## Development
 
@@ -36,7 +36,6 @@ go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest
 
    - Go 1.18 or later (for compilation): <https://golang.org/>
    - NodeJS & NPM (for markdown linting): <https://nodejs.org/en/>
-   - Protobuf runtime (for regenerating protobuf/gRPC files): <https://developers.google.com/protocol-buffers/>
 
 2. Install formatters, protobuf dependencies, and linters:
 
