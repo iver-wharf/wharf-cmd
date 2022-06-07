@@ -59,15 +59,24 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		result.Status = workermodel.StatusNone
 		return result, nil
 	}
+	allSuccessful := true
 	for _, stageRunner := range b.stageRunners {
+		stagesDone++
+		if shouldNotRunStage(allSuccessful, stageRunner.Stage()) {
+			log.Info().
+				WithStringf("stages", "%d/%d", stagesDone, stagesCount).
+				WithString("stage", stageRunner.Stage().Name).
+				Message("Skipping stage.")
+			continue
+		}
 		log.Info().
 			WithStringf("stages", "%d/%d", stagesDone, stagesCount).
 			WithString("stage", stageRunner.Stage().Name).
 			Message("Starting stage.")
 		res := stageRunner.RunStage(ctx)
 		result.Stages = append(result.Stages, res)
-		stagesDone++
 		if res.Status != workermodel.StatusSuccess {
+			allSuccessful = false
 			var failed []string
 			var cancelled []string
 			for _, stepRes := range res.Steps {
@@ -84,9 +93,9 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 				WithStringer("status", res.Status).
 				WithString("failed", strings.Join(failed, ",")).
 				WithString("cancelled", strings.Join(cancelled, ",")).
-				Message("Failed stage. Skipping any further stages.")
+				Message("Failed stage. Only running 'runs-if: fail' stages from now on.")
 			result.Status = res.Status
-			break
+			continue
 		}
 		log.Info().
 			WithStringf("stages", "%d/%d", stagesDone, stagesCount).
@@ -115,4 +124,24 @@ func filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {
 		}
 	}
 	return result
+}
+
+func shouldNotRunStage(allSuccessful bool, s wharfyml.Stage) bool {
+	if s.RunsIf == wharfyml.StageRunsIfFail && !allSuccessful {
+		log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("runs because failed")
+		return false
+	}
+
+	if (s.RunsIf == "" || s.RunsIf == wharfyml.StageRunsIfSuccess) && allSuccessful {
+		log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("runs because none failed")
+		return false
+	}
+
+	if s.RunsIf == wharfyml.StageRunsIfAlways {
+		log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("runs because it always does")
+		return false
+	}
+
+	log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("does not run")
+	return true
 }
