@@ -59,10 +59,10 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		result.Status = workermodel.StatusNone
 		return result, nil
 	}
-	allSuccessful := true
+	var hasAnyStageFailed bool
 	for _, stageRunner := range b.stageRunners {
 		stagesDone++
-		if shouldNotRunStage(allSuccessful, stageRunner.Stage()) {
+		if shouldNotRunStage(hasAnyStageFailed, stageRunner.Stage()) {
 			log.Info().
 				WithStringf("stages", "%d/%d", stagesDone, stagesCount).
 				WithString("stage", stageRunner.Stage().Name).
@@ -76,7 +76,7 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		res := stageRunner.RunStage(ctx)
 		result.Stages = append(result.Stages, res)
 		if res.Status != workermodel.StatusSuccess {
-			allSuccessful = false
+			hasAnyStageFailed = true
 			var failed []string
 			var cancelled []string
 			for _, stepRes := range res.Steps {
@@ -126,22 +126,15 @@ func filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {
 	return result
 }
 
-func shouldNotRunStage(allSuccessful bool, s wharfyml.Stage) bool {
-	if s.RunsIf == wharfyml.StageRunsIfFail && !allSuccessful {
-		log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("runs because failed")
+func shouldNotRunStage(anyStageFailed bool, s wharfyml.Stage) bool {
+	if s.RunsIf == wharfyml.StageRunsIfFail && anyStageFailed {
 		return false
 	}
-
-	if (s.RunsIf == "" || s.RunsIf == wharfyml.StageRunsIfSuccess) && allSuccessful {
-		log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("runs because none failed")
+	if (s.RunsIf == "" || s.RunsIf == wharfyml.StageRunsIfSuccess) && !anyStageFailed {
 		return false
 	}
-
 	if s.RunsIf == wharfyml.StageRunsIfAlways {
-		log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("runs because it always does")
 		return false
 	}
-
-	log.Warn().WithBool("allSuccessful", allSuccessful).WithString("stage", s.Name).Message("does not run")
 	return true
 }
