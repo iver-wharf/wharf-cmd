@@ -63,10 +63,15 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 	for _, stageRunner := range b.stageRunners {
 		stagesDone++
 		if shouldNotRunStage(hasAnyStageFailed, stageRunner.Stage()) {
-			log.Info().
+			ev := log.Info().
 				WithStringf("stages", "%d/%d", stagesDone, stagesCount).
-				WithString("stage", stageRunner.Stage().Name).
-				Message("Skipping stage.")
+				WithString("stage", stageRunner.Stage().Name)
+			if stageRunner.Stage().RunsIf == wharfyml.StageRunsIfFail {
+				ev = ev.WithString("reason", "only runs if any of the stages before failed")
+			} else {
+				ev = ev.WithString("reason", "only runs if all stages before succeeded")
+			}
+			ev.Message("Skipping stage.")
 			continue
 		}
 		log.Info().
