@@ -12,6 +12,11 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
+## v0.9.0 (WIP)
+
+- Added `runs-if` field to stages in the `.wharf-ci.yml` file. Allows one of
+  the values: `success`, `fail`, `always`. (#195)
+
 ## v0.8.3 (2022-06-03)
 
 - Fixed installing via `go install github.com/iver-wharf/wharf-cmd/cmd/wharf@latest`
