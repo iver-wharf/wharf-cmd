@@ -2,7 +2,6 @@ package wharfyml
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/iver-wharf/wharf-cmd/internal/errutil"
 	"github.com/iver-wharf/wharf-cmd/pkg/varsub"
@@ -13,21 +12,6 @@ import (
 // Errors related to parsing stages.
 var (
 	ErrStageEmpty = errors.New("stage is missing steps")
-)
-
-// StageRunsIf is an enum of different run behaviors for a stage, dependent on
-// previous stages.
-type StageRunsIf string
-
-const (
-	// StageRunsIfSuccess runs the stage if all previous stages were successful.
-	StageRunsIfSuccess = "success"
-	// StageRunsIfFail runs the stage if one or more of the previous stages were
-	// unsuccessful.
-	StageRunsIfFail = "fail"
-	// StageRunsIfAlways always runs the stage, regardless of the success state
-	// of previous stages.
-	StageRunsIfAlways = "always"
 )
 
 // Stage holds the name, environment filter, and list of steps for this Wharf
@@ -65,10 +49,9 @@ func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, sourc
 			stage.Envs = envs
 			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
 		case propRunsIf:
-			if err := stepNode.Value.Decode(&stage.RunsIf); err != nil {
-				stage.RunsIf = StageRunsIf(strings.ToLower(string(stage.RunsIf)))
-				errSlice.Add(errutil.Scope(err, propRunsIf))
-			}
+			runsIf, errs := visitStageRunsIfNode(stepNode.Value)
+			stage.RunsIf = runsIf
+			errSlice.Add(errutil.ScopeSlice(errs, propRunsIf)...)
 		default:
 			step, errs := visitStepNode(stepNode.Key, stepNode.Value, args, source)
 			stage.Steps = append(stage.Steps, step)
