@@ -76,7 +76,6 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		res := stageRunner.RunStage(ctx)
 		result.Stages = append(result.Stages, res)
 		if res.Status != workermodel.StatusSuccess {
-			hasAnyStageFailed = true
 			var failed []string
 			var cancelled []string
 			for _, stepRes := range res.Steps {
@@ -93,7 +92,11 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 				WithStringer("status", res.Status).
 				WithString("failed", strings.Join(failed, ",")).
 				WithString("cancelled", strings.Join(cancelled, ",")).
-				Message("Failed stage. Only running 'runs-if: fail' stages from now on.")
+				Message("Failed stage.")
+			if !hasAnyStageFailed {
+				log.Warn().Message("Skipping `runs-if: success` stages from now on.")
+				hasAnyStageFailed = true
+			}
 			result.Status = res.Status
 			continue
 		}
