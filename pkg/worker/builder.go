@@ -59,57 +59,30 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		result.Status = workermodel.StatusNone
 		return result, nil
 	}
-	var hasAnyStageFailed bool
+	anyPreviousStageHasFailed := false
 	for _, stageRunner := range b.stageRunners {
 		stagesDone++
-		if shouldNotRunStage(hasAnyStageFailed, stageRunner.Stage()) {
-			ev := log.Info().
-				WithStringf("stages", "%d/%d", stagesDone, stagesCount).
-				WithString("stage", stageRunner.Stage().Name)
-			if stageRunner.Stage().RunsIf == wharfyml.StageRunsIfFail {
-				ev = ev.WithString("reason", "only runs if any of the stages before failed")
-			} else {
-				ev = ev.WithString("reason", "only runs if all stages before succeeded")
-			}
-			ev.Message("Skipping stage.")
+		stage := stageRunner.Stage()
+		if stage.ShouldSkip(anyPreviousStageHasFailed) {
+			logSkippedStage(stage, stagesDone, stagesCount)
 			continue
 		}
 		log.Info().
 			WithStringf("stages", "%d/%d", stagesDone, stagesCount).
-			WithString("stage", stageRunner.Stage().Name).
+			WithString("stage", stage.Name).
 			Message("Starting stage.")
 		res := stageRunner.RunStage(ctx)
 		result.Stages = append(result.Stages, res)
 		if res.Status != workermodel.StatusSuccess {
-			var failed []string
-			var cancelled []string
-			for _, stepRes := range res.Steps {
-				if stepRes.Status == workermodel.StatusFailed {
-					failed = append(failed, stepRes.Name)
-				} else if stepRes.Status == workermodel.StatusCancelled {
-					cancelled = append(cancelled, stepRes.Name)
-				}
-			}
-			log.Warn().
-				WithStringf("stages", "%d/%d", stagesDone, stagesCount).
-				WithString("stage", res.Name).
-				WithDuration("dur", res.Duration.Truncate(time.Second)).
-				WithStringer("status", res.Status).
-				WithString("failed", strings.Join(failed, ",")).
-				WithString("cancelled", strings.Join(cancelled, ",")).
-				Message("Failed stage.")
-			if !hasAnyStageFailed {
-				log.Warn().Message("Skipping `runs-if: success` stages from now on.")
-				hasAnyStageFailed = true
+			logFailedStage(res, stagesDone, stagesCount)
+			if !anyPreviousStageHasFailed {
+				log.Debug().Message("Skipping `runs-if: success` stages from now on.")
+				anyPreviousStageHasFailed = true
 			}
 			result.Status = res.Status
 			continue
 		}
-		log.Info().
-			WithStringf("stages", "%d/%d", stagesDone, stagesCount).
-			WithString("stage", res.Name).
-			WithDuration("dur", res.Duration.Truncate(time.Second)).
-			Message("Done with stage.")
+		logSuccessfulStage(res, stagesDone, stagesCount)
 		result.Status = workermodel.StatusSuccess
 	}
 	if errors.Is(ctx.Err(), context.Canceled) {
@@ -134,15 +107,42 @@ func filterStages(stages []wharfyml.Stage, nameFilter string) []wharfyml.Stage {
 	return result
 }
 
-func shouldNotRunStage(anyStageFailed bool, s wharfyml.Stage) bool {
-	if s.RunsIf == wharfyml.StageRunsIfFail && anyStageFailed {
-		return false
+func logSkippedStage(stage wharfyml.Stage, stagesDone, stagesCount int) {
+	ev := log.Info().
+		WithStringf("stages", "%d/%d", stagesDone, stagesCount).
+		WithString("stage", stage.Name)
+	if stage.RunsIf == wharfyml.StageRunsIfFail {
+		ev = ev.WithString("reason", "only runs if any of the previous stages failed")
+	} else {
+		ev = ev.WithString("reason", "only runs if all previous stages succeeded")
 	}
-	if (s.RunsIf == "" || s.RunsIf == wharfyml.StageRunsIfSuccess) && !anyStageFailed {
-		return false
+	ev.Message("Skipping stage.")
+}
+
+func logFailedStage(res StageResult, stagesDone, stagesCount int) {
+	var failed []string
+	var cancelled []string
+	for _, stepRes := range res.Steps {
+		if stepRes.Status == workermodel.StatusFailed {
+			failed = append(failed, stepRes.Name)
+		} else if stepRes.Status == workermodel.StatusCancelled {
+			cancelled = append(cancelled, stepRes.Name)
+		}
 	}
-	if s.RunsIf == wharfyml.StageRunsIfAlways {
-		return false
-	}
-	return true
+	log.Warn().
+		WithStringf("stages", "%d/%d", stagesDone, stagesCount).
+		WithString("stage", res.Name).
+		WithDuration("dur", res.Duration.Truncate(time.Second)).
+		WithStringer("status", res.Status).
+		WithString("failed", strings.Join(failed, ",")).
+		WithString("cancelled", strings.Join(cancelled, ",")).
+		Message("Failed stage.")
+}
+
+func logSuccessfulStage(res StageResult, stagesDone, stagesCount int) {
+	log.Info().
+		WithStringf("stages", "%d/%d", stagesDone, stagesCount).
+		WithString("stage", res.Name).
+		WithDuration("dur", res.Duration.Truncate(time.Second)).
+		Message("Done with stage.")
 }

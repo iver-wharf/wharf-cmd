@@ -28,6 +28,20 @@ type Stage struct {
 	Node visit.MapItem
 }
 
+// ShouldSkip returns true if the stage should be skipped based on its run
+// conditions.
+func (s Stage) ShouldSkip(anyPreviousStageHasFailed bool) bool {
+	switch s.RunsIf {
+	case StageRunsIfAlways:
+		return false
+	case StageRunsIfFail:
+		return !anyPreviousStageHasFailed
+	case "", StageRunsIfSuccess:
+		return anyPreviousStageHasFailed
+	}
+	return true
+}
+
 func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (Stage, errutil.Slice) {
 	var errSlice errutil.Slice
 	stage := Stage{
