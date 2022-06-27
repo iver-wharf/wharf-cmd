@@ -85,6 +85,9 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		logSuccessfulStage(res, stagesDone, stagesCount)
 		result.Status = workermodel.StatusSuccess
 	}
+	if anyPreviousStageHasFailed {
+		result.Status = workermodel.StatusFailed
+	}
 	if errors.Is(ctx.Err(), context.Canceled) {
 		result.Status = workermodel.StatusCancelled
 	}
