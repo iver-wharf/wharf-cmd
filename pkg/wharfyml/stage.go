@@ -23,7 +23,26 @@ type Stage struct {
 	EnvsPos visit.Pos
 	Steps   []Step
 
+	RunsIf StageRunsIf
+
 	Node visit.MapItem
+}
+
+// ShouldSkip returns true if the stage should be skipped based on its run
+// conditions.
+func (s Stage) ShouldSkip(anyPreviousStageHasFailed bool) bool {
+	switch s.RunsIf {
+	case StageRunsIfAlways:
+		return false
+	case StageRunsIfFail:
+		return !anyPreviousStageHasFailed
+	case "", StageRunsIfSuccess:
+		return anyPreviousStageHasFailed
+	}
+	log.Error().
+		WithString("value", string(s.RunsIf)).
+		Message("Unsupported RunsIf value in ShouldSkip. This should not happen, and is likely a bug. Skipping stage.")
+	return true
 }
 
 func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, source varsub.Source) (Stage, errutil.Slice) {
@@ -46,6 +65,10 @@ func visitStageNode(nameNode visit.StringNode, node *yaml.Node, args Args, sourc
 			envs, errs := visitStageEnvironmentsNode(stepNode.Value)
 			stage.Envs = envs
 			errSlice.Add(errutil.ScopeSlice(errs, propEnvironments)...)
+		case propRunsIf:
+			runsIf, errs := visitStageRunsIfNode(stepNode.Value)
+			stage.RunsIf = runsIf
+			errSlice.Add(errutil.ScopeSlice(errs, propRunsIf)...)
 		default:
 			step, errs := visitStepNode(stepNode.Key, stepNode.Value, args, source)
 			stage.Steps = append(stage.Steps, step)

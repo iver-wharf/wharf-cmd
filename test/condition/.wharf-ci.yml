@@ -1,0 +1,73 @@
+# Stages that output GOOD should run.
+# Stages that output BAD should not run.
+
+test:
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'hello everybody :) GOOD'
+
+# should run
+test-run-on-success-1:
+  # default behavior
+  run-if: success
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'all previous stage(s) succeeded, GOOD'
+
+# should run
+test-run-on-always-1:
+  run-if: always
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'this always runs, GOOD'
+
+# should not run
+test-run-on-fail-1:
+  run-if: fail
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'one or more of previous stages failed?? BAD'
+
+# should fail
+failing-stage:
+  my-step:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo "writing to non-existing file should fail - GOOD" > /non/existing/file
+
+# should not run
+test-run-on-success-2:
+  # default behavior
+  run-if: success
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'all previous stage(s) succeeded?? BAD!! should not run'
+
+# should run
+test-run-on-fail-2:
+  run-if: fail
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'one or more of previous stages failed, GOOD'
+
+# should run
+test-run-on-always-2:
+  run-if: always
+  step1:
+    container:
+      image: alpine:latest
+      cmds:
+      - echo 'this always runs, GOOD'
