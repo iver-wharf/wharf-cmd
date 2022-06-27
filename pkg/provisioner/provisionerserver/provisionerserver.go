@@ -17,6 +17,7 @@ var log = logger.NewScoped("PROV-SERVER")
 // Serve starts an HTTP server.
 //
 // @title Wharf provisioner API
+// @version v0.9.0
 // @description REST API for wharf-cmd to provision wharf-cmd-workers.
 // @license.name MIT
 // @license.url https://github.com/iver-wharf/wharf-cmd/blob/master/LICENSE
