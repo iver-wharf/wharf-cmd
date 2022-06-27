@@ -11,7 +11,7 @@ test:
 # should run
 test-run-on-success-1:
   # default behavior
-  runs-if: success
+  run-if: success
   step1:
     container:
       image: alpine:latest
@@ -20,7 +20,7 @@ test-run-on-success-1:
 
 # should run
 test-run-on-always-1:
-  runs-if: always
+  run-if: always
   step1:
     container:
       image: alpine:latest
@@ -29,7 +29,7 @@ test-run-on-always-1:
 
 # should not run
 test-run-on-fail-1:
-  runs-if: fail
+  run-if: fail
   step1:
     container:
       image: alpine:latest
@@ -47,7 +47,7 @@ failing-stage:
 # should not run
 test-run-on-success-2:
   # default behavior
-  runs-if: success
+  run-if: success
   step1:
     container:
       image: alpine:latest
@@ -56,7 +56,7 @@ test-run-on-success-2:
 
 # should run
 test-run-on-fail-2:
-  runs-if: fail
+  run-if: fail
   step1:
     container:
       image: alpine:latest
@@ -65,7 +65,7 @@ test-run-on-fail-2:
 
 # should run
 test-run-on-always-2:
-  runs-if: always
+  run-if: always
   step1:
     container:
       image: alpine:latest

@@ -76,7 +76,7 @@ func (b builder) Build(ctx context.Context) (Result, error) {
 		if res.Status != workermodel.StatusSuccess {
 			logFailedStage(res, stagesDone, stagesCount)
 			if !anyPreviousStageHasFailed {
-				log.Debug().Message("Skipping `runs-if: success` stages from now on.")
+				log.Debug().Message("Skipping `run-if: success` stages from now on.")
 				anyPreviousStageHasFailed = true
 			}
 			result.Status = res.Status
