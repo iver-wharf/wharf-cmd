@@ -1,9 +1,12 @@
+# Stages that output GOOD should run.
+# Stages that output BAD should not run.
+
 test:
   step1:
     container:
       image: alpine:latest
       cmds:
-      - echo 'hello everybody :)'
+      - echo 'hello everybody :) GOOD'
 
 # should run
 test-run-on-success-1:
@@ -39,7 +42,7 @@ failing-stage:
     container:
       image: alpine:latest
       cmds:
-      - echo "writing to non-existing file should fail" > /non/existing/file
+      - echo "writing to non-existing file should fail - GOOD" > /non/existing/file
 
 # should not run
 test-run-on-success-2:
