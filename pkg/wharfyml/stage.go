@@ -39,6 +39,9 @@ func (s Stage) ShouldSkip(anyPreviousStageHasFailed bool) bool {
 	case "", StageRunsIfSuccess:
 		return anyPreviousStageHasFailed
 	}
+	log.Warn().
+		WithString("value", string(s.RunsIf)).
+		Message("Unsupported RunsIf value in ShouldSkip. Returning true.")
 	return true
 }
 
