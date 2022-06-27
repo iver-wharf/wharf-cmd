@@ -12,7 +12,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
-## v0.9.0 (WIP)
+## v0.9.0 (2022-06-27)
 
 - Added `run-if` field to stages in the `.wharf-ci.yml` file. Allows one of
   the values: `success`, `fail`, `always`. (#195)
