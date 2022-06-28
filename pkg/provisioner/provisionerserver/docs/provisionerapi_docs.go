@@ -254,7 +254,7 @@ const docTemplateprovisionerapi = `{
 
 // SwaggerInfoprovisionerapi holds exported Swagger Info so clients can modify it
 var SwaggerInfoprovisionerapi = &swag.Spec{
-	Version:          "",
+	Version:          "v0.9.0",
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
