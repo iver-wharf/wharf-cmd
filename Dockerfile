@@ -17,7 +17,7 @@ RUN chmod +x scripts/update-version.sh  \
 
 ARG REG=docker.io
 FROM ${REG}/library/alpine:3.15 AS final
-RUN apk add --no-cache ca-certificates tzdata git
+RUN apk add --no-cache pcre2=10.40-r0 ca-certificates tzdata git
 COPY --from=build /src/wharf /usr/local/bin/wharf
 ENTRYPOINT ["/usr/local/bin/wharf"]
 
