@@ -150,7 +150,7 @@ const docTemplateworkerapi = `{
 
 // SwaggerInfoworkerapi holds exported Swagger Info so clients can modify it
 var SwaggerInfoworkerapi = &swag.Spec{
-	Version:          "v0.9.0",
+	Version:          "v0.9.1",
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},

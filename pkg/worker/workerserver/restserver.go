@@ -23,7 +23,7 @@ func newRestServer(artifactOpener ArtifactFileOpener) *restServer {
 
 // serveHTTP godoc
 // @title Wharf worker API
-// @version v0.9.1-rc.1
+// @version v0.9.1
 // @description REST API for wharf-cmd to access build results.
 // @description Please refer to the gRPC API for more endpoints.
 // @license.name MIT
