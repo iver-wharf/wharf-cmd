@@ -12,7 +12,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
-## v0.9.1 (WIP)
+## v0.9.1 (2022-06-28)
 
 - Fixed CVE-2022-1586 (High) and CVE-2022-1587 (High). (#198)
 
