@@ -12,6 +12,10 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 	https://changelog.md/
 -->
 
+## v0.9.1 (WIP)
+
+- Fixed CVE-2022-1586 (High) and CVE-2022-1587 (High). (#?)
+
 ## v0.9.0 (2022-06-28)
 
 - Added `run-if` field to stages in the `.wharf-ci.yml` file. Allows one of
