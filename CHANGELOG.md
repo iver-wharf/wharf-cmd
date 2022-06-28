@@ -14,7 +14,7 @@ This project tries to follow [SemVer 2.0.0](https://semver.org/).
 
 ## v0.9.1 (WIP)
 
-- Fixed CVE-2022-1586 (High) and CVE-2022-1587 (High). (#?)
+- Fixed CVE-2022-1586 (High) and CVE-2022-1587 (High). (#198)
 
 ## v0.9.0 (2022-06-28)
 
